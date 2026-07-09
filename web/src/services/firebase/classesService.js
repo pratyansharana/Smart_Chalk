@@ -39,12 +39,19 @@ export function subscribeToStudentClasses(studentId, onData, onError) {
   const classesQuery = query(
     collection(db, COLLECTIONS.CLASSES),
     where('studentIds', 'array-contains', studentId),
-    orderBy('startTime', 'asc'),
   );
 
   return onSnapshot(
     classesQuery,
-    (snapshot) => onData(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))),
+    (snapshot) => {
+      const list = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      list.sort((a, b) => {
+        const tA = a.startTime?.toDate ? a.startTime.toDate() : new Date(a.startTime);
+        const tB = b.startTime?.toDate ? b.startTime.toDate() : new Date(b.startTime);
+        return tA - tB;
+      });
+      onData(list);
+    },
     onError,
   );
 }
@@ -61,12 +68,19 @@ export function subscribeToTeacherClasses(teacherId, onData, onError) {
   const classesQuery = query(
     collection(db, COLLECTIONS.CLASSES),
     where('teacherId', '==', teacherId),
-    orderBy('startTime', 'asc'),
   );
 
   return onSnapshot(
     classesQuery,
-    (snapshot) => onData(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))),
+    (snapshot) => {
+      const list = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      list.sort((a, b) => {
+        const tA = a.startTime?.toDate ? a.startTime.toDate() : new Date(a.startTime);
+        const tB = b.startTime?.toDate ? b.startTime.toDate() : new Date(b.startTime);
+        return tA - tB;
+      });
+      onData(list);
+    },
     onError,
   );
 }

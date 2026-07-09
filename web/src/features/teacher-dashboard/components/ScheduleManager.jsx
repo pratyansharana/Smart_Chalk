@@ -17,7 +17,7 @@ const batchSchema = z.object({
   meetingLink: z.string().url('Enter a valid meeting URL.'),
   schedule: z.string().min(3, 'Schedule is required (e.g., Mon & Wed 5 PM).'),
   nextSessionTime: z.string().min(1, 'Next session date/time is required.'),
-  studentIds: z.array(z.string()).default([]),
+  studentIdInput: z.string().optional(),
 });
 
 export function ScheduleManager({ teacherId, students, classes }) {
@@ -31,12 +31,13 @@ export function ScheduleManager({ teacherId, students, classes }) {
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(batchSchema),
-    defaultValues: { title: '', subject: '', meetingLink: '', schedule: '', nextSessionTime: '', studentIds: [] },
+    defaultValues: { title: '', subject: '', meetingLink: '', schedule: '', nextSessionTime: '', studentIdInput: '' },
   });
 
   const studentMap = new Map(students.map((s) => [s.uid || s.id, s]));
 
   async function onSubmit(values) {
+    const directStudentIds = values.studentIdInput?.trim() ? [values.studentIdInput.trim()] : [];
     await createClassDocument({
       title: values.title,
       subject: values.subject,
@@ -46,7 +47,7 @@ export function ScheduleManager({ teacherId, students, classes }) {
       status: 'scheduled',
       startTime: new Date(values.nextSessionTime),
       endTime: new Date(new Date(values.nextSessionTime).getTime() + 60 * 60 * 1000), // default 1 hour
-      studentIds: values.studentIds,
+      studentIds: directStudentIds,
     });
     reset();
   }
@@ -113,17 +114,12 @@ export function ScheduleManager({ teacherId, students, classes }) {
           <ReusableInput label="Next Session Date/Time" type="datetime-local" error={errors.nextSessionTime?.message} {...register('nextSessionTime')} />
         </div>
 
-        <label className="grid gap-2 text-sm font-semibold text-slate-100">
-          Enroll Students (Optional - Direct Add)
-          <select className="apex-input min-h-28" multiple {...register('studentIds')}>
-            {students.map((student) => (
-              <option key={student.uid || student.id} value={student.uid || student.id}>
-                {student.displayName}
-              </option>
-            ))}
-          </select>
-          <span className="text-xs text-slate-400">Hold Ctrl (or Cmd) to select multiple students.</span>
-        </label>
+        <ReusableInput
+          label="Direct Enroll Student by ID (Optional)"
+          placeholder="e.g., student-auth-uid"
+          error={errors.studentIdInput?.message}
+          {...register('studentIdInput')}
+        />
 
         <button className="apex-button-primary" disabled={isSubmitting || !teacherId} type="submit">
           {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <CalendarPlus size={18} />}

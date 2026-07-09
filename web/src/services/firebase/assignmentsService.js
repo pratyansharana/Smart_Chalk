@@ -17,12 +17,19 @@ export function subscribeToStudentAssignments(studentId, onData, onError) {
   const assignmentsQuery = query(
     collection(db, COLLECTIONS.ASSIGNMENTS),
     where('assignedStudentIds', 'array-contains', studentId),
-    orderBy('dueDate', 'asc'),
   );
 
   return onSnapshot(
     assignmentsQuery,
-    (snapshot) => onData(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))),
+    (snapshot) => {
+      const list = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      list.sort((a, b) => {
+        const tA = a.dueDate?.toDate ? a.dueDate.toDate() : new Date(a.dueDate);
+        const tB = b.dueDate?.toDate ? b.dueDate.toDate() : new Date(b.dueDate);
+        return tA - tB;
+      });
+      onData(list);
+    },
     onError,
   );
 }
@@ -36,12 +43,19 @@ export function subscribeToTeacherAssignments(teacherId, onData, onError) {
   const assignmentsQuery = query(
     collection(db, COLLECTIONS.ASSIGNMENTS),
     where('teacherId', '==', teacherId),
-    orderBy('dueDate', 'asc'),
   );
 
   return onSnapshot(
     assignmentsQuery,
-    (snapshot) => onData(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))),
+    (snapshot) => {
+      const list = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      list.sort((a, b) => {
+        const tA = a.dueDate?.toDate ? a.dueDate.toDate() : new Date(a.dueDate);
+        const tB = b.dueDate?.toDate ? b.dueDate.toDate() : new Date(b.dueDate);
+        return tA - tB;
+      });
+      onData(list);
+    },
     onError,
   );
 }

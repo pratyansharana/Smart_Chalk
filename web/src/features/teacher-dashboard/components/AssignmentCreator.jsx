@@ -11,10 +11,9 @@ const assignmentSchema = z.object({
   title: z.string().min(3, 'Assignment title is required.'),
   description: z.string().min(5, 'Description is required.'),
   subject: z.string().min(2, 'Subject is required.'),
-  classId: z.string().optional(),
+  classId: z.string().min(1, 'Select a batch for this assignment.'),
   dueDate: z.string().min(1, 'Due date is required.'),
   maxScore: z.coerce.number().min(1, 'Max score must be positive.'),
-  assignedStudentIds: z.array(z.string()).min(1, 'Select at least one student.'),
 });
 
 export function AssignmentCreator({ teacherId, students, classes }) {
@@ -34,7 +33,6 @@ export function AssignmentCreator({ teacherId, students, classes }) {
       classId: '',
       dueDate: '',
       maxScore: 100,
-      assignedStudentIds: [],
     },
   });
 
@@ -47,11 +45,18 @@ export function AssignmentCreator({ teacherId, students, classes }) {
       worksheetFileName = worksheetFile.name;
     }
 
+    const selectedBatch = classes.find((c) => c.id === values.classId);
+    const assignedStudentIds = selectedBatch?.studentIds || [];
+
     await createAssignmentDocument({
-      ...values,
-      teacherId,
+      title: values.title,
+      description: values.description,
+      subject: values.subject,
       classId: values.classId || null,
       dueDate: new Date(values.dueDate),
+      maxScore: Number(values.maxScore),
+      assignedStudentIds,
+      teacherId,
       worksheetFileURL,
       worksheetFileName,
     });
@@ -87,13 +92,7 @@ export function AssignmentCreator({ teacherId, students, classes }) {
             {classes.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
           </select>
         </label>
-        <label className="grid gap-2 text-sm font-semibold text-slate-100">
-          Students
-          <select className="apex-input min-h-28" multiple {...register('assignedStudentIds')}>
-            {students.map((student) => <option key={student.uid || student.id} value={student.uid || student.id}>{student.displayName}</option>)}
-          </select>
-          {errors.assignedStudentIds && <span className="text-xs text-red-300">{errors.assignedStudentIds.message}</span>}
-        </label>
+
         <label className="grid gap-2 text-sm font-semibold text-slate-100">
           Worksheet
           <input className="apex-input" onChange={(event) => setWorksheetFile(event.target.files?.[0] || null)} type="file" />
