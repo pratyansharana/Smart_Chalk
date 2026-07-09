@@ -269,12 +269,7 @@ export function StudentBatchDetailsPage() {
                     </div>
 
                     {test.testContent && (
-                      <div className="mt-4 bg-black/25 border border-white/5 p-4 rounded-xl max-h-96 overflow-y-auto">
-                        <p className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">Test Questions</p>
-                        <div className="text-slate-300 text-sm whitespace-pre-wrap font-mono leading-relaxed">
-                          {test.testContent}
-                        </div>
-                      </div>
+                      <QuestionPaperRenderer content={test.testContent} />
                     )}
 
                     {/* Solutions Submission / Grading section */}
@@ -477,23 +472,46 @@ function QuizRunner({ quiz, studentId, studentName, batchId, onClose }) {
   const [correctCount, setCorrectCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [quizFinished, setQuizFinished] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(30);
 
   const questions = quiz.questions || [];
   const currentQuestion = questions[currentIdx];
 
-  async function handleNext() {
-    // Check answer
-    if (selectedOpt === currentQuestion.correctOptionIndex) {
+  // Reset timer on question change
+  useEffect(() => {
+    if (quizFinished) return;
+    setTimeLeft(30);
+  }, [currentIdx, quizFinished]);
+
+  // Tick down timer every second
+  useEffect(() => {
+    if (quizFinished) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          handleNext(true);
+          return 30;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [currentIdx, quizFinished, selectedOpt, correctCount]);
+
+  async function handleNext(isTimeout = false) {
+    const isCorrect = !isTimeout && selectedOpt === currentQuestion?.correctOptionIndex;
+    if (isCorrect) {
       setCorrectCount((c) => c + 1);
     }
 
-    const finalCorrectCount = selectedOpt === currentQuestion.correctOptionIndex ? correctCount + 1 : correctCount;
+    const finalCorrectCount = isCorrect ? correctCount + 1 : correctCount;
 
     if (currentIdx < questions.length - 1) {
       setCurrentIdx((prev) => prev + 1);
       setSelectedOpt(null);
     } else {
-      // Last question completed, submit scorecard
       setSubmitting(true);
       try {
         await submitQuizScorecard({
@@ -534,9 +552,20 @@ function QuizRunner({ quiz, studentId, studentName, batchId, onClose }) {
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 max-w-xl mx-auto">
+      {/* Ticking Timer progress bar */}
+      <div className="w-full bg-white/10 h-1.5 rounded-full mb-6 overflow-hidden">
+        <div 
+          className="bg-amber-400 h-full transition-all duration-1000"
+          style={{ width: `${(timeLeft / 30) * 100}%` }}
+        />
+      </div>
+
       <div className="flex justify-between items-center gap-3 border-b border-white/5 pb-3 mb-4">
         <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
           Question {currentIdx + 1} of {questions.length}
+        </span>
+        <span className="text-xs font-bold text-red-400 bg-red-400/10 px-2 py-0.5 rounded-md animate-pulse">
+          Time Remaining: {timeLeft}s
         </span>
         <button className="text-xs text-slate-400 hover:text-white" onClick={onClose} type="button">
           Quit Quiz
@@ -586,3 +615,52 @@ function QuizRunner({ quiz, studentId, studentName, batchId, onClose }) {
     </div>
   );
 }
+
+export function QuestionPaperRenderer({ content }) {
+  if (!content) return null;
+  const lines = content.split('\n').map((l) => l.trim()).filter(Boolean);
+
+  return (
+    <div className="space-y-4 bg-slate-950/40 p-6 rounded-2xl border border-white/5 my-4">
+      {lines.map((line, idx) => {
+        if (line.startsWith('# ')) {
+          return (
+            <h3 key={idx} className="font-heading text-2xl font-black text-white mt-4 mb-3 border-b border-white/10 pb-2">
+              {line.replace('# ', '')}
+            </h3>
+          );
+        }
+        if (line.startsWith('## ')) {
+          return (
+            <h4 key={idx} className="font-heading text-lg font-bold text-amber-400 mt-4 mb-2">
+              {line.replace('## ', '')}
+            </h4>
+          );
+        }
+        if (/^\d+[\.\)]\s/.test(line)) {
+          const cleanText = line.replace(/^\d+[\.\)]\s/, '');
+          const matchNum = line.match(/^(\d+)[\.\)]/);
+          const qNum = matchNum ? matchNum[1] : idx + 1;
+          return (
+            <div key={idx} className="bg-white/[0.02] border border-white/5 p-4 rounded-xl shadow-sm hover:border-amber-400/20 transition-all">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="bg-amber-400/10 text-amber-300 font-bold px-2 py-0.5 rounded text-[10px]">
+                  Q{qNum}
+                </span>
+              </div>
+              <p className="text-sm font-semibold text-slate-200 leading-relaxed">
+                {cleanText.replace(/\*\*/g, '')}
+              </p>
+            </div>
+          );
+        }
+        return (
+          <p key={idx} className="text-xs text-slate-400 mt-1 leading-relaxed pl-1">
+            {line.replace(/^\*\s/, '').replace(/\*\*/g, '')}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
