@@ -26,7 +26,17 @@ export const useAuthStore = create((set, get) => ({
           return;
         }
 
-        const profile = await getUserProfile(user.uid);
+        let profile = await getUserProfile(user.uid);
+
+        // If profile is not found immediately (signup race condition), retry a few times
+        if (!profile) {
+          for (let i = 0; i < 6; i++) {
+            await new Promise((resolve) => setTimeout(resolve, 400));
+            profile = await getUserProfile(user.uid);
+            if (profile) break;
+          }
+        }
+
         set({
           currentUser: user,
           profile,
