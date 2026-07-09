@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getRole() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isTeacher() {
+      return isSignedIn() && getRole() == 'teacher';
+    }
+
+    function isStudent() {
+      return isSignedIn() && getRole() == 'student';
+    }
+
+    function isAdmin() {
+      return isSignedIn() && getRole() == 'admin';
+    }
+
+    match /worksheets/{assignmentId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isTeacher() || isAdmin();
+    }
+
+    match /submissions/{assignmentId}/{studentId}/{fileName} {
+      allow read: if isTeacher() || isAdmin() || (isStudent() && request.auth.uid == studentId);
+      allow write: if isStudent() && request.auth.uid == studentId;
+    }
+
+    match /profile-pictures/{userId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+  }
+}

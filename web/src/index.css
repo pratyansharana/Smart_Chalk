@@ -1,0 +1,120 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/space-grotesk/500.css';
+@import '@fontsource/space-grotesk/700.css';
+@import 'tailwindcss';
+
+@theme {
+  --font-body: 'Inter', sans-serif;
+  --font-heading: 'Space Grotesk', 'Inter', sans-serif;
+  --color-navy-950: #0b1120;
+  --color-navy-900: #0f172a;
+  --color-navy-800: #1e293b;
+  --color-navy-700: #334155;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+  --color-emerald-400: #34d399;
+  --color-emerald-500: #10b981;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply min-w-80 bg-navy-950 font-body text-slate-100 antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-heading tracking-tight text-white;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    @apply outline-none;
+  }
+
+  :focus-visible {
+    @apply ring-2 ring-amber-500/60 ring-offset-2 ring-offset-navy-950;
+  }
+}
+
+@layer components {
+  .glass-card {
+    background: rgba(30, 41, 59, 0.55);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+  }
+
+  .apex-surface {
+    background: rgba(30, 41, 59, 0.55);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+  }
+
+  .apex-input {
+    @apply w-full rounded-xl border border-white/10 bg-navy-950/70 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 transition focus:border-amber-500/70 focus:ring-2 focus:ring-amber-500/30;
+  }
+
+  .apex-button {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition;
+  }
+
+  .apex-button-primary {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-navy-950 transition hover:bg-amber-400;
+    box-shadow: 0 0 40px rgba(251, 191, 36, 0.16);
+  }
+
+  .apex-button-secondary {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-slate-100 transition hover:border-amber-500/40 hover:bg-amber-500/10;
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden rounded-xl bg-navy-700/50;
+  }
+
+  .skeleton::after {
+    @apply absolute inset-0 content-[''];
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+    animation: shimmer 1.25s infinite;
+  }
+
+  .live-dot {
+    @apply relative inline-flex size-2.5 rounded-full bg-emerald-400;
+  }
+
+  .live-dot::before {
+    @apply absolute inset-0 rounded-full bg-emerald-400 content-[''];
+    animation: ping 1.3s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+}
+
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes ping {
+  75%,
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}

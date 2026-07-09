@@ -1,0 +1,32 @@
+# Logs
+*.log
+web/vite.err.log
+web/vite.log
+
+# Dependency directories
+node_modules/
+web/node_modules/
+
+# Build outputs
+dist/
+web/dist/
+
+# Local env files
+.env
+.env.local
+.env.*.local
+web/.env
+web/.env.local
+
+# Editor directories and files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS files
+.DS_Store
+Thumbs.db
