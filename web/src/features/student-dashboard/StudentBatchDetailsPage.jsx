@@ -268,6 +268,15 @@ export function StudentBatchDetailsPage() {
                       )}
                     </div>
 
+                    {test.testContent && (
+                      <div className="mt-4 bg-black/25 border border-white/5 p-4 rounded-xl max-h-96 overflow-y-auto">
+                        <p className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">Test Questions</p>
+                        <div className="text-slate-300 text-sm whitespace-pre-wrap font-mono leading-relaxed">
+                          {test.testContent}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Solutions Submission / Grading section */}
                     <div className="mt-5 border-t border-white/5 pt-4">
                       {submission ? (

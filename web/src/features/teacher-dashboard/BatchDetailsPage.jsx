@@ -39,6 +39,7 @@ import {
 import { addVaultItem, deleteVaultItem } from '../../services/firebase/vaultService';
 import { createTestDocument, gradeTestSubmission } from '../../services/firebase/testService';
 import { createQuizDocument } from '../../services/firebase/quizService';
+import { generateAITest, generateAIQuiz } from '../../services/aiService';
 
 export function BatchDetailsPage() {
   const { batchId } = useParams();
@@ -554,10 +555,46 @@ function TestPanel({ batchId, teacherId, tests, submissions }) {
   const { upload, loading: uploading, progress } = useFileUpload();
   const [submitting, setSubmitting] = useState(false);
 
+  const [testContent, setTestContent] = useState('');
+  const [showAIPanel, setShowAIPanel] = useState(false);
+  const [aiGrade, setAiGrade] = useState('');
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiLevel, setAiLevel] = useState('Medium');
+  const [aiInstructions, setAiInstructions] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState(null);
+
   const [gradingSubmissionId, setGradingSubmissionId] = useState(null);
   const [gradeInput, setGradeInput] = useState('');
   const [feedbackInput, setFeedbackInput] = useState('');
   const [gradingSubmitLoading, setGradingSubmitLoading] = useState(false);
+
+  async function handleAITestGenerate(e) {
+    e.preventDefault();
+    if (!aiGrade.trim() || !aiTopic.trim()) return;
+
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const result = await generateAITest({
+        grade: aiGrade.trim(),
+        topic: aiTopic.trim(),
+        level: aiLevel,
+        instructions: aiInstructions.trim(),
+      });
+
+      setTitle(result.title);
+      setDesc(result.description);
+      setMaxScore(result.maxScore || 100);
+      setTestContent(result.testContent || '');
+      setShowAIPanel(false);
+    } catch (err) {
+      console.error(err);
+      setAiError(err.message || 'AI Generation failed.');
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   async function handleAddTest(e) {
     e.preventDefault();
@@ -581,6 +618,7 @@ function TestPanel({ batchId, teacherId, tests, submissions }) {
         dueDate: new Date(dueDate).toISOString(),
         testFileURL,
         testFileName,
+        testContent: testContent.trim() || null,
         teacherId,
       });
 
@@ -589,6 +627,7 @@ function TestPanel({ batchId, teacherId, tests, submissions }) {
       setMaxScore(100);
       setDueDate('');
       setFile(null);
+      setTestContent('');
       e.target.reset();
     } catch (err) {
       console.error(err);
@@ -626,73 +665,164 @@ function TestPanel({ batchId, teacherId, tests, submissions }) {
     <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr] lg:items-start">
       {/* Test Publisher form */}
       <section className="glass-card p-5">
-        <h2 className="font-heading text-xl font-bold text-white flex items-center gap-2 mb-4">
-          <Plus size={18} className="text-amber-400" />
-          Publish test paper
-        </h2>
-        <form className="grid gap-4" onSubmit={handleAddTest}>
-          <label className="grid gap-1 text-sm font-semibold text-slate-200">
-            Test Title
-            <input
-              className="apex-input"
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Algebra Mid-Term Test"
-              required
-              type="text"
-              value={title}
-            />
-          </label>
-
-          <label className="grid gap-1 text-sm font-semibold text-slate-200">
-            Syllabus / Description
-            <textarea
-              className="apex-input min-h-20 resize-y"
-              onChange={(e) => setDesc(e.target.value)}
-              placeholder="Topics, guidelines, duration..."
-              value={desc}
-            />
-          </label>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="grid gap-1 text-sm font-semibold text-slate-200">
-              Max Score
-              <input
-                className="apex-input"
-                min="1"
-                onChange={(e) => setMaxScore(e.target.value)}
-                required
-                type="number"
-                value={maxScore}
-              />
-            </label>
-
-            <label className="grid gap-1 text-sm font-semibold text-slate-200">
-              Due Date / Time
-              <input
-                className="apex-input"
-                onChange={(e) => setDueDate(e.target.value)}
-                required
-                type="datetime-local"
-                value={dueDate}
-              />
-            </label>
-          </div>
-
-          <label className="grid gap-1 text-sm font-semibold text-slate-200">
-            Question Paper File (PDF/Image)
-            <input
-              className="apex-input"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-              type="file"
-            />
-            {uploading && <span className="text-xs text-amber-300">Uploading: {progress}%</span>}
-          </label>
-
-          <button className="apex-button-primary" disabled={submitting || uploading} type="submit">
-            {submitting || uploading ? <Loader2 size={16} className="animate-spin" /> : <ClipboardList size={16} />}
-            Publish Test
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <h2 className="font-heading text-xl font-bold text-white flex items-center gap-2">
+            <Plus size={18} className="text-amber-400" />
+            Publish test paper
+          </h2>
+          <button
+            className="apex-button-secondary py-1 px-2.5 text-[10px] bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20 text-purple-300 flex items-center gap-1.5"
+            onClick={() => {
+              setShowAIPanel(!showAIPanel);
+              setAiError(null);
+            }}
+            type="button"
+          >
+            <Radio size={12} className="animate-pulse" />
+            {showAIPanel ? 'Manual Mode' : 'AI Creator'}
           </button>
-        </form>
+        </div>
+
+        {showAIPanel ? (
+          <form className="grid gap-4 bg-purple-500/[0.02] border border-purple-500/10 p-4 rounded-2xl" onSubmit={handleAITestGenerate}>
+            <p className="text-xs font-bold text-purple-300 uppercase tracking-wide">AI Test Generator</p>
+            
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-1 text-xs font-semibold text-slate-200">
+                Grade / Class
+                <input
+                  className="apex-input py-1.5 px-3 text-xs"
+                  onChange={(e) => setAiGrade(e.target.value)}
+                  placeholder="e.g., Grade 9"
+                  required
+                  type="text"
+                  value={aiGrade}
+                />
+              </label>
+
+              <label className="grid gap-1 text-xs font-semibold text-slate-200">
+                Difficulty Level
+                <select
+                  className="apex-input py-1.5 px-3 text-xs"
+                  onChange={(e) => setAiLevel(e.target.value)}
+                  value={aiLevel}
+                >
+                  <option value="Easy">Easy</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Hard">Hard</option>
+                </select>
+              </label>
+            </div>
+
+            <label className="grid gap-1 text-xs font-semibold text-slate-200">
+              Topic
+              <input
+                className="apex-input py-1.5 px-3 text-xs"
+                onChange={(e) => setAiTopic(e.target.value)}
+                placeholder="e.g., Quadratic Equations"
+                required
+                type="text"
+                value={aiTopic}
+              />
+            </label>
+
+            <label className="grid gap-1 text-xs font-semibold text-slate-200">
+              Custom Instructions (Optional)
+              <textarea
+                className="apex-input min-h-16 text-xs"
+                onChange={(e) => setAiInstructions(e.target.value)}
+                placeholder="e.g., focus on word problems, include 5 questions..."
+                value={aiInstructions}
+              />
+            </label>
+
+            {aiError && <p className="text-xs text-red-300">{aiError}</p>}
+
+            <button
+              className="apex-button-primary bg-purple-500 hover:bg-purple-400 text-white font-bold py-2"
+              disabled={aiLoading}
+              type="submit"
+            >
+              {aiLoading ? <Loader2 size={14} className="animate-spin" /> : 'Generate Test questions'}
+            </button>
+          </form>
+        ) : (
+          <form className="grid gap-4" onSubmit={handleAddTest}>
+            <label className="grid gap-1 text-sm font-semibold text-slate-200">
+              Test Title
+              <input
+                className="apex-input"
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g., Algebra Mid-Term Test"
+                required
+                type="text"
+                value={title}
+              />
+            </label>
+
+            <label className="grid gap-1 text-sm font-semibold text-slate-200">
+              Syllabus / Description
+              <textarea
+                className="apex-input min-h-20 resize-y"
+                onChange={(e) => setDesc(e.target.value)}
+                placeholder="Topics, guidelines, duration..."
+                value={desc}
+              />
+            </label>
+
+            {testContent && (
+              <label className="grid gap-1 text-xs font-semibold text-slate-200">
+                Generated Test Content (Markdown - Editable)
+                <textarea
+                  className="apex-input min-h-40 resize-y font-mono text-xs leading-relaxed"
+                  onChange={(e) => setTestContent(e.target.value)}
+                  required
+                  value={testContent}
+                />
+              </label>
+            )}
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-1 text-sm font-semibold text-slate-200">
+                Max Score
+                <input
+                  className="apex-input"
+                  min="1"
+                  onChange={(e) => setMaxScore(e.target.value)}
+                  required
+                  type="number"
+                  value={maxScore}
+                />
+              </label>
+
+              <label className="grid gap-1 text-sm font-semibold text-slate-200">
+                Due Date / Time
+                <input
+                  className="apex-input"
+                  onChange={(e) => setDueDate(e.target.value)}
+                  required
+                  type="datetime-local"
+                  value={dueDate}
+                />
+              </label>
+            </div>
+
+            <label className="grid gap-1 text-sm font-semibold text-slate-200">
+              Question Paper File (PDF/Image - Optional if AI generated)
+              <input
+                className="apex-input"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                type="file"
+              />
+              {uploading && <span className="text-xs text-amber-300">Uploading: {progress}%</span>}
+            </label>
+
+            <button className="apex-button-primary" disabled={submitting || uploading} type="submit">
+              {submitting || uploading ? <Loader2 size={16} className="animate-spin" /> : <ClipboardList size={16} />}
+              Publish Test
+            </button>
+          </form>
+        )}
       </section>
 
       {/* Tests and Solutions list */}
@@ -855,6 +985,39 @@ function QuizPanel({ batchId, teacherId, quizzes }) {
   const [opt3, setOpt3] = useState('');
   const [correctIndex, setCorrectIndex] = useState(0);
 
+  const [showAIPanel, setShowAIPanel] = useState(false);
+  const [aiGrade, setAiGrade] = useState('');
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiLevel, setAiLevel] = useState('Medium');
+  const [aiCount, setAiCount] = useState(5);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState(null);
+
+  async function handleAIQuizGenerate(e) {
+    e.preventDefault();
+    if (!aiGrade.trim() || !aiTopic.trim()) return;
+
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const result = await generateAIQuiz({
+        grade: aiGrade.trim(),
+        topic: aiTopic.trim(),
+        level: aiLevel,
+        count: Number(aiCount),
+      });
+
+      setTitle(result.title);
+      setQuestions(result.questions || []);
+      setShowAIPanel(false);
+    } catch (err) {
+      console.error(err);
+      setAiError(err.message || 'AI Generation failed.');
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   function handleAddQuestion(e) {
     e.preventDefault();
     if (!qText.trim() || !opt0.trim() || !opt1.trim() || !opt2.trim() || !opt3.trim()) return;
@@ -901,23 +1064,105 @@ function QuizPanel({ batchId, teacherId, quizzes }) {
     <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr] lg:items-start">
       {/* Quiz Publisher builder */}
       <section className="glass-card p-5">
-        <h2 className="font-heading text-xl font-bold text-white flex items-center gap-2 mb-4">
-          <Plus size={18} className="text-amber-400" />
-          Create MCQ Quiz
-        </h2>
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <h2 className="font-heading text-xl font-bold text-white flex items-center gap-2">
+            <Plus size={18} className="text-amber-400" />
+            Create MCQ Quiz
+          </h2>
+          <button
+            className="apex-button-secondary py-1 px-2.5 text-[10px] bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20 text-purple-300 flex items-center gap-1.5"
+            onClick={() => {
+              setShowAIPanel(!showAIPanel);
+              setAiError(null);
+            }}
+            type="button"
+          >
+            <Radio size={12} className="animate-pulse" />
+            {showAIPanel ? 'Manual Mode' : 'AI Creator'}
+          </button>
+        </div>
 
-        <form className="grid gap-4" onSubmit={handlePublishQuiz}>
-          <label className="grid gap-1 text-sm font-semibold text-slate-200">
-            Quiz Title
-            <input
-              className="apex-input"
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Fractions Quiz Competition"
-              required
-              type="text"
-              value={title}
-            />
-          </label>
+        {showAIPanel ? (
+          <form className="grid gap-4 bg-purple-500/[0.02] border border-purple-500/10 p-4 rounded-2xl" onSubmit={handleAIQuizGenerate}>
+            <p className="text-xs font-bold text-purple-300 uppercase tracking-wide">AI Quiz Generator</p>
+            
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-1 text-xs font-semibold text-slate-200">
+                Grade / Class
+                <input
+                  className="apex-input py-1.5 px-3 text-xs"
+                  onChange={(e) => setAiGrade(e.target.value)}
+                  placeholder="e.g., Grade 9"
+                  required
+                  type="text"
+                  value={aiGrade}
+                />
+              </label>
+
+              <label className="grid gap-1 text-xs font-semibold text-slate-200">
+                Difficulty Level
+                <select
+                  className="apex-input py-1.5 px-3 text-xs"
+                  onChange={(e) => setAiLevel(e.target.value)}
+                  value={aiLevel}
+                >
+                  <option value="Easy">Easy</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Hard">Hard</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-1 text-xs font-semibold text-slate-200">
+                Topic
+                <input
+                  className="apex-input py-1.5 px-3 text-xs"
+                  onChange={(e) => setAiTopic(e.target.value)}
+                  placeholder="e.g., Fractions"
+                  required
+                  type="text"
+                  value={aiTopic}
+                />
+              </label>
+
+              <label className="grid gap-1 text-xs font-semibold text-slate-200">
+                Questions count
+                <select
+                  className="apex-input py-1.5 px-3 text-xs"
+                  onChange={(e) => setAiCount(e.target.value)}
+                  value={aiCount}
+                >
+                  <option value="3">3 questions</option>
+                  <option value="5">5 questions</option>
+                  <option value="10">10 questions</option>
+                </select>
+              </label>
+            </div>
+
+            {aiError && <p className="text-xs text-red-300">{aiError}</p>}
+
+            <button
+              className="apex-button-primary bg-purple-500 hover:bg-purple-400 text-white font-bold py-2"
+              disabled={aiLoading}
+              type="submit"
+            >
+              {aiLoading ? <Loader2 size={14} className="animate-spin" /> : 'Generate MCQ Quiz'}
+            </button>
+          </form>
+        ) : (
+          <form className="grid gap-4" onSubmit={handlePublishQuiz}>
+            <label className="grid gap-1 text-sm font-semibold text-slate-200">
+              Quiz Title
+              <input
+                className="apex-input"
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g., Fractions Quiz Competition"
+                required
+                type="text"
+                value={title}
+              />
+            </label>
 
           {/* Add Questions sub-form */}
           <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl">
@@ -995,6 +1240,7 @@ function QuizPanel({ batchId, teacherId, quizzes }) {
             Publish Quiz ({questions.length} questions)
           </button>
         </form>
+        )}
 
         {/* Questions list preview */}
         {questions.length > 0 && (
