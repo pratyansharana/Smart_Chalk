@@ -27,9 +27,11 @@ export function useAuth() {
     const user = await signInWithGooglePopup();
     const existingProfile = await getUserProfile(user.uid);
     if (!existingProfile) {
-      await createUserProfile(user, role);
+      const profile = await createUserProfile(user, role);
+      useAuthStore.setState({ profile, role });
       return { user, role };
     }
+    useAuthStore.setState({ profile: existingProfile, role: existingProfile.role });
     return { user, role: existingProfile.role };
   }, []);
 
@@ -40,7 +42,8 @@ export function useAuth() {
   }, []);
 
   const completeGoogleSignup = useCallback(async (user, role) => {
-    await createUserProfile(user, role);
+    const profile = await createUserProfile(user, role);
+    useAuthStore.setState({ profile, role });
     return role;
   }, []);
 
