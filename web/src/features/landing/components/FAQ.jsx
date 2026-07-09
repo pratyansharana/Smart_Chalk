@@ -1,7 +1,7 @@
 const faqs = [
-  ['Which classes are covered?', 'SmartChalk currently supports Classes 4 to 10 with subject-specific learning plans.'],
-  ['How do parents track progress?', 'Parents get transparent assignment, class, and grade visibility as the platform phases expand.'],
-  ['Is the 3D experience required?', 'No. The landing page detects reduced-motion preferences and falls back to a static premium gradient.'],
+  ['Which classes do you cover?', 'SmartChalk currently provides premium, subject-specific learning plans exclusively for Classes 4 to 10.'],
+  ['How do parents track progress?', 'Transparency is our guarantee. Parents get role-based access to our platform, providing complete visibility into assignment completion, class performance, and grade improvements.'],
+  ['Are the tech bootcamps suitable for beginners?', 'Absolutely. Our Python and AI summer courses are designed from the ground up for absolute beginners, focusing on making complex concepts accessible and fun.'],
 ];
 
 export function FAQ() {

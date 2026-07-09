@@ -22,14 +22,14 @@ export function Hero() {
         <div className="glass-card max-w-3xl p-6 sm:p-8 lg:p-10">
           <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Premium dark glass tutoring</p>
           <h1 className="mt-4 font-heading text-5xl font-bold leading-none text-white sm:text-6xl lg:text-7xl">
-            Precision tutoring for ambitious learners.
+            Precision Tutoring for Ambitious Learners in the UAE.
           </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-            SmartChalk blends live instruction, worksheet accountability, and parent-visible progress inside a role-secure learning platform.
+          <p className="mt-6 max-w-2xl text-base leading-relaxed text-slate-300">
+            Future-proof your child’s academic journey. SmartChalk blends world-class live instruction from India with strict syllabus compliance, future-ready tech skills (AI & Python), and a 100% transparent parent-tracking platform for Classes 4 through 10.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <a className="apex-button-primary" href="#enquiry">Book a trial</a>
-            <Link className="apex-button-secondary" to={ROUTES.LOGIN}>Login</Link>
+            <a className="apex-button-primary" href="#enquiry">Book a Free Trial Conversation</a>
+            <Link className="apex-button-secondary" to={ROUTES.LOGIN}>Parent/Student Login</Link>
           </div>
         </div>
         <div className="mt-8 grid gap-4 lg:mt-0">
