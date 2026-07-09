@@ -1,5 +1,5 @@
 const faqs = [
-  ['Which classes are covered?', 'Apex Tutors currently supports Classes 4 to 10 with subject-specific learning plans.'],
+  ['Which classes are covered?', 'SmartChalk currently supports Classes 4 to 10 with subject-specific learning plans.'],
   ['How do parents track progress?', 'Parents get transparent assignment, class, and grade visibility as the platform phases expand.'],
   ['Is the 3D experience required?', 'No. The landing page detects reduced-motion preferences and falls back to a static premium gradient.'],
 ];

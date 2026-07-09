@@ -25,7 +25,7 @@ export function Hero() {
             Precision tutoring for ambitious learners.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-            Apex Tutors blends live instruction, worksheet accountability, and parent-visible progress inside a role-secure learning platform.
+            SmartChalk blends live instruction, worksheet accountability, and parent-visible progress inside a role-secure learning platform.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a className="apex-button-primary" href="#enquiry">Book a trial</a>

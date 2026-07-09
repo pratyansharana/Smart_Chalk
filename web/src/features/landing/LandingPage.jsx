@@ -58,7 +58,7 @@ export function LandingPage() {
       </section>
       <FAQ />
       <footer className="border-t border-white/10 px-5 py-8 text-center text-sm text-slate-400">
-        Apex Tutors / Premium online tutoring for focused learners.
+        SmartChalk / Premium online tutoring for focused learners.
       </footer>
     </main>
   );
