@@ -17,10 +17,13 @@ const loginSchema = z.object({
 
 export function LoginForm() {
   const navigate = useNavigate();
-  const { login, loginWithGoogle } = useAuth();
+  const { login, checkGoogleUserProfile, completeGoogleSignup } = useAuth();
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleUserPending, setGoogleUserPending] = useState(null);
+  const [roleSelectOpen, setRoleSelectOpen] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -48,14 +51,72 @@ export function LoginForm() {
     setSuccess('');
     setGoogleLoading(true);
     try {
-      const { role } = await loginWithGoogle();
-      setSuccess('Signed in with Google. Redirecting...');
-      navigate(getDefaultRouteForRole(role), { replace: true });
+      const { user, existingProfile } = await checkGoogleUserProfile();
+      if (!existingProfile) {
+        setGoogleUserPending(user);
+        setRoleSelectOpen(true);
+      } else {
+        setSuccess('Signed in with Google. Redirecting...');
+        navigate(getDefaultRouteForRole(existingProfile.role), { replace: true });
+      }
     } catch (error) {
       setFormError(error.message);
     } finally {
       setGoogleLoading(false);
     }
+  }
+
+  async function handleRoleConfirm(selectedRole) {
+    if (!googleUserPending) return;
+    setGoogleLoading(true);
+    setRoleSelectOpen(false);
+    try {
+      await completeGoogleSignup(googleUserPending, selectedRole);
+      setSuccess('Account created successfully. Redirecting...');
+      navigate(getDefaultRouteForRole(selectedRole), { replace: true });
+    } catch (error) {
+      setFormError(error.message);
+    } finally {
+      setGoogleLoading(false);
+      setGoogleUserPending(null);
+    }
+  }
+
+  if (roleSelectOpen) {
+    return (
+      <div className="glass-card grid gap-5 p-6 text-center">
+        <h3 className="font-heading text-lg font-bold text-white">Choose Account Type</h3>
+        <p className="text-xs text-slate-400 leading-relaxed">
+          This is your first time logging in with Google. Please select whether you are a Student or a Teacher to configure your SmartChalk workspace.
+        </p>
+        <div className="grid gap-3 mt-2">
+          <button
+            className="apex-button-primary w-full py-2.5"
+            onClick={() => handleRoleConfirm('student')}
+            type="button"
+          >
+            I am a Student
+          </button>
+          <button
+            className="apex-button-secondary w-full py-2.5 border-purple-500/20 text-purple-300 hover:bg-purple-500/10"
+            onClick={() => handleRoleConfirm('teacher')}
+            type="button"
+          >
+            I am a Teacher
+          </button>
+        </div>
+        <button
+          className="text-xs text-slate-500 hover:text-slate-300 mt-2 underline"
+          onClick={() => {
+            setRoleSelectOpen(false);
+            setGoogleUserPending(null);
+          }}
+          type="button"
+        >
+          Cancel
+        </button>
+      </div>
+    );
   }
 
   return (

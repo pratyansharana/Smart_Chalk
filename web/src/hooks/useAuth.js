@@ -33,7 +33,26 @@ export function useAuth() {
     return { user, role: existingProfile.role };
   }, []);
 
+  const checkGoogleUserProfile = useCallback(async () => {
+    const user = await signInWithGooglePopup();
+    const existingProfile = await getUserProfile(user.uid);
+    return { user, existingProfile };
+  }, []);
+
+  const completeGoogleSignup = useCallback(async (user, role) => {
+    await createUserProfile(user, role);
+    return role;
+  }, []);
+
   const logout = useCallback(() => signOutUser(), []);
 
-  return { ...state, login, signup, loginWithGoogle, logout };
+  return { 
+    ...state, 
+    login, 
+    signup, 
+    loginWithGoogle, 
+    checkGoogleUserProfile, 
+    completeGoogleSignup, 
+    logout 
+  };
 }
