@@ -21,7 +21,7 @@ export function StudentDashboardPage() {
         Your live classes, pending assignments, uploads, and grades update in real time from Firebase.
       </p>
       <div className="mt-8 grid gap-4 md:grid-cols-3">
-        <UpcomingClassesCard classes={classes.data} error={classes.error} loading={classes.loading} />
+        <UpcomingClassesCard classes={classes.data} studentId={studentId} error={classes.error} loading={classes.loading} />
         <GradeVisualizerCard error={submissions.error} loading={submissions.loading} submissions={submissions.data} />
         <AssignmentsCard
           assignments={assignments.data}

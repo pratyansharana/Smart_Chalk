@@ -40,7 +40,8 @@ service cloud.firestore {
 
     match /classes/{classId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isTeacher() || isAdmin();
+      allow create, delete: if isTeacher() || isAdmin();
+      allow update: if isTeacher() || isAdmin() || (isStudent() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pendingStudentIds']));
     }
 
     match /assignments/{assignmentId} {

@@ -81,9 +81,9 @@ export function AssignmentCreator({ teacherId, students, classes }) {
           <ReusableInput label="Max score" type="number" error={errors.maxScore?.message} {...register('maxScore')} />
         </div>
         <label className="grid gap-2 text-sm font-semibold text-slate-100">
-          Class
+          Batch
           <select className="apex-input" {...register('classId')}>
-            <option value="">No class link</option>
+            <option value="">No batch link</option>
             {classes.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
           </select>
         </label>
