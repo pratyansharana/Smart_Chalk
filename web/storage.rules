@@ -36,5 +36,20 @@ service firebase.storage {
       allow read: if isSignedIn();
       allow write: if isSignedIn() && request.auth.uid == userId;
     }
+
+    match /vault/{draftId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isTeacher() || isAdmin();
+    }
+
+    match /tests/{draftId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isTeacher() || isAdmin();
+    }
+
+    match /test_submissions/{draftId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isStudent() || isTeacher() || isAdmin();
+    }
   }
 }
