@@ -72,3 +72,29 @@ export async function updateAssignmentDocument(assignmentId, updates) {
   if (!db) return null;
   return updateDoc(doc(db, COLLECTIONS.ASSIGNMENTS, assignmentId), updates);
 }
+
+export function subscribeToBatchAssignments(batchId, onData, onError) {
+  if (!db || !batchId) {
+    onData([]);
+    return () => {};
+  }
+
+  const assignmentsQuery = query(
+    collection(db, COLLECTIONS.ASSIGNMENTS),
+    where('classId', '==', batchId),
+  );
+
+  return onSnapshot(
+    assignmentsQuery,
+    (snapshot) => {
+      const list = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      list.sort((a, b) => {
+        const tA = a.dueDate?.toDate ? a.dueDate.toDate() : new Date(a.dueDate);
+        const tB = b.dueDate?.toDate ? b.dueDate.toDate() : new Date(b.dueDate);
+        return tA - tB;
+      });
+      onData(list);
+    },
+    onError,
+  );
+}

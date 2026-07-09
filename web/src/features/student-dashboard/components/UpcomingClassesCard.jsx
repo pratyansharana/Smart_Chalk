@@ -91,6 +91,29 @@ export function UpcomingClassesCard({ classes, studentId, loading, error }) {
                 <p className="mt-1 text-xs text-slate-400">{item.schedule || 'Schedule pending'}</p>
               </div>
 
+              {item.notes && item.notes.length > 0 && (
+                <div className="mt-4 border-t border-white/5 pt-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-400/80 mb-2">
+                    Teacher Announcements
+                  </p>
+                  <div className="grid gap-2 max-h-36 overflow-y-auto pr-1">
+                    {item.notes.map((note) => (
+                      <div className="bg-white/[0.01] border border-white/5 p-2 rounded-xl" key={note.id}>
+                        <p className="text-xs text-slate-300">{note.text}</p>
+                        <span className="text-[9px] text-slate-500 block mt-1">
+                          {new Date(note.createdAt).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="mt-6">
                 {item.meetingLink ? (
                   <a

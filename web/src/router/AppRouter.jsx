@@ -8,6 +8,7 @@ import { UnauthorizedPage } from '../features/auth/UnauthorizedPage';
 import { LandingPage } from '../features/landing/LandingPage';
 import { StudentDashboardPage } from '../features/student-dashboard/StudentDashboardPage';
 import { TeacherDashboardPage } from '../features/teacher-dashboard/TeacherDashboardPage';
+import { BatchDetailsPage } from '../features/teacher-dashboard/BatchDetailsPage';
 import { PublicLayout } from '../layouts/PublicLayout';
 import { StudentLayout } from '../layouts/StudentLayout';
 import { TeacherLayout } from '../layouts/TeacherLayout';
@@ -51,6 +52,7 @@ export function AppRouter() {
             }
           >
             <Route index element={<TeacherDashboardPage />} />
+            <Route path="batch/:batchId" element={<BatchDetailsPage />} />
           </Route>
           <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
         </Routes>

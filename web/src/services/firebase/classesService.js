@@ -171,3 +171,47 @@ export async function toggleBatchLiveStatus(classId, isLive) {
     status: isLive ? 'live' : 'scheduled',
   });
 }
+
+/**
+ * Appends an announcement note to a batch document.
+ */
+export async function addBatchNote(classId, noteText) {
+  if (!db) return null;
+  const classRef = doc(db, COLLECTIONS.CLASSES, classId);
+  return runTransaction(db, async (transaction) => {
+    const classDoc = await transaction.get(classRef);
+    if (!classDoc.exists()) {
+      throw new Error('Batch does not exist.');
+    }
+    const data = classDoc.data();
+    const currentNotes = data.notes || [];
+    const newNote = {
+      id: crypto.randomUUID(),
+      text: noteText,
+      createdAt: new Date().toISOString(),
+    };
+    transaction.update(classRef, {
+      notes: [newNote, ...currentNotes],
+    });
+  });
+}
+
+/**
+ * Removes a note from a batch document by ID.
+ */
+export async function deleteBatchNote(classId, noteId) {
+  if (!db) return null;
+  const classRef = doc(db, COLLECTIONS.CLASSES, classId);
+  return runTransaction(db, async (transaction) => {
+    const classDoc = await transaction.get(classRef);
+    if (!classDoc.exists()) {
+      throw new Error('Batch does not exist.');
+    }
+    const data = classDoc.data();
+    const currentNotes = data.notes || [];
+    const nextNotes = currentNotes.filter((n) => n.id !== noteId);
+    transaction.update(classRef, {
+      notes: nextNotes,
+    });
+  });
+}

@@ -11,12 +11,11 @@ const assignmentSchema = z.object({
   title: z.string().min(3, 'Assignment title is required.'),
   description: z.string().min(5, 'Description is required.'),
   subject: z.string().min(2, 'Subject is required.'),
-  classId: z.string().min(1, 'Select a batch for this assignment.'),
   dueDate: z.string().min(1, 'Due date is required.'),
   maxScore: z.coerce.number().min(1, 'Max score must be positive.'),
 });
 
-export function AssignmentCreator({ teacherId, students, classes }) {
+export function AssignmentCreator({ teacherId, batchId, studentIds }) {
   const [worksheetFile, setWorksheetFile] = useState(null);
   const { upload, loading: uploading, progress } = useFileUpload();
   const {
@@ -30,7 +29,6 @@ export function AssignmentCreator({ teacherId, students, classes }) {
       title: '',
       description: '',
       subject: '',
-      classId: '',
       dueDate: '',
       maxScore: 100,
     },
@@ -45,17 +43,14 @@ export function AssignmentCreator({ teacherId, students, classes }) {
       worksheetFileName = worksheetFile.name;
     }
 
-    const selectedBatch = classes.find((c) => c.id === values.classId);
-    const assignedStudentIds = selectedBatch?.studentIds || [];
-
     await createAssignmentDocument({
       title: values.title,
       description: values.description,
       subject: values.subject,
-      classId: values.classId || null,
+      classId: batchId || null,
       dueDate: new Date(values.dueDate),
       maxScore: Number(values.maxScore),
-      assignedStudentIds,
+      assignedStudentIds: studentIds || [],
       teacherId,
       worksheetFileURL,
       worksheetFileName,
@@ -69,35 +64,31 @@ export function AssignmentCreator({ teacherId, students, classes }) {
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Assignments</p>
-          <h2 className="mt-2 font-heading text-2xl font-bold text-white">Assignment creator</h2>
+          <h2 className="mt-2 font-heading text-2xl font-bold text-white">Create assignment</h2>
         </div>
         <ClipboardList className="text-amber-400" size={24} />
       </div>
       <form className="mt-5 grid gap-4" onSubmit={handleSubmit(onSubmit)}>
-        <ReusableInput label="Title" error={errors.title?.message} {...register('title')} />
-        <ReusableInput label="Subject" error={errors.subject?.message} {...register('subject')} />
+        <ReusableInput label="Title" placeholder="e.g., Fraction Problems" error={errors.title?.message} {...register('title')} />
+        <ReusableInput label="Subject" placeholder="e.g., Mathematics" error={errors.subject?.message} {...register('subject')} />
+
         <label className="grid gap-2 text-sm font-semibold text-slate-100">
           Description
-          <textarea className="apex-input min-h-24 resize-y" {...register('description')} />
+          <textarea className="apex-input min-h-24 resize-y" placeholder="Worksheet guidelines..." {...register('description')} />
           {errors.description && <span className="text-xs text-red-300">{errors.description.message}</span>}
         </label>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <ReusableInput label="Due date" type="datetime-local" error={errors.dueDate?.message} {...register('dueDate')} />
           <ReusableInput label="Max score" type="number" error={errors.maxScore?.message} {...register('maxScore')} />
         </div>
-        <label className="grid gap-2 text-sm font-semibold text-slate-100">
-          Batch
-          <select className="apex-input" {...register('classId')}>
-            <option value="">No batch link</option>
-            {classes.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
-          </select>
-        </label>
 
         <label className="grid gap-2 text-sm font-semibold text-slate-100">
-          Worksheet
+          Worksheet File (PDF/Image)
           <input className="apex-input" onChange={(event) => setWorksheetFile(event.target.files?.[0] || null)} type="file" />
           {uploading && <span className="text-xs text-amber-300">Uploading {progress}%</span>}
         </label>
+
         <button className="apex-button-primary" disabled={isSubmitting || uploading || !teacherId} type="submit">
           {isSubmitting || uploading ? <Loader2 className="animate-spin" size={18} /> : <ClipboardList size={18} />}
           Create assignment
