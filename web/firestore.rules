@@ -55,5 +55,34 @@ service cloud.firestore {
       allow update: if isTeacher() || isAdmin();
       allow delete: if isAdmin();
     }
+
+    match /vault_items/{itemId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isTeacher() || isAdmin();
+    }
+
+    match /tests/{testId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isTeacher() || isAdmin();
+    }
+
+    match /test_submissions/{submissionId} {
+      allow create: if isStudent() && request.resource.data.studentId == request.auth.uid;
+      allow read: if isTeacher() || isAdmin() || (isStudent() && resource.data.studentId == request.auth.uid);
+      allow update: if isTeacher() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /quizzes/{quizId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isTeacher() || isAdmin();
+    }
+
+    match /quiz_submissions/{submissionId} {
+      allow create: if isStudent() && request.resource.data.studentId == request.auth.uid;
+      allow read: if isSignedIn();
+      allow update: if isTeacher() || isAdmin();
+      allow delete: if isAdmin();
+    }
   }
 }

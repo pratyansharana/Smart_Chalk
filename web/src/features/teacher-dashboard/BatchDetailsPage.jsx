@@ -14,12 +14,21 @@ import {
   Star,
   UserCheck,
   UserX,
+  BookOpen,
+  Trophy,
+  Upload,
+  Plus,
+  Award,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useBatchDetails } from '../../hooks/useBatchDetails';
 import { useStudents } from '../../hooks/useStudents';
-import { useBatchAssignments } from '../../hooks/useBatchAssignments';
-import { useTeacherSubmissions } from '../../hooks/useTeacherSubmissions';
+import { useBatchVault } from '../../hooks/useBatchVault';
+import { useBatchTests } from '../../hooks/useBatchTests';
+import { useBatchTestSubmissions } from '../../hooks/useBatchTestSubmissions';
+import { useBatchQuizzes } from '../../hooks/useBatchQuizzes';
+import { useQuizScores } from '../../hooks/useQuizScores';
+import { useFileUpload } from '../../hooks/useFileUpload';
 import {
   approveStudentRequest,
   rejectStudentRequest,
@@ -27,8 +36,9 @@ import {
   addBatchNote,
   deleteBatchNote,
 } from '../../services/firebase/classesService';
-import { AssignmentCreator } from './components/AssignmentCreator';
-import { SubmissionGrader } from './components/SubmissionGrader';
+import { addVaultItem, deleteVaultItem } from '../../services/firebase/vaultService';
+import { createTestDocument, gradeTestSubmission } from '../../services/firebase/testService';
+import { createQuizDocument } from '../../services/firebase/quizService';
 
 export function BatchDetailsPage() {
   const { batchId } = useParams();
@@ -37,15 +47,15 @@ export function BatchDetailsPage() {
 
   const { data: batch, loading: batchLoading, error: batchError } = useBatchDetails(batchId);
   const students = useStudents();
-  const assignments = useBatchAssignments(batchId);
-  const submissions = useTeacherSubmissions(assignments.data);
+  const vault = useBatchVault(batchId);
+  const tests = useBatchTests(batchId);
+  const testSubmissions = useBatchTestSubmissions(batchId);
+  const quizzes = useBatchQuizzes(batchId);
 
   const [copiedId, setCopiedId] = useState(false);
   const [liveActionLoading, setLiveActionLoading] = useState(false);
   const [pendingActionLoading, setPendingActionLoading] = useState({});
-  const [newNoteText, setNewNoteText] = useState('');
-  const [loadingNote, setLoadingNote] = useState(false);
-  const [activeTab, setActiveTab] = useState('assignments'); // 'assignments' | 'grading'
+  const [activeTab, setActiveTab] = useState('roster'); // 'roster' | 'announcements' | 'vault' | 'tests' | 'quizzes'
 
   if (batchLoading || students.loading) {
     return (
@@ -60,7 +70,7 @@ export function BatchDetailsPage() {
       <main className="p-5 lg:p-8">
         <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-center">
           <h2 className="font-heading text-xl font-bold text-red-200">Batch Workspace Error</h2>
-          <p className="mt-2 text-sm text-red-300/80">{batchError?.message || 'The requested batch could not be found or you do not have permission.'}</p>
+          <p className="mt-2 text-sm text-red-300/80">{batchError?.message || 'Batch not found.'}</p>
           <Link className="apex-button-primary mt-4 inline-flex items-center gap-1" to="/teacher">
             <ChevronLeft size={16} />
             Back to Dashboard
@@ -74,7 +84,6 @@ export function BatchDetailsPage() {
   const enrolledStudentIds = batch.studentIds || [];
   const pendingStudentIds = batch.pendingStudentIds || [];
   const studentMap = new Map(students.data.map((s) => [s.uid || s.id, s]));
-  const notes = batch.notes || [];
 
   function handleCopyId() {
     navigator.clipboard.writeText(batch.id);
@@ -112,28 +121,6 @@ export function BatchDetailsPage() {
       console.error(err);
     } finally {
       setPendingActionLoading((prev) => ({ ...prev, [studentId]: null }));
-    }
-  }
-
-  async function handlePostNote(e) {
-    e.preventDefault();
-    if (!newNoteText.trim()) return;
-    setLoadingNote(true);
-    try {
-      await addBatchNote(batch.id, newNoteText.trim());
-      setNewNoteText('');
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingNote(false);
-    }
-  }
-
-  async function handleDeleteNote(noteId) {
-    try {
-      await deleteBatchNote(batch.id, noteId);
-    } catch (err) {
-      console.error(err);
     }
   }
 
@@ -203,64 +190,37 @@ export function BatchDetailsPage() {
       </section>
 
       {/* Roster & Announcements & Tabbed workspace */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1.3fr] lg:items-start">
-        {/* Left Side: Roster & Notes */}
-        <div className="grid gap-6">
-          {/* Notes/Announcements Section */}
-          <section className="glass-card p-5">
-            <h2 className="font-heading text-xl font-bold text-white flex items-center gap-2 mb-4">
-              <Send size={18} className="text-amber-400" />
-              Announcements
-            </h2>
-            <form className="flex gap-2" onSubmit={handlePostNote}>
-              <input
-                className="apex-input py-2 px-3 text-sm flex-1 bg-white/[0.02]"
-                disabled={loadingNote}
-                onChange={(e) => setNewNoteText(e.target.value)}
-                placeholder="Post notes, links, or instructions..."
-                type="text"
-                value={newNoteText}
-              />
-              <button className="apex-button-primary py-2 px-3" disabled={loadingNote || !newNoteText.trim()} type="submit">
-                {loadingNote ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-              </button>
-            </form>
+      <nav className="mt-6 flex flex-wrap gap-2 border-b border-white/10 pb-3">
+        {[
+          ['roster', 'Roster & Waitlist', Users],
+          ['announcements', 'Announcements', Send],
+          ['vault', 'Batch Vault', BookOpen],
+          ['tests', 'Test Centre', ClipboardList],
+          ['quizzes', 'Quiz Centre', Trophy],
+        ].map(([tab, label, Icon]) => (
+          <button
+            className={`py-2 px-4 text-sm font-bold flex items-center gap-2 rounded-xl border transition-all ${
+              activeTab === tab
+                ? 'bg-amber-400 border-amber-300 text-slate-900 shadow-lg'
+                : 'bg-white/[0.02] border-white/5 text-slate-300 hover:text-white hover:bg-white/[0.04]'
+            }`}
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            type="button"
+          >
+            <Icon size={16} />
+            {label}
+          </button>
+        ))}
+      </nav>
 
-            <div className="mt-4 grid gap-3 max-h-72 overflow-y-auto pr-1">
-              {notes.map((note) => (
-                <article
-                  className="group flex justify-between gap-3 bg-white/[0.02] p-3 rounded-xl border border-white/5 hover:bg-white/[0.04] transition-colors"
-                  key={note.id}
-                >
-                  <div className="flex-1">
-                    <p className="text-sm text-slate-200">{note.text}</p>
-                    <span className="text-[10px] text-slate-500 block mt-1">
-                      {new Date(note.createdAt).toLocaleDateString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
-                  </div>
-                  <button
-                    className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all py-1 px-1.5 self-start"
-                    onClick={() => handleDeleteNote(note.id)}
-                    type="button"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </article>
-              ))}
-              {notes.length === 0 && (
-                <p className="text-xs text-slate-500 text-center py-4">No announcements posted for this batch yet.</p>
-              )}
-            </div>
-          </section>
-
-          {/* Enrollment requests */}
-          {pendingStudentIds.length > 0 && (
-            <section className="glass-card border-amber-400/20 bg-amber-500/[0.03] p-5">
+      {/* Main Tab Panels */}
+      <div className="mt-6">
+        {/* Tab 1: Roster & Requests */}
+        {activeTab === 'roster' && (
+          <div className="grid gap-6 md:grid-cols-2 lg:items-start">
+            {/* Enrollment requests */}
+            <section className="glass-card p-5">
               <h2 className="font-heading text-lg font-bold text-amber-400 flex items-center gap-2 mb-3">
                 <UserCheck size={18} />
                 Pending Join Requests ({pendingStudentIds.length})
@@ -302,107 +262,814 @@ export function BatchDetailsPage() {
                     </div>
                   );
                 })}
+                {pendingStudentIds.length === 0 && (
+                  <p className="text-xs text-slate-500 text-center py-4">No pending join requests.</p>
+                )}
               </div>
             </section>
-          )}
 
-          {/* Student Roster Card */}
-          <section className="glass-card p-5">
-            <h2 className="font-heading text-xl font-bold text-white flex items-center gap-2 mb-4">
-              <Users size={18} className="text-amber-400" />
-              Student Roster ({enrolledStudentIds.length})
-            </h2>
-            <div className="grid gap-2 max-h-72 overflow-y-auto pr-1">
-              {enrolledStudentIds.map((studentId) => {
-                const student = studentMap.get(studentId);
-                return (
-                  <div className="flex items-center justify-between gap-3 bg-white/[0.02] p-2.5 rounded-xl border border-white/5" key={studentId}>
-                    <div className="truncate">
-                      <p className="text-sm font-semibold text-slate-200 truncate">{student?.displayName || `Student (${studentId.slice(0, 6)})`}</p>
-                      <p className="text-xs text-slate-400 truncate">{student?.email || 'No email registered'}</p>
-                    </div>
-                  </div>
-                );
-              })}
-              {enrolledStudentIds.length === 0 && (
-                <p className="text-sm text-slate-500 text-center py-4">No students enrolled in this batch yet.</p>
-              )}
-            </div>
-          </section>
-        </div>
-
-        {/* Right Side: Tabbed Classwork Workspace */}
-        <div className="grid gap-6">
-          <nav className="flex rounded-xl bg-white/[0.02] p-1 border border-white/5">
-            <button
-              className={`flex-1 py-2 text-center text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                activeTab === 'assignments' ? 'bg-amber-400 text-slate-900 shadow-lg' : 'text-slate-300 hover:text-white'
-              }`}
-              onClick={() => setActiveTab('assignments')}
-              type="button"
-            >
-              <ClipboardList size={16} />
-              Assignments
-            </button>
-            <button
-              className={`flex-1 py-2 text-center text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                activeTab === 'grading' ? 'bg-amber-400 text-slate-900 shadow-lg' : 'text-slate-300 hover:text-white'
-              }`}
-              onClick={() => setActiveTab('grading')}
-              type="button"
-            >
-              <Star size={16} />
-              Submission Grading
-            </button>
-          </nav>
-
-          {activeTab === 'assignments' && (
-            <div className="grid gap-6">
-              <AssignmentCreator batchId={batch.id} studentIds={enrolledStudentIds} teacherId={teacherId} />
-
-              <section className="glass-card p-5">
-                <h3 className="font-heading text-lg font-bold text-white mb-4">Active Assignments</h3>
-                <div className="grid gap-3">
-                  {assignments.data.map((item) => (
-                    <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 flex items-center justify-between gap-4" key={item.id}>
-                      <div>
-                        <h4 className="font-bold text-white">{item.title}</h4>
-                        <p className="text-xs text-slate-400 mt-0.5">Subject: {item.subject} • Max Score: {item.maxScore}</p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">
-                          Due: {new Date(item.dueDate).toLocaleString()}
-                        </p>
+            {/* Student Roster Card */}
+            <section className="glass-card p-5">
+              <h2 className="font-heading text-lg font-bold text-white flex items-center gap-2 mb-3">
+                <Users size={18} className="text-amber-400" />
+                Approved Student Roster ({enrolledStudentIds.length})
+              </h2>
+              <div className="grid gap-2">
+                {enrolledStudentIds.map((studentId) => {
+                  const student = studentMap.get(studentId);
+                  return (
+                    <div className="flex items-center justify-between gap-3 bg-white/[0.02] p-2.5 rounded-xl border border-white/5" key={studentId}>
+                      <div className="truncate">
+                        <p className="text-sm font-semibold text-slate-200 truncate">{student?.displayName || `Student (${studentId.slice(0, 6)})`}</p>
+                        <p className="text-xs text-slate-400 truncate">{student?.email || 'No email registered'}</p>
                       </div>
-                      {item.worksheetFileURL && (
-                        <a
-                          className="apex-button-secondary py-1 px-2.5 text-xs text-amber-300 border-amber-400/20 hover:bg-amber-500/10 flex-shrink-0"
-                          href={item.worksheetFileURL}
-                          rel="noreferrer"
-                          target="_blank"
-                        >
-                          Worksheet
-                        </a>
-                      )}
-                    </article>
-                  ))}
-                  {assignments.data.length === 0 && (
-                    <p className="text-sm text-slate-400 text-center py-4">No assignments published for this batch yet.</p>
-                  )}
-                </div>
-              </section>
-            </div>
-          )}
+                    </div>
+                  );
+                })}
+                {enrolledStudentIds.length === 0 && (
+                  <p className="text-sm text-slate-500 text-center py-4">No students approved yet.</p>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
 
-          {activeTab === 'grading' && (
-            <SubmissionGrader
-              assignments={assignments.data}
-              error={submissions.error}
-              loading={submissions.loading || assignments.loading}
-              submissions={submissions.data}
-              teacherId={teacherId}
-            />
-          )}
-        </div>
+        {/* Tab 2: Announcements */}
+        {activeTab === 'announcements' && (
+          <AnnouncementsPanel batchId={batch.id} announcements={batch.notes || []} />
+        )}
+
+        {/* Tab 3: Batch Vault */}
+        {activeTab === 'vault' && (
+          <VaultPanel batchId={batch.id} teacherId={teacherId} items={vault.data} />
+        )}
+
+        {/* Tab 4: Test Centre */}
+        {activeTab === 'tests' && (
+          <TestPanel batchId={batch.id} teacherId={teacherId} tests={tests.data} submissions={testSubmissions.data} />
+        )}
+
+        {/* Tab 5: Quiz Centre */}
+        {activeTab === 'quizzes' && (
+          <QuizPanel batchId={batch.id} teacherId={teacherId} quizzes={quizzes.data} />
+        )}
       </div>
     </main>
+  );
+}
+
+/* SUB PANEL: Announcements manager */
+function AnnouncementsPanel({ batchId, announcements }) {
+  const [newNoteText, setNewNoteText] = useState('');
+  const [loadingNote, setLoadingNote] = useState(false);
+
+  async function handlePostNote(e) {
+    e.preventDefault();
+    if (!newNoteText.trim()) return;
+    setLoadingNote(true);
+    try {
+      await addBatchNote(batchId, newNoteText.trim());
+      setNewNoteText('');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingNote(false);
+    }
+  }
+
+  async function handleDeleteNote(noteId) {
+    try {
+      await deleteBatchNote(batchId, noteId);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  return (
+    <section className="glass-card p-5 max-w-3xl">
+      <h2 className="font-heading text-xl font-bold text-white flex items-center gap-2 mb-4">
+        <Send size={18} className="text-amber-400" />
+        Broadcast announcements
+      </h2>
+      <form className="flex gap-2" onSubmit={handlePostNote}>
+        <input
+          className="apex-input py-2.5 px-4 text-sm flex-1 bg-white/[0.02]"
+          disabled={loadingNote}
+          onChange={(e) => setNewNoteText(e.target.value)}
+          placeholder="Post notes, links, or instructions to students..."
+          type="text"
+          value={newNoteText}
+        />
+        <button className="apex-button-primary py-2.5 px-4" disabled={loadingNote || !newNoteText.trim()} type="submit">
+          {loadingNote ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+        </button>
+      </form>
+
+      <div className="mt-6 grid gap-4 max-h-[500px] overflow-y-auto pr-1">
+        {announcements.map((note) => (
+          <article
+            className="group flex justify-between gap-3 bg-white/[0.02] p-4 rounded-2xl border border-white/5 hover:bg-white/[0.04] transition-colors"
+            key={note.id}
+          >
+            <div className="flex-1">
+              <p className="text-sm text-slate-200 leading-relaxed">{note.text}</p>
+              <span className="text-[10px] text-slate-500 block mt-2">
+                Published on{' '}
+                {new Date(note.createdAt).toLocaleString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+            </div>
+            <button
+              className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all py-1 px-1.5 self-start"
+              onClick={() => handleDeleteNote(note.id)}
+              type="button"
+            >
+              <Trash2 size={14} />
+            </button>
+          </article>
+        ))}
+        {announcements.length === 0 && (
+          <p className="text-sm text-slate-400 text-center py-8">No announcements broadcasted yet.</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/* SUB PANEL: Batch Vault manager */
+function VaultPanel({ batchId, teacherId, items }) {
+  const [title, setTitle] = useState('');
+  const [desc, setDesc] = useState('');
+  const [file, setFile] = useState(null);
+  const { upload, loading: uploading, progress } = useFileUpload();
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleAddVault(e) {
+    e.preventDefault();
+    if (!title.trim()) return;
+
+    setSubmitting(true);
+    try {
+      let fileURL = '';
+      let fileName = '';
+      if (file) {
+        const draftId = `${Date.now()}`;
+        fileURL = await upload(`vault/${draftId}/${file.name}`, file);
+        fileName = file.name;
+      }
+
+      await addVaultItem({
+        classId: batchId,
+        title: title.trim(),
+        description: desc.trim(),
+        fileURL,
+        fileName,
+        uploadedBy: teacherId,
+      });
+
+      setTitle('');
+      setDesc('');
+      setFile(null);
+      // Reset input element
+      e.target.reset();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDeleteVault(id) {
+    try {
+      await deleteVaultItem(id);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr] lg:items-start">
+      <section className="glass-card p-5">
+        <h2 className="font-heading text-xl font-bold text-white flex items-center gap-2 mb-4">
+          <Upload size={18} className="text-amber-400" />
+          Add vault resource
+        </h2>
+        <form className="grid gap-4" onSubmit={handleAddVault}>
+          <label className="grid gap-1 text-sm font-semibold text-slate-200">
+            Resource Title
+            <input
+              className="apex-input"
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., Mathematics Grade 9 Syllabus"
+              required
+              type="text"
+              value={title}
+            />
+          </label>
+
+          <label className="grid gap-1 text-sm font-semibold text-slate-200">
+            Description
+            <textarea
+              className="apex-input min-h-24 resize-y"
+              onChange={(e) => setDesc(e.target.value)}
+              placeholder="Provide a syllabus summary or resource guidelines..."
+              value={desc}
+            />
+          </label>
+
+          <label className="grid gap-1 text-sm font-semibold text-slate-200">
+            Attach Document / File
+            <input
+              className="apex-input"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              type="file"
+            />
+            {uploading && <span className="text-xs text-amber-300">Uploading: {progress}%</span>}
+          </label>
+
+          <button className="apex-button-primary" disabled={submitting || uploading} type="submit">
+            {submitting || uploading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+            Upload to Vault
+          </button>
+        </form>
+      </section>
+
+      <section className="glass-card p-5">
+        <h2 className="font-heading text-xl font-bold text-white flex items-center gap-2 mb-4">
+          <BookOpen size={18} className="text-amber-400" />
+          Vault resources ({items.length})
+        </h2>
+        <div className="grid gap-4 max-h-[500px] overflow-y-auto pr-1">
+          {items.map((item) => (
+            <article className="border border-white/10 bg-white/[0.02] p-4 rounded-2xl flex flex-col justify-between" key={item.id}>
+              <div className="flex justify-between items-start gap-3">
+                <div>
+                  <h3 className="font-bold text-white text-lg">{item.title}</h3>
+                  <p className="text-xs text-slate-400 mt-1">{item.description}</p>
+                </div>
+                <button
+                  className="text-slate-500 hover:text-red-400 py-1 px-1.5"
+                  onClick={() => handleDeleteVault(item.id)}
+                  type="button"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+              {item.fileURL && (
+                <div className="mt-3 border-t border-white/5 pt-2 flex items-center justify-between gap-3">
+                  <span className="text-[10px] text-slate-500 truncate max-w-xs">{item.fileName || 'Attachment'}</span>
+                  <a
+                    className="apex-button-primary py-1 px-2.5 text-xs flex items-center gap-1 bg-amber-400/10 border-amber-400/20 text-amber-300 hover:bg-amber-400/20"
+                    href={item.fileURL}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    <Download size={12} />
+                    View File
+                  </a>
+                </div>
+              )}
+            </article>
+          ))}
+          {items.length === 0 && (
+            <p className="text-sm text-slate-400 text-center py-8">Vault is currently empty.</p>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/* SUB PANEL: Test Centre manager */
+function TestPanel({ batchId, teacherId, tests, submissions }) {
+  const [title, setTitle] = useState('');
+  const [desc, setDesc] = useState('');
+  const [maxScore, setMaxScore] = useState(100);
+  const [dueDate, setDueDate] = useState('');
+  const [file, setFile] = useState(null);
+  const { upload, loading: uploading, progress } = useFileUpload();
+  const [submitting, setSubmitting] = useState(false);
+
+  const [gradingSubmissionId, setGradingSubmissionId] = useState(null);
+  const [gradeInput, setGradeInput] = useState('');
+  const [feedbackInput, setFeedbackInput] = useState('');
+  const [gradingSubmitLoading, setGradingSubmitLoading] = useState(false);
+
+  async function handleAddTest(e) {
+    e.preventDefault();
+    if (!title.trim() || !dueDate) return;
+
+    setSubmitting(true);
+    try {
+      let testFileURL = '';
+      let testFileName = '';
+      if (file) {
+        const draftId = `${Date.now()}`;
+        testFileURL = await upload(`tests/${draftId}/${file.name}`, file);
+        testFileName = file.name;
+      }
+
+      await createTestDocument({
+        classId: batchId,
+        title: title.trim(),
+        description: desc.trim(),
+        maxScore: Number(maxScore),
+        dueDate: new Date(dueDate).toISOString(),
+        testFileURL,
+        testFileName,
+        teacherId,
+      });
+
+      setTitle('');
+      setDesc('');
+      setMaxScore(100);
+      setDueDate('');
+      setFile(null);
+      e.target.reset();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleGradeSubmit(e) {
+    e.preventDefault();
+    if (!gradingSubmissionId || gradeInput === '') return;
+
+    setGradingSubmitLoading(true);
+    try {
+      await gradeSubmissionDocument(gradingSubmissionId, {
+        grade: Number(gradeInput),
+        feedback: feedbackInput.trim(),
+        gradedBy: teacherId,
+      });
+      setGradingSubmissionId(null);
+      setGradeInput('');
+      setFeedbackInput('');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setGradingSubmitLoading(false);
+    }
+  }
+
+  async function gradeSubmissionDocument(submissionId, data) {
+    return gradeTestSubmission(submissionId, data);
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr] lg:items-start">
+      {/* Test Publisher form */}
+      <section className="glass-card p-5">
+        <h2 className="font-heading text-xl font-bold text-white flex items-center gap-2 mb-4">
+          <Plus size={18} className="text-amber-400" />
+          Publish test paper
+        </h2>
+        <form className="grid gap-4" onSubmit={handleAddTest}>
+          <label className="grid gap-1 text-sm font-semibold text-slate-200">
+            Test Title
+            <input
+              className="apex-input"
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., Algebra Mid-Term Test"
+              required
+              type="text"
+              value={title}
+            />
+          </label>
+
+          <label className="grid gap-1 text-sm font-semibold text-slate-200">
+            Syllabus / Description
+            <textarea
+              className="apex-input min-h-20 resize-y"
+              onChange={(e) => setDesc(e.target.value)}
+              placeholder="Topics, guidelines, duration..."
+              value={desc}
+            />
+          </label>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-1 text-sm font-semibold text-slate-200">
+              Max Score
+              <input
+                className="apex-input"
+                min="1"
+                onChange={(e) => setMaxScore(e.target.value)}
+                required
+                type="number"
+                value={maxScore}
+              />
+            </label>
+
+            <label className="grid gap-1 text-sm font-semibold text-slate-200">
+              Due Date / Time
+              <input
+                className="apex-input"
+                onChange={(e) => setDueDate(e.target.value)}
+                required
+                type="datetime-local"
+                value={dueDate}
+              />
+            </label>
+          </div>
+
+          <label className="grid gap-1 text-sm font-semibold text-slate-200">
+            Question Paper File (PDF/Image)
+            <input
+              className="apex-input"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              type="file"
+            />
+            {uploading && <span className="text-xs text-amber-300">Uploading: {progress}%</span>}
+          </label>
+
+          <button className="apex-button-primary" disabled={submitting || uploading} type="submit">
+            {submitting || uploading ? <Loader2 size={16} className="animate-spin" /> : <ClipboardList size={16} />}
+            Publish Test
+          </button>
+        </form>
+      </section>
+
+      {/* Tests and Solutions list */}
+      <section className="glass-card p-5">
+        <h2 className="font-heading text-xl font-bold text-white flex items-center gap-2 mb-4">
+          <ClipboardList size={18} className="text-amber-400" />
+          Active tests ({tests.length})
+        </h2>
+        <div className="grid gap-4 max-h-[500px] overflow-y-auto pr-1">
+          {tests.map((test) => {
+            const testSubs = submissions.filter((s) => s.testId === test.id);
+            return (
+              <article className="border border-white/10 bg-white/[0.02] p-4 rounded-2xl" key={test.id}>
+                <div className="flex justify-between items-start gap-3">
+                  <div>
+                    <h3 className="font-bold text-white text-lg">{test.title}</h3>
+                    <p className="text-xs text-slate-400 mt-1">{test.description}</p>
+                    <div className="flex gap-4 mt-2 text-[10px] text-slate-500">
+                      <span>Max Score: <strong className="text-amber-400">{test.maxScore}</strong></span>
+                      <span>Due: <strong>{new Date(test.dueDate).toLocaleString()}</strong></span>
+                    </div>
+                  </div>
+                  {test.testFileURL && (
+                    <a
+                      className="apex-button-secondary py-1 px-2.5 text-xs flex-shrink-0"
+                      href={test.testFileURL}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      Paper
+                    </a>
+                  )}
+                </div>
+
+                {/* Submissions Grading sub-list */}
+                <div className="mt-4 border-t border-white/5 pt-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Student Submissions ({testSubs.length})
+                  </h4>
+                  <div className="grid gap-2">
+                    {testSubs.map((sub) => {
+                      const isGraded = sub.status === 'graded';
+                      return (
+                        <div
+                          className="flex items-center justify-between gap-3 bg-white/[0.01] border border-white/5 p-2 rounded-xl text-xs"
+                          key={sub.id}
+                        >
+                          <div className="truncate flex-1">
+                            <span className="font-bold text-slate-200 block truncate">{sub.studentName}</span>
+                            <span className="text-[10px] text-slate-500 block truncate">{sub.submittedFileName}</span>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {sub.submittedFileURL && (
+                              <a
+                                className="apex-button-secondary py-0.5 px-2 text-[10px] hover:bg-white/10"
+                                href={sub.submittedFileURL}
+                                rel="noreferrer"
+                                target="_blank"
+                              >
+                                View
+                              </a>
+                            )}
+
+                            {isGraded ? (
+                              <span className="font-bold text-emerald-400 px-1">
+                                {sub.grade} / {test.maxScore}
+                              </span>
+                            ) : (
+                              <button
+                                className="apex-button-primary py-0.5 px-2 text-[10px]"
+                                onClick={() => {
+                                  setGradingSubmissionId(sub.id);
+                                  setGradeInput('');
+                                  setFeedbackInput('');
+                                }}
+                                type="button"
+                              >
+                                Grade
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Inline submission grader popup */}
+                {gradingSubmissionId && testSubs.some((s) => s.id === gradingSubmissionId) && (
+                  <form className="mt-4 border-t border-amber-400/20 bg-amber-500/5 p-3 rounded-xl grid gap-3" onSubmit={handleGradeSubmit}>
+                    <p className="text-xs font-bold text-white">Grade student paper</p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <label className="grid gap-1 text-[11px] font-semibold text-slate-200">
+                        Score
+                        <input
+                          className="apex-input py-1 px-2 text-xs"
+                          max={test.maxScore}
+                          min="0"
+                          onChange={(e) => setGradeInput(e.target.value)}
+                          required
+                          type="number"
+                          value={gradeInput}
+                        />
+                      </label>
+                      <label className="grid gap-1 text-[11px] font-semibold text-slate-200">
+                        Feedback
+                        <input
+                          className="apex-input py-1 px-2 text-xs"
+                          onChange={(e) => setFeedbackInput(e.target.value)}
+                          placeholder="Well done..."
+                          type="text"
+                          value={feedbackInput}
+                        />
+                      </label>
+                    </div>
+                    <div className="flex justify-end gap-2 text-xs">
+                      <button
+                        className="apex-button-secondary py-1 px-3 text-[10px]"
+                        onClick={() => setGradingSubmissionId(null)}
+                        type="button"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="apex-button-primary py-1 px-3 text-[10px]"
+                        disabled={gradingSubmitLoading}
+                        type="submit"
+                      >
+                        {gradingSubmitLoading ? 'Saving...' : 'Save Grade'}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </article>
+            );
+          })}
+          {tests.length === 0 && (
+            <p className="text-sm text-slate-400 text-center py-8">No tests published yet.</p>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/* SUB PANEL: Quiz Centre manager */
+function QuizPanel({ batchId, teacherId, quizzes }) {
+  const [title, setTitle] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  // Accumulated questions for the quiz
+  const [questions, setQuestions] = useState([]);
+
+  // Question fields
+  const [qText, setQText] = useState('');
+  const [opt0, setOpt0] = useState('');
+  const [opt1, setOpt1] = useState('');
+  const [opt2, setOpt2] = useState('');
+  const [opt3, setOpt3] = useState('');
+  const [correctIndex, setCorrectIndex] = useState(0);
+
+  function handleAddQuestion(e) {
+    e.preventDefault();
+    if (!qText.trim() || !opt0.trim() || !opt1.trim() || !opt2.trim() || !opt3.trim()) return;
+
+    const newQ = {
+      id: crypto.randomUUID(),
+      questionText: qText.trim(),
+      options: [opt0.trim(), opt1.trim(), opt2.trim(), opt3.trim()],
+      correctOptionIndex: Number(correctIndex),
+    };
+
+    setQuestions((prev) => [...prev, newQ]);
+
+    setQText('');
+    setOpt0('');
+    setOpt1('');
+    setOpt2('');
+    setOpt3('');
+    setCorrectIndex(0);
+  }
+
+  async function handlePublishQuiz(e) {
+    e.preventDefault();
+    if (!title.trim() || questions.length === 0) return;
+
+    setSubmitting(true);
+    try {
+      await createQuizDocument({
+        classId: batchId,
+        title: title.trim(),
+        teacherId,
+        questions,
+      });
+      setTitle('');
+      setQuestions([]);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr] lg:items-start">
+      {/* Quiz Publisher builder */}
+      <section className="glass-card p-5">
+        <h2 className="font-heading text-xl font-bold text-white flex items-center gap-2 mb-4">
+          <Plus size={18} className="text-amber-400" />
+          Create MCQ Quiz
+        </h2>
+
+        <form className="grid gap-4" onSubmit={handlePublishQuiz}>
+          <label className="grid gap-1 text-sm font-semibold text-slate-200">
+            Quiz Title
+            <input
+              className="apex-input"
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., Fractions Quiz Competition"
+              required
+              type="text"
+              value={title}
+            />
+          </label>
+
+          {/* Add Questions sub-form */}
+          <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl">
+            <h3 className="text-xs font-bold uppercase text-slate-400 mb-3">Add question ({questions.length} added)</h3>
+            <div className="grid gap-3">
+              <label className="grid gap-1 text-xs font-semibold text-slate-300">
+                Question Text
+                <input
+                  className="apex-input py-1.5 px-3 text-xs"
+                  onChange={(e) => setQText(e.target.value)}
+                  placeholder="What is 1/2 + 1/4?"
+                  type="text"
+                  value={qText}
+                />
+              </label>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  className="apex-input py-1.5 px-3 text-xs"
+                  onChange={(e) => setOpt0(e.target.value)}
+                  placeholder="Option 1"
+                  type="text"
+                  value={opt0}
+                />
+                <input
+                  className="apex-input py-1.5 px-3 text-xs"
+                  onChange={(e) => setOpt1(e.target.value)}
+                  placeholder="Option 2"
+                  type="text"
+                  value={opt1}
+                />
+                <input
+                  className="apex-input py-1.5 px-3 text-xs"
+                  onChange={(e) => setOpt2(e.target.value)}
+                  placeholder="Option 3"
+                  type="text"
+                  value={opt2}
+                />
+                <input
+                  className="apex-input py-1.5 px-3 text-xs"
+                  onChange={(e) => setOpt3(e.target.value)}
+                  placeholder="Option 4"
+                  type="text"
+                  value={opt3}
+                />
+              </div>
+
+              <label className="grid gap-1 text-xs font-semibold text-slate-300">
+                Correct Option index
+                <select
+                  className="apex-input py-1.5 px-3 text-xs"
+                  onChange={(e) => setCorrectIndex(Number(e.target.value))}
+                  value={correctIndex}
+                >
+                  <option value="0">Option 1</option>
+                  <option value="1">Option 2</option>
+                  <option value="2">Option 3</option>
+                  <option value="3">Option 4</option>
+                </select>
+              </label>
+
+              <button
+                className="apex-button-secondary py-1 px-3 text-[11px] self-end mt-2 flex items-center gap-1"
+                onClick={handleAddQuestion}
+                type="button"
+              >
+                <Plus size={12} />
+                Add Question
+              </button>
+            </div>
+          </div>
+
+          <button className="apex-button-primary" disabled={submitting || questions.length === 0} type="submit">
+            {submitting ? <Loader2 size={16} className="animate-spin" /> : <Trophy size={16} />}
+            Publish Quiz ({questions.length} questions)
+          </button>
+        </form>
+
+        {/* Questions list preview */}
+        {questions.length > 0 && (
+          <div className="mt-4 bg-white/[0.01] border border-white/5 p-3 rounded-xl max-h-48 overflow-y-auto">
+            <p className="text-xs font-bold text-white mb-2">Quiz Questions Preview:</p>
+            <div className="grid gap-2">
+              {questions.map((q, idx) => (
+                <div className="text-[11px] text-slate-400" key={q.id}>
+                  {idx + 1}. {q.questionText} (Answer: Opt {q.correctOptionIndex + 1})
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Quizzes list and leaderboard score reports */}
+      <section className="glass-card p-5">
+        <h2 className="font-heading text-xl font-bold text-white flex items-center gap-2 mb-4">
+          <Trophy size={18} className="text-amber-400" />
+          Active quizzes ({quizzes.length})
+        </h2>
+        <div className="grid gap-4 max-h-[500px] overflow-y-auto pr-1">
+          {quizzes.map((quiz) => (
+            <article className="border border-white/10 bg-white/[0.02] p-4 rounded-2xl" key={quiz.id}>
+              <h3 className="font-bold text-white text-lg">{quiz.title}</h3>
+              <p className="text-xs text-slate-400 mt-1">Total Questions: {quiz.questions?.length || 0}</p>
+              
+              {/* Leaderboard sub-component */}
+              <QuizLeaderboard quizId={quiz.id} />
+            </article>
+          ))}
+          {quizzes.length === 0 && (
+            <p className="text-sm text-slate-400 text-center py-8">No quizzes published yet.</p>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/* SUB COMPONENT: Scoreboard display inside quiz card */
+function QuizLeaderboard({ quizId }) {
+  const { data: scores } = useQuizScores(quizId);
+
+  return (
+    <div className="border-t border-white/5 pt-3 mt-3">
+      <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-2 flex items-center gap-1">
+        <Award size={14} />
+        Live Scoreboard ({scores.length})
+      </h4>
+      <div className="grid gap-1.5 max-h-36 overflow-y-auto pr-1">
+        {scores.map((score, index) => {
+          const rank = index + 1;
+          return (
+            <div
+              className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-lg text-xs bg-white/[0.01] border border-white/5"
+              key={score.id}
+            >
+              <div className="flex items-center gap-2 truncate">
+                <span className={`font-bold flex items-center justify-center w-5 h-5 rounded-full text-[10px] ${
+                  rank === 1 ? 'bg-yellow-500 text-slate-950 font-black' : rank === 2 ? 'bg-slate-300 text-slate-950 font-black' : rank === 3 ? 'bg-amber-700 text-slate-950 font-black' : 'bg-slate-800 text-slate-300'
+                }`}>
+                  {rank}
+                </span>
+                <span className="truncate font-semibold text-slate-300">{score.studentName}</span>
+              </div>
+              <span className="font-black text-white">{score.score} / {score.totalQuestions}</span>
+            </div>
+          );
+        })}
+        {scores.length === 0 && (
+          <p className="text-[10px] text-slate-500 py-1">No responses submitted yet.</p>
+        )}
+      </div>
+    </div>
   );
 }

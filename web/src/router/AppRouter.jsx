@@ -7,6 +7,7 @@ import { SignupPage } from '../features/auth/SignupPage';
 import { UnauthorizedPage } from '../features/auth/UnauthorizedPage';
 import { LandingPage } from '../features/landing/LandingPage';
 import { StudentDashboardPage } from '../features/student-dashboard/StudentDashboardPage';
+import { StudentBatchDetailsPage } from '../features/student-dashboard/StudentBatchDetailsPage';
 import { TeacherDashboardPage } from '../features/teacher-dashboard/TeacherDashboardPage';
 import { BatchDetailsPage } from '../features/teacher-dashboard/BatchDetailsPage';
 import { PublicLayout } from '../layouts/PublicLayout';
@@ -42,6 +43,7 @@ export function AppRouter() {
             }
           >
             <Route index element={<StudentDashboardPage />} />
+            <Route path="batch/:batchId" element={<StudentBatchDetailsPage />} />
           </Route>
           <Route
             path={`${ROUTES.TEACHER}/*`}

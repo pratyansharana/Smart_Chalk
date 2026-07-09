@@ -1,5 +1,6 @@
 import { CalendarDays, Video, Send, Loader2 } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Skeleton } from '../../../components/common/Skeleton';
 import { getClassDocument, requestToJoinClass } from '../../../services/firebase/classesService';
 
@@ -114,19 +115,29 @@ export function UpcomingClassesCard({ classes, studentId, loading, error }) {
                 </div>
               )}
 
-              <div className="mt-6">
+              <div className="mt-6 flex gap-2">
+                <Link
+                  className="apex-button-secondary text-xs flex-1 py-2 text-center flex items-center justify-center gap-1"
+                  to={`batch/${item.id}`}
+                >
+                  Workspace
+                </Link>
                 {item.meetingLink ? (
                   <a
-                    className={`w-full ${isLive ? 'apex-button-primary' : 'apex-button-secondary'}`}
+                    className={`flex-1 text-xs py-2 text-center rounded-xl font-bold flex items-center justify-center gap-1 transition-all ${
+                      isLive
+                        ? 'bg-emerald-500/20 border border-emerald-400/35 text-emerald-300 hover:bg-emerald-500/30'
+                        : 'bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10'
+                    }`}
                     href={item.meetingLink}
                     rel="noreferrer"
                     target="_blank"
                   >
-                    <Video size={16} />
-                    {isLive ? 'Join live session' : 'Meeting link'}
+                    <Video size={14} />
+                    {isLive ? 'Join Live' : 'Meet Link'}
                   </a>
                 ) : (
-                  <span className="block text-center text-xs text-slate-500">No meeting link set</span>
+                  <span className="flex-1 text-center text-xs text-slate-500 py-2 border border-dashed border-white/5 rounded-xl">No link</span>
                 )}
               </div>
             </article>
