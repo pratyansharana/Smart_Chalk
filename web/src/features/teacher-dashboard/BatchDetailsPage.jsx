@@ -35,6 +35,7 @@ import {
   toggleBatchLiveStatus,
   addBatchNote,
   deleteBatchNote,
+  updateClassDocument,
 } from '../../services/firebase/classesService';
 import { addVaultItem, deleteVaultItem } from '../../services/firebase/vaultService';
 import { createTestDocument, gradeTestSubmission } from '../../services/firebase/testService';
@@ -279,17 +280,47 @@ export function BatchDetailsPage() {
               <div className="grid gap-2">
                 {enrolledStudentIds.map((studentId) => {
                   const student = studentMap.get(studentId);
+                  const parentEmail = batch?.parentEmails?.[studentId] || '';
                   return (
-                    <div className="flex items-center justify-between gap-3 bg-white/[0.02] p-2.5 rounded-xl border border-white/5" key={studentId}>
-                      <div className="truncate">
-                        <p className="text-sm font-semibold text-slate-200 truncate">{student?.displayName || `Student (${studentId.slice(0, 6)})`}</p>
-                        <p className="text-xs text-slate-400 truncate">{student?.email || 'No email registered'}</p>
+                    <div className="flex flex-col gap-2 bg-white/[0.02] p-3 rounded-xl border border-white/5" key={studentId}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="truncate">
+                          <p className="text-sm font-semibold text-slate-200 truncate">{student?.displayName || `Student (${studentId.slice(0, 6)})`}</p>
+                          <p className="text-xs text-slate-400 truncate">{student?.email || 'No email registered'}</p>
+                        </div>
+                      </div>
+
+                      {/* Parent Email Form Row */}
+                      <div className="mt-1 pt-2 border-t border-white/5 flex gap-2 items-center">
+                        <label className="text-[10px] text-slate-400 font-bold uppercase flex-shrink-0">Parent Email:</label>
+                        <input
+                          className="apex-input py-0.5 px-2 text-xs flex-1 min-w-0"
+                          defaultValue={parentEmail}
+                          onBlur={async (e) => {
+                            const newEmail = e.target.value.trim();
+                            if (newEmail !== parentEmail) {
+                              try {
+                                const currentEmails = batch.parentEmails || {};
+                                await updateClassDocument(batch.id, {
+                                  parentEmails: {
+                                    ...currentEmails,
+                                    [studentId]: newEmail
+                                  }
+                                });
+                              } catch (err) {
+                                console.error('Failed to update parent email:', err);
+                              }
+                            }
+                          }}
+                          placeholder="parent@example.com"
+                          type="email"
+                        />
                       </div>
                     </div>
                   );
                 })}
                 {enrolledStudentIds.length === 0 && (
-                  <p className="text-sm text-slate-500 text-center py-4">No students approved yet.</p>
+                  <p className="text-xs text-slate-500 text-center py-4">No approved students yet.</p>
                 )}
               </div>
             </section>
@@ -308,7 +339,7 @@ export function BatchDetailsPage() {
 
         {/* Tab 4: Test Centre */}
         {activeTab === 'tests' && (
-          <TestPanel batchId={batch.id} batchTitle={batch.title} teacherId={teacherId} tests={tests.data} submissions={testSubmissions.data} />
+          <TestPanel batchId={batch.id} batchTitle={batch.title} parentEmails={batch.parentEmails || {}} teacherId={teacherId} tests={tests.data} submissions={testSubmissions.data} />
         )}
 
         {/* Tab 5: Quiz Centre */}
@@ -547,7 +578,7 @@ function VaultPanel({ batchId, teacherId, items }) {
 }
 
 /* SUB PANEL: Test Centre manager */
-function TestPanel({ batchId, batchTitle, teacherId, tests, submissions }) {
+function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, submissions }) {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [maxScore, setMaxScore] = useState(100);
@@ -985,6 +1016,46 @@ function TestPanel({ batchId, batchTitle, teacherId, tests, submissions }) {
                                   >
                                     📱 Send
                                   </button>
+                                  
+                                  {parentEmails[sub.studentId] ? (
+                                    <button
+                                      className="apex-button-secondary py-0.5 px-1.5 text-[10px] hover:bg-white/10 text-sky-300 border-sky-400/20"
+                                      onClick={() => {
+                                        const pEmail = parentEmails[sub.studentId];
+                                        const percentage = Math.round((sub.grade / test.maxScore) * 100);
+                                        const subject = encodeURIComponent(`SmartChalk Academic Report - ${sub.studentName} - ${test.title}`);
+                                        const body = encodeURIComponent(
+                                          `Dear Parent,\n\n` +
+                                          `I hope this email finds you well.\n\n` +
+                                          `This is a professional academic update for your child, ${sub.studentName}, regarding their performance in our SmartChalk live class (${batchTitle}).\n\n` +
+                                          `We recently completed and evaluated the test: "${test.title}".\n\n` +
+                                          `Here is a summary of their performance:\n` +
+                                          `- Graded Score: ${sub.grade} / ${test.maxScore} marks (${percentage}%)\n` +
+                                          `- Performance Status: Evaluated & Graded\n\n` +
+                                          `Teacher's Feedback & Comments:\n` +
+                                          `--------------------------------------------------\n` +
+                                          `"${sub.feedback}"\n` +
+                                          `--------------------------------------------------\n\n` +
+                                          `If you would like to view the complete details of the test paper, including the original questions and your child's submitted answers, you can access the SmartChalk Student Dashboard using your secure credentials.\n\n` +
+                                          `Thank you for your continued support in your child's learning journey. Please feel free to reply directly to this email if you have any questions or would like to discuss their progress in more detail.\n\n` +
+                                          `Warm regards,\n` +
+                                          `SmartChalk Tutoring`
+                                        );
+                                        window.open(`mailto:${pEmail}?subject=${subject}&body=${body}`, '_self');
+                                      }}
+                                      type="button"
+                                      title="Send professional email report to parents"
+                                    >
+                                      📧 Email
+                                    </button>
+                                  ) : (
+                                    <span 
+                                      className="text-[9px] text-slate-500 italic px-1 cursor-help"
+                                      title="Add parent email under Roster tab to email report"
+                                    >
+                                      (No Parent Email)
+                                    </span>
+                                  )}
                                 </div>
                               ) : (
                                 <button
