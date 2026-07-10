@@ -570,16 +570,21 @@ function TestPanel({ batchId, teacherId, tests, submissions }) {
   const [gradingSubmitLoading, setGradingSubmitLoading] = useState(false);
   const [aiGradingLoading, setAiGradingLoading] = useState(false);
   const [aiGradingError, setAiGradingError] = useState(null);
+  const [pastedAnswers, setPastedAnswers] = useState('');
 
   async function handleAIGrade(activeSub, test) {
     setAiGradingError(null);
     setAiGradingLoading(true);
     try {
+      const answersText = activeSub.studentText || pastedAnswers;
+      if (!answersText || !answersText.trim()) {
+        throw new Error('Please type or paste the student\'s answers text in the textarea below before grading.');
+      }
       const result = await gradeSubmissionWithAI({
         testTitle: test.title,
         testQuestions: test.testContent || test.description,
         maxScore: test.maxScore,
-        studentAnswers: activeSub.studentText || 'No text answers provided.',
+        studentAnswers: answersText.trim(),
       });
       setGradeInput(String(result.score));
       setFeedbackInput(result.feedback);
@@ -930,6 +935,7 @@ function TestPanel({ batchId, teacherId, tests, submissions }) {
                                     setGradeInput('');
                                     setFeedbackInput('');
                                     setAiGradingError(null);
+                                    setPastedAnswers('');
                                   }}
                                   type="button"
                                 >
@@ -960,24 +966,34 @@ function TestPanel({ batchId, teacherId, tests, submissions }) {
                     <form className="mt-4 border-t border-amber-400/20 bg-amber-500/5 p-3 rounded-xl grid gap-3" onSubmit={handleGradeSubmit}>
                       <div className="flex justify-between items-center">
                         <p className="text-xs font-bold text-white">Grade student paper</p>
-                        {activeSub.studentText && (
-                          <button
-                            className="apex-button-secondary bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20 text-purple-300 py-0.5 px-2 text-[9px] flex items-center gap-1"
-                            disabled={aiGradingLoading}
-                            onClick={() => handleAIGrade(activeSub, test)}
-                            type="button"
-                          >
-                            {aiGradingLoading ? (
-                              <Loader2 className="animate-spin" size={10} />
-                            ) : (
-                              '✨ Grade with AI'
-                            )}
-                          </button>
-                        )}
+                        <button
+                          className="apex-button-secondary bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20 text-purple-300 py-0.5 px-2 text-[9px] flex items-center gap-1"
+                          disabled={aiGradingLoading}
+                          onClick={() => handleAIGrade(activeSub, test)}
+                          type="button"
+                        >
+                          {aiGradingLoading ? (
+                            <Loader2 className="animate-spin" size={10} />
+                          ) : (
+                            '✨ Grade with AI'
+                          )}
+                        </button>
                       </div>
 
                       {aiGradingError && (
                         <p className="text-[10px] text-red-300 bg-red-500/10 border border-red-500/20 p-2 rounded-lg">{aiGradingError}</p>
+                      )}
+
+                      {!activeSub.studentText && (
+                        <label className="grid gap-1 text-[10px] font-semibold text-slate-300">
+                          Student Answers Text (Paste answers here to enable AI Grading)
+                          <textarea
+                            className="apex-input py-1 px-2 text-xs min-h-[60px] resize-y font-mono"
+                            onChange={(e) => setPastedAnswers(e.target.value)}
+                            placeholder="Copy and paste the student's solution text or key calculations here..."
+                            value={pastedAnswers}
+                          />
+                        </label>
                       )}
 
                       <div className="grid gap-2 sm:grid-cols-2">
