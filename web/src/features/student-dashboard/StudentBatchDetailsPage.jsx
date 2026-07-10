@@ -26,6 +26,9 @@ import { useStudentTestSubmissions } from '../../hooks/useStudentTestSubmissions
 import { useBatchQuizzes } from '../../hooks/useBatchQuizzes';
 import { useQuizScores } from '../../hooks/useQuizScores';
 import { useFileUpload } from '../../hooks/useFileUpload';
+import { useBatchAssignments } from '../../hooks/useBatchAssignments';
+import { useSubmissions } from '../../hooks/useSubmissions';
+import { createSubmissionDocument } from '../../services/firebase/submissionsService';
 import { submitTestSolution } from '../../services/firebase/testService';
 import { submitQuizScorecard } from '../../services/firebase/quizService';
 import { handlePrintReport } from '../../utils/printReport';
@@ -41,8 +44,10 @@ export function StudentBatchDetailsPage() {
   const tests = useBatchTests(batchId);
   const testSubmissions = useStudentTestSubmissions(studentId);
   const quizzes = useBatchQuizzes(batchId);
+  const assignments = useBatchAssignments(batchId);
+  const submissions = useSubmissions(studentId);
 
-  const [activeTab, setActiveTab] = useState('announcements'); // 'announcements' | 'vault' | 'tests' | 'quizzes'
+  const [activeTab, setActiveTab] = useState('announcements'); // 'announcements' | 'vault' | 'assignments' | 'tests' | 'quizzes'
   const [activeQuizId, setActiveQuizId] = useState(null);
 
 
@@ -144,6 +149,7 @@ export function StudentBatchDetailsPage() {
         {[
           ['announcements', 'Announcements', Send],
           ['vault', 'Batch Vault', BookOpen],
+          ['assignments', 'Assignments', Award],
           ['tests', 'Test Centre', ClipboardList],
           ['quizzes', 'Quiz Centre', Trophy],
         ].map(([tab, label, Icon]) => (
@@ -365,7 +371,10 @@ export function StudentBatchDetailsPage() {
           </section>
         )}
 
-        {/* Tab 4: Quiz Centre */}
+        {/* Tab: Assignments */}
+        {activeTab === 'assignments' && (
+          <StudentAssignmentPanel batch={batch} studentId={studentId} studentName={studentName} assignments={assignments.data} submissions={submissions.data} />
+        )}
         {activeTab === 'quizzes' && (
           <section className="glass-card p-5">
             <h2 className="font-heading text-2xl font-bold text-white mb-5 flex items-center gap-2">
@@ -814,4 +823,247 @@ export function QuestionPaperRenderer({ content }) {
     </div>
   );
 }
+
+/* SUB PANEL: Student Assignments Hub */
+function StudentAssignmentPanel({ batch, studentId, studentName, assignments, submissions }) {
+  return (
+    <section className="glass-card p-5 animate-fadeIn">
+      <h2 className="font-heading text-2xl font-bold text-white mb-5 flex items-center gap-2">
+        <Award size={20} className="text-amber-400" />
+        Assignments
+      </h2>
+
+      <div className="grid gap-6">
+        {assignments.map((assignment) => {
+          // Check if this student has submitted a solution for this assignment
+          const submission = submissions.find((s) => s.assignmentId === assignment.id);
+          const isSubmitted = !!submission;
+          const isGraded = submission?.status === 'graded';
+
+          return (
+            <article className="border border-white/5 bg-white/[0.01] rounded-2xl p-5 hover:border-white/10 transition-all" key={assignment.id}>
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h3 className="font-heading text-lg font-bold text-slate-200">{assignment.title}</h3>
+                  <p className="text-xs text-slate-400 mt-1 max-w-2xl">{assignment.description || 'No description provided'}</p>
+                  
+                  <div className="flex flex-wrap gap-4 mt-3 text-[11px] text-slate-400">
+                    <span>Max Score: <strong className="text-slate-300">{assignment.maxScore} marks</strong></span>
+                    <span>Due Date: <strong className="text-amber-400">{assignment.dueDate}</strong></span>
+                    {assignment.submittedFileName && (
+                      <span>
+                        Resource Attachment:{' '}
+                        <a
+                          className="text-amber-300 underline hover:text-amber-400"
+                          href={assignment.submittedFileUrl}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          {assignment.submittedFileName}
+                        </a>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  {isGraded ? (
+                    <div className="text-right">
+                      <span className="text-xs text-slate-400 block mb-1">Graded Score</span>
+                      <strong className="text-lg text-emerald-400">{submission.grade} / {assignment.maxScore} marks</strong>
+                    </div>
+                  ) : isSubmitted ? (
+                    <span className="text-xs bg-slate-800 text-slate-400 px-3 py-1.5 rounded-xl border border-white/5">
+                      Submitted - Awaiting Grade
+                    </span>
+                  ) : (
+                    <span className="text-xs bg-amber-400/10 text-amber-300 px-3 py-1.5 rounded-xl border border-amber-400/15">
+                      Not Started
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Assignment Questions */}
+              {assignment.assignmentContent && (
+                <div className="mt-4 p-4 rounded-xl bg-black/25 border border-white/5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Assignment Tasks & Guidelines</span>
+                  <div className="text-slate-300 font-sans text-xs leading-relaxed whitespace-pre-wrap">{assignment.assignmentContent}</div>
+                </div>
+              )}
+
+              {/* Student Interaction Space */}
+              <div className="mt-5 pt-5 border-t border-white/5">
+                {isSubmitted ? (
+                  <div className="grid gap-3">
+                    <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl">
+                      <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <CheckCircle className="text-emerald-400" size={14} />
+                        Your Submitted Work
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-1">Submitted file: {submission.submittedFileName || 'Text response submission'}</p>
+
+                      {submission.status === 'graded' && (
+                        <div className="flex gap-2 mt-4">
+                          <button
+                            className="apex-button-secondary bg-amber-500/10 border-amber-500/20 text-amber-300 hover:bg-amber-500/20 py-1.5 px-3 text-xs flex items-center gap-1.5"
+                            onClick={() => handlePrintReport(assignment, submission, studentName, batch?.title || batch?.name)}
+                            type="button"
+                          >
+                            <Printer size={14} />
+                            Save PDF / Print
+                          </button>
+                          <button
+                            className="apex-button-secondary bg-emerald-500/10 border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20 py-1.5 px-3 text-xs flex items-center gap-1.5"
+                            onClick={() => {
+                              const text = encodeURIComponent(
+                                `📚 *SmartChalk Academic Report* 📚\n\n` +
+                                `*Student Name:* ${studentName}\n` +
+                                `*Batch/Subject:* ${batch?.title || batch?.name || ''}\n` +
+                                `*Assignment:* ${assignment.title}\n` +
+                                `*Score:* *${submission.grade} / ${assignment.maxScore} marks*\n\n` +
+                                `*Teacher's Feedback:*\n"${submission.feedback}"\n\n` +
+                                `Log in to the SmartChalk dashboard to download the full PDF report with questions, answers, and teacher remarks.`
+                              );
+                              window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+                            }}
+                            type="button"
+                          >
+                            <Send size={14} />
+                            Send to WhatsApp
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Teacher Feedback segment */}
+                    {isGraded && submission.feedback && (
+                      <div className="border border-emerald-500/10 bg-emerald-500/[0.02] p-4 rounded-xl grid gap-1.5">
+                        <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block">Teacher Evaluation Conversation</span>
+                        <p className="text-xs text-slate-300 font-sans leading-relaxed whitespace-pre-wrap">{submission.feedback}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <AssignmentUploader assignment={assignment} classId={batch.id} studentId={studentId} studentName={studentName} />
+                )}
+              </div>
+            </article>
+          );
+        })}
+
+        {assignments.length === 0 && (
+          <p className="text-sm text-slate-400 text-center py-8">No assignments published for this batch yet.</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/* SUB PANEL: Assignment File/Text Solution Uploader */
+function AssignmentUploader({ assignment, classId, studentId, studentName }) {
+  const [file, setFile] = useState(null);
+  const [studentText, setStudentText] = useState('');
+  const { upload, loading: uploading, progress } = useFileUpload();
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!file && !studentText.trim()) {
+      alert('Please upload a file or write a typed response answer.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      let fileUrl = null;
+      if (file) {
+        fileUrl = await upload(file);
+      }
+
+      console.log('[Student Submission] Submitting assignment solution:', {
+        assignmentId: assignment.id,
+        studentName,
+        fileName: file ? file.name : null
+      });
+
+      await createSubmissionDocument({
+        assignmentId: assignment.id,
+        classId,
+        studentId,
+        studentName,
+        submittedFileURL: fileUrl,
+        submittedFileName: file ? file.name : null,
+        studentText: studentText.trim(),
+        status: 'submitted',
+      });
+
+      console.log('[Student Submission] Assignment submitted successfully!');
+      setSuccess(true);
+    } catch (err) {
+      console.error('[Student Submission] Error:', err);
+      alert('Failed to submit assignment solution.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (success) {
+    return (
+      <div className="bg-emerald-500/5 border border-emerald-500/10 p-4 rounded-xl text-center">
+        <CheckCircle className="text-emerald-400 mx-auto mb-2" size={24} />
+        <span className="text-xs font-bold text-emerald-400 block">Solution Submitted Successfully!</span>
+        <p className="text-[10px] text-slate-400 mt-1">Your teacher has been notified and will evaluate it shortly.</p>
+      </div>
+    );
+  }
+
+  return (
+    <form className="grid gap-3.5" onSubmit={handleSubmit}>
+      <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl">
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Submit Your Solution</span>
+
+        <div className="grid gap-3">
+          <label className="grid gap-1 text-[11px] font-semibold text-slate-300">
+            Write/Type your Answer notes here
+            <textarea
+              className="apex-input py-2 px-3 text-xs min-h-[90px] resize-y font-mono"
+              onChange={(e) => setStudentText(e.target.value)}
+              placeholder="Type your final answers or details here..."
+              value={studentText}
+            />
+          </label>
+
+          <label className="grid gap-1 text-[11px] font-semibold text-slate-300">
+            Upload solution attachment (e.g. Snapshot image of notebook pages)
+            <input
+              className="file:apex-button-secondary file:py-1 file:px-2.5 file:text-xs file:mr-3 text-slate-400 text-xs"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              type="file"
+            />
+          </label>
+        </div>
+
+        {uploading && (
+          <div className="text-[10px] text-amber-300 mt-2">
+            Uploading files: {Math.round(progress)}% complete
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-end mt-1">
+        <button
+          className="apex-button-primary py-2 px-6 text-xs font-bold"
+          disabled={submitting || uploading}
+          type="submit"
+        >
+          {submitting ? <Loader2 className="animate-spin" size={14} /> : null}
+          {submitting ? 'Submitting solution...' : 'Submit Solutions'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 

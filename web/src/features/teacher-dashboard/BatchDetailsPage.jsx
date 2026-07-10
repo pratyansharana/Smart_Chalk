@@ -32,6 +32,10 @@ import { useBatchTestSubmissions } from '../../hooks/useBatchTestSubmissions';
 import { useBatchQuizzes } from '../../hooks/useBatchQuizzes';
 import { useQuizScores } from '../../hooks/useQuizScores';
 import { useFileUpload } from '../../hooks/useFileUpload';
+import { useBatchAssignments } from '../../hooks/useBatchAssignments';
+import { useTeacherSubmissions } from '../../hooks/useTeacherSubmissions';
+import { createAssignmentDocument } from '../../services/firebase/assignmentsService';
+import { gradeSubmissionDocument } from '../../services/firebase/submissionsService';
 import {
   approveStudentRequest,
   rejectStudentRequest,
@@ -43,7 +47,7 @@ import {
 import { addVaultItem, deleteVaultItem } from '../../services/firebase/vaultService';
 import { createTestDocument, gradeTestSubmission } from '../../services/firebase/testService';
 import { createQuizDocument } from '../../services/firebase/quizService';
-import { generateAITest, generateAIQuiz, gradeSubmissionWithAI } from '../../services/aiService';
+import { generateAITest, generateAIQuiz, generateAIAssignment, gradeSubmissionWithAI } from '../../services/aiService';
 import { handlePrintReport } from '../../utils/printReport';
 
 export function BatchDetailsPage() {
@@ -57,11 +61,13 @@ export function BatchDetailsPage() {
   const tests = useBatchTests(batchId);
   const testSubmissions = useBatchTestSubmissions(batchId);
   const quizzes = useBatchQuizzes(batchId);
+  const assignments = useBatchAssignments(batchId);
+  const assignmentSubmissions = useTeacherSubmissions(assignments.data || []);
 
   const [copiedId, setCopiedId] = useState(false);
   const [liveActionLoading, setLiveActionLoading] = useState(false);
   const [pendingActionLoading, setPendingActionLoading] = useState({});
-  const [activeTab, setActiveTab] = useState('roster'); // 'roster' | 'announcements' | 'vault' | 'tests' | 'quizzes'
+  const [activeTab, setActiveTab] = useState('roster'); // 'roster' | 'announcements' | 'vault' | 'assignments' | 'tests' | 'quizzes'
 
   if (batchLoading || students.loading) {
     return (
@@ -201,6 +207,7 @@ export function BatchDetailsPage() {
           ['roster', 'Roster & Waitlist', Users],
           ['announcements', 'Announcements', Send],
           ['vault', 'Batch Vault', BookOpen],
+          ['assignments', 'Assignments', Award],
           ['tests', 'Test Centre', ClipboardList],
           ['quizzes', 'Quiz Centre', Trophy],
         ].map(([tab, label, Icon]) => (
@@ -346,6 +353,11 @@ export function BatchDetailsPage() {
         {/* Tab 4: Test Centre */}
         {activeTab === 'tests' && (
           <TestPanel batchId={batch.id} batchTitle={batch.title} parentEmails={batch.parentEmails || {}} teacherId={teacherId} tests={tests.data} submissions={testSubmissions.data} />
+        )}
+
+        {/* Tab: Assignments */}
+        {activeTab === 'assignments' && (
+          <AssignmentPanel batchId={batch.id} batchTitle={batch.title} parentEmails={batch.parentEmails || {}} teacherId={teacherId} assignments={assignments.data} submissions={assignmentSubmissions.data} />
         )}
 
         {/* Tab 5: Quiz Centre */}
@@ -1193,6 +1205,784 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
           })}
           {tests.length === 0 && (
             <p className="text-sm text-slate-400 text-center py-8">No tests published yet.</p>
+          )}
+        </div>
+      </section>
+
+      {/* Email Modal Overlay */}
+      {emailModalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-lg w-full shadow-2xl relative">
+            <h3 className="font-heading text-lg font-bold text-sky-400 flex items-center gap-2 mb-2">
+              <Mail size={20} />
+              Share Academic Report via Email
+            </h3>
+            
+            <div className="grid gap-3 text-xs mt-3">
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">To (Parent's Email):</label>
+                <input
+                  readOnly
+                  className="w-full bg-white/[0.04] border border-white/10 p-2.5 rounded-lg text-slate-300 font-medium font-sans"
+                  value={emailModalData.to}
+                />
+              </div>
+              
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Subject:</label>
+                <input
+                  readOnly
+                  className="w-full bg-white/[0.04] border border-white/10 p-2.5 rounded-lg text-slate-300 font-medium font-sans"
+                  value={emailModalData.subject}
+                />
+              </div>
+              
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Email Body Draft:</label>
+                <textarea
+                  readOnly
+                  className="w-full bg-white/[0.04] border border-white/10 p-3 rounded-lg text-slate-300 leading-relaxed font-sans resize-none h-48 select-all"
+                  value={emailModalData.body}
+                />
+              </div>
+            </div>
+            
+            <div className="flex flex-wrap gap-3 justify-end mt-6">
+              <button
+                className="apex-button-secondary py-2 px-4 text-xs font-semibold hover:bg-white/10"
+                onClick={() => setEmailModalData(null)}
+                type="button"
+              >
+                Close
+              </button>
+              
+              <button
+                className="apex-button-secondary bg-sky-500/10 border-sky-500/20 text-sky-300 hover:bg-sky-500/20 py-2 px-4 text-xs font-semibold flex items-center gap-1.5"
+                onClick={async () => {
+                  console.log('[Email Action] Copying email draft content to clipboard...', { bodyTextLength: emailModalData.body.length });
+                  try {
+                    await navigator.clipboard.writeText(emailModalData.body);
+                    console.log('[Email Action] Clipboard copy success!');
+                    setEmailModalData(prev => ({ ...prev, copied: true }));
+                    setTimeout(() => {
+                      setEmailModalData(prev => prev ? { ...prev, copied: false } : null);
+                    }, 2000);
+                  } catch (err) {
+                    console.error('[Email Action] Clipboard copy failed:', err);
+                  }
+                }}
+                type="button"
+              >
+                {emailModalData.copied ? (
+                  <>
+                    <Check size={14} className="text-emerald-400" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy size={14} />
+                    Copy Draft
+                  </>
+                )}
+              </button>
+
+              <a
+                className="apex-button-secondary border-red-500/20 text-red-400 hover:bg-red-500/10 py-2 px-4 text-xs font-semibold flex items-center gap-1.5 decoration-none"
+                href={`https://mail.google.com/mail/?view=cm&fs=1&to=${emailModalData.to}&su=${encodeURIComponent(emailModalData.subject)}&body=${encodeURIComponent(emailModalData.body)}`}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => {
+                  console.log('[Email Action] Opening browser web-Gmail composer:', {
+                    to: emailModalData.to,
+                    subjectLength: emailModalData.subject.length,
+                    bodyLength: emailModalData.body.length
+                  });
+                  setTimeout(() => setEmailModalData(null), 1000);
+                }}
+              >
+                <Mail size={14} />
+                Send via Gmail Web
+              </a>
+              
+              <a
+                className="apex-button-primary bg-sky-500 hover:bg-sky-600 text-slate-900 py-2 px-4 text-xs font-bold flex items-center gap-1.5 decoration-none"
+                href={`mailto:${emailModalData.to}?subject=${encodeURIComponent(emailModalData.subject)}&body=${encodeURIComponent(emailModalData.body)}`}
+                onClick={() => {
+                  console.log('[Email Action] Navigating to mailto URL:', {
+                    to: emailModalData.to,
+                    subjectLength: emailModalData.subject.length,
+                    bodyLength: emailModalData.body.length
+                  });
+                  setTimeout(() => setEmailModalData(null), 1000);
+                }}
+              >
+                <Mail size={14} />
+                Send via Mail App
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* SUB PANEL: Assignments Manager */
+function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, teacherId, assignments, submissions }) {
+  const [title, setTitle] = useState('');
+  const [desc, setDesc] = useState('');
+  const [maxScore, setMaxScore] = useState(100);
+  const [dueDate, setDueDate] = useState('');
+  const [file, setFile] = useState(null);
+  const { upload, loading: uploading, progress } = useFileUpload();
+  const [submitting, setSubmitting] = useState(false);
+
+  const [assignmentContent, setAssignmentContent] = useState('');
+  const [showAIPanel, setShowAIPanel] = useState(false);
+  const [aiGrade, setAiGrade] = useState('');
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiLevel, setAiLevel] = useState('Medium');
+  const [aiInstructions, setAiInstructions] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState(null);
+
+  const [gradingSubmissionId, setGradingSubmissionId] = useState(null);
+  const [gradeInput, setGradeInput] = useState('');
+  const [feedbackInput, setFeedbackInput] = useState('');
+  const [gradingSubmitLoading, setGradingSubmitLoading] = useState(false);
+  const [emailModalData, setEmailModalData] = useState(null);
+  const [aiGradingLoading, setAiGradingLoading] = useState(false);
+  const [aiGradingError, setAiGradingError] = useState(null);
+  const [pastedAnswers, setPastedAnswers] = useState('');
+
+  // Expand states for assignment cards
+  const [expandedAssignmentId, setExpandedAssignmentId] = useState(null);
+
+  async function handleAIGenerate(e) {
+    e.preventDefault();
+    if (!aiGrade.trim() || !aiTopic.trim()) return;
+
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      console.log('[AI Assignment] Requesting generation from Groq...', { grade: aiGrade, topic: aiTopic, level: aiLevel });
+      const result = await generateAIAssignment({
+        grade: aiGrade.trim(),
+        topic: aiTopic.trim(),
+        level: aiLevel,
+        instructions: aiInstructions.trim(),
+      });
+      
+      console.log('[AI Assignment] Generation successful!', result);
+      setTitle(result.title || '');
+      setDesc(result.description || '');
+      setMaxScore(result.maxScore || 100);
+      setAssignmentContent(result.assignmentContent || '');
+      setShowAIPanel(false);
+    } catch (err) {
+      console.error('[AI Assignment] Generation error:', err);
+      setAiError(err.message || 'Failed to generate assignment with AI.');
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  async function handlePublish(e) {
+    e.preventDefault();
+    if (!title.trim() || !dueDate) return;
+
+    setSubmitting(true);
+    try {
+      let fileUrl = null;
+      if (file) {
+        console.log('[Assignment] Uploading attachment file:', file.name);
+        fileUrl = await upload(file);
+      }
+
+      const payload = {
+        classId: batchId,
+        teacherId,
+        title: title.trim(),
+        description: desc.trim(),
+        maxScore: Number(maxScore),
+        dueDate,
+        submittedFileUrl: fileUrl,
+        submittedFileName: file ? file.name : null,
+        assignmentContent: assignmentContent.trim(),
+      };
+
+      console.log('[Assignment] Publishing assignment to Firestore:', payload);
+      await createAssignmentDocument(payload);
+      console.log('[Assignment] Assignment published successfully!');
+
+      // Reset form
+      setTitle('');
+      setDesc('');
+      setMaxScore(100);
+      setDueDate('');
+      setFile(null);
+      setAssignmentContent('');
+    } catch (err) {
+      console.error('[Assignment] Publish error:', err);
+      alert('Failed to publish assignment.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleAIGrade(submission, assignment) {
+    setAiGradingLoading(true);
+    setAiGradingError(null);
+    try {
+      const studentAnswers = submission.studentText || pastedAnswers.trim();
+      console.log('[AI Grading] Requesting AI grading for submission:', {
+        submissionId: submission.id,
+        studentName: submission.studentName,
+        hasImage: !!submission.submittedFileURL
+      });
+
+      const result = await gradeSubmissionWithAI({
+        testTitle: assignment.title,
+        testQuestions: assignment.assignmentContent || assignment.description,
+        maxScore: assignment.maxScore,
+        studentAnswers,
+        imageUrl: submission.submittedFileURL || null,
+        studentName: submission.studentName,
+      });
+
+      console.log('[AI Grading] Assignment grading successful!', result);
+      setGradeInput(String(result.score));
+      setFeedbackInput(result.feedback);
+    } catch (err) {
+      console.error('[AI Grading] Grading error:', err);
+      setAiGradingError(err.message || 'AI evaluation failed. Please input score manually.');
+    } finally {
+      setAiGradingLoading(false);
+    }
+  }
+
+  async function handleSaveGrade(e, submissionId) {
+    e.preventDefault();
+    if (gradeInput === '') return;
+
+    setGradingSubmitLoading(true);
+    try {
+      console.log('[Grading] Submitting assignment grade details to Firestore:', { submissionId, grade: gradeInput });
+      await gradeSubmissionDocument(submissionId, {
+        grade: Number(gradeInput),
+        feedback: feedbackInput,
+        gradedBy: teacherId,
+      });
+      console.log('[Grading] Grade saved successfully!');
+      setGradingSubmissionId(null);
+      setGradeInput('');
+      setFeedbackInput('');
+      setPastedAnswers('');
+    } catch (err) {
+      console.error('[Grading] Failed to save grade:', err);
+      alert('Error saving grade.');
+    } finally {
+      setGradingSubmitLoading(false);
+    }
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-3 lg:items-start animate-fadeIn">
+      {/* Create / AI Generator Form */}
+      <section className="glass-card p-5 lg:col-span-1">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="font-heading text-lg font-bold text-white flex items-center gap-2">
+            <Award className="text-amber-400" size={20} />
+            Publish Assignment
+          </h2>
+          <button
+            className={`text-xs py-1 px-2.5 rounded-lg border font-bold flex items-center gap-1.5 transition-all ${
+              showAIPanel
+                ? 'bg-amber-400 border-amber-300 text-slate-900 shadow-md'
+                : 'bg-white/[0.04] border-white/10 text-amber-300 hover:bg-white/[0.08]'
+            }`}
+            onClick={() => {
+              setShowAIPanel(!showAIPanel);
+              setAiError(null);
+            }}
+            type="button"
+          >
+            <Sparkles size={13} />
+            AI Creator
+          </button>
+        </div>
+
+        {showAIPanel ? (
+          <form className="grid gap-3.5 bg-amber-400/[0.02] border border-amber-400/20 p-4 rounded-xl mb-4" onSubmit={handleAIQuizGenerate}>
+            <div className="flex items-center gap-2">
+              <Sparkles className="text-amber-400 animate-pulse" size={16} />
+              <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider">AI Assignment Generator</h3>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <label className="grid gap-1 text-[10px] font-semibold text-slate-300">
+                Grade Level
+                <input
+                  className="apex-input py-1 px-2 text-xs"
+                  onChange={(e) => setAiGrade(e.target.value)}
+                  placeholder="Grade 10"
+                  required
+                  type="text"
+                  value={aiGrade}
+                />
+              </label>
+              <label className="grid gap-1 text-[10px] font-semibold text-slate-300">
+                Difficulty Level
+                <select
+                  className="apex-input py-1 px-2 text-xs"
+                  onChange={(e) => setAiLevel(e.target.value)}
+                  value={aiLevel}
+                >
+                  <option value="Easy">Easy</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Hard">Hard</option>
+                </select>
+              </label>
+            </div>
+
+            <label className="grid gap-1 text-[10px] font-semibold text-slate-300">
+              Topic
+              <input
+                className="apex-input py-1 px-2 text-xs"
+                onChange={(e) => setAiTopic(e.target.value)}
+                placeholder="Linear Equations"
+                required
+                type="text"
+                value={aiTopic}
+              />
+            </label>
+
+            <label className="grid gap-1 text-[10px] font-semibold text-slate-300">
+              Additional Instructions (Optional)
+              <textarea
+                className="apex-input py-1.5 px-2 text-xs min-h-[50px] resize-y"
+                onChange={(e) => setAiInstructions(e.target.value)}
+                placeholder="Include 5 long problems..."
+                value={aiInstructions}
+              />
+            </label>
+
+            {aiError && (
+              <p className="text-[10px] text-red-300 bg-red-500/10 border border-red-500/20 p-2 rounded-lg">{aiError}</p>
+            )}
+
+            <div className="flex gap-2 justify-end mt-1 text-xs">
+              <button
+                className="apex-button-secondary py-1 px-3 text-[10px]"
+                onClick={() => {
+                  setShowAIPanel(false);
+                  setAiError(null);
+                }}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="apex-button-primary bg-amber-400 text-slate-900 border-amber-300 py-1 px-3 text-[10px] font-bold"
+                disabled={aiLoading}
+                onClick={handleAIGenerate}
+                type="button"
+              >
+                {aiLoading ? <Loader2 className="animate-spin" size={10} /> : <Sparkles size={10} />}
+                {aiLoading ? 'Drafting...' : 'Generate Assignment'}
+              </button>
+            </div>
+          </form>
+        ) : null}
+
+        <form className="grid gap-4" onSubmit={handlePublish}>
+          <label className="grid gap-1 text-xs font-semibold text-slate-300">
+            Assignment Title
+            <input
+              className="apex-input py-1.5 px-3"
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Algebra Homework 1"
+              required
+              type="text"
+              value={title}
+            />
+          </label>
+
+          <label className="grid gap-1 text-xs font-semibold text-slate-300">
+            Goals & Guidelines (Short Description)
+            <textarea
+              className="apex-input py-1.5 px-3 min-h-[60px]"
+              onChange={(e) => setDesc(e.target.value)}
+              placeholder="Goals and instructions for the students..."
+              value={desc}
+            />
+          </label>
+
+          <label className="grid gap-1 text-xs font-semibold text-slate-300">
+            Assignment Tasks & Questions (Markdown Format)
+            <textarea
+              className="apex-input py-2 px-3 min-h-[140px] font-mono text-xs leading-relaxed"
+              onChange={(e) => setAssignmentContent(e.target.value)}
+              placeholder="# Questions Paper&#10;&#10;1. Solve for x: 3x + 5 = 11"
+              value={assignmentContent}
+            />
+          </label>
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="grid gap-1 text-xs font-semibold text-slate-300">
+              Max Mark Score
+              <input
+                className="apex-input py-1.5 px-3"
+                min="1"
+                onChange={(e) => setMaxScore(Number(e.target.value))}
+                required
+                type="number"
+                value={maxScore}
+              />
+            </label>
+
+            <label className="grid gap-1 text-xs font-semibold text-slate-300">
+              Due Date
+              <input
+                className="apex-input py-1.5 px-3 text-slate-300"
+                onChange={(e) => setDueDate(e.target.value)}
+                required
+                type="date"
+                value={dueDate}
+              />
+            </label>
+          </div>
+
+          <label className="grid gap-1 text-xs font-semibold text-slate-300">
+            Upload Attachment file (e.g. PDF reference sheets)
+            <input
+              className="file:apex-button-secondary file:py-1 file:px-2.5 file:text-xs file:mr-3 text-slate-400 text-xs"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              type="file"
+            />
+          </label>
+
+          {uploading && (
+            <div className="text-[10px] text-amber-300">
+              Uploading file attachment: {Math.round(progress)}% complete
+            </div>
+          )}
+
+          <button
+            className="apex-button-primary w-full py-2 font-bold"
+            disabled={submitting || uploading}
+            type="submit"
+          >
+            {submitting ? <Loader2 className="animate-spin" size={16} /> : null}
+            {submitting ? 'Publishing...' : 'Publish Assignment to Batch'}
+          </button>
+        </form>
+      </section>
+
+      {/* Active Assignments & Student Submissions */}
+      <section className="glass-card p-5 lg:col-span-2">
+        <h2 className="font-heading text-lg font-bold text-white flex items-center gap-2 mb-4">
+          <ClipboardList className="text-amber-400" size={20} />
+          Active Assignments & Submissions ({assignments.length})
+        </h2>
+
+        <div className="grid gap-4">
+          {assignments.map((assignment) => {
+            const isExpanded = expandedAssignmentId === assignment.id;
+            
+            // Submissions filter matching this specific assignment
+            const testSubs = submissions.filter((s) => s.assignmentId === assignment.id);
+            const gradedCount = testSubs.filter((s) => s.status === 'graded').length;
+
+            return (
+              <article className="border border-white/5 bg-white/[0.01] rounded-2xl p-4 transition-all" key={assignment.id}>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-heading text-base font-bold text-slate-200">{assignment.title}</h3>
+                    <p className="text-xs text-slate-400 mt-1 max-w-xl">{assignment.description || 'No description provided'}</p>
+                    
+                    <div className="flex flex-wrap gap-4 mt-3 text-[11px] text-slate-400">
+                      <span>Max Score: <strong className="text-slate-300">{assignment.maxScore} marks</strong></span>
+                      <span>Due: <strong className="text-amber-400">{assignment.dueDate}</strong></span>
+                      {assignment.submittedFileName && (
+                        <span>
+                          Attachment:{' '}
+                          <a
+                            className="text-amber-300 underline hover:text-amber-400"
+                            href={assignment.submittedFileUrl}
+                            rel="noreferrer"
+                            target="_blank"
+                          >
+                            {assignment.submittedFileName}
+                          </a>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs bg-slate-800 text-slate-300 px-3 py-1.5 rounded-xl border border-white/5">
+                      Submissions: <strong>{gradedCount} / {testSubs.length} graded</strong>
+                    </span>
+
+                    <button
+                      className="apex-button-secondary py-1 px-3 text-xs"
+                      onClick={() => setExpandedAssignmentId(isExpanded ? null : assignment.id)}
+                      type="button"
+                    >
+                      {isExpanded ? 'Collapse' : 'View Submissions'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Collapsible Assignment Question Paper View */}
+                {assignment.assignmentContent && (
+                  <details className="mt-3 border border-white/5 rounded-xl bg-black/10 overflow-hidden">
+                    <summary className="text-[10px] font-bold text-amber-300 uppercase tracking-widest p-2.5 cursor-pointer hover:bg-white/[0.02]">
+                      View Assignment Tasks Paper
+                    </summary>
+                    <pre className="p-3 text-xs text-slate-300 font-mono whitespace-pre-wrap bg-black/20 border-t border-white/5">{assignment.assignmentContent}</pre>
+                  </details>
+                )}
+
+                {/* Submissions list panel */}
+                {isExpanded && (
+                  <div className="mt-4 pt-4 border-t border-white/5 grid gap-3">
+                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                      <Users size={14} />
+                      Student Submission Papers ({testSubs.length})
+                    </h4>
+                    
+                    <div className="grid gap-2">
+                      {testSubs.map((sub) => {
+                        const isGraded = sub.status === 'graded';
+                        const isGradingNow = gradingSubmissionId === sub.id;
+
+                        return (
+                          <div className="bg-white/[0.02] border border-white/5 p-3 rounded-xl flex flex-col gap-3" key={sub.id}>
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div>
+                                <span className="font-bold text-slate-200 block truncate">{sub.studentName}</span>
+                                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                                  File:{' '}
+                                  {sub.submittedFileName ? (
+                                    <a
+                                      className="text-amber-300 underline"
+                                      href={sub.submittedFileURL}
+                                      rel="noreferrer"
+                                      target="_blank"
+                                    >
+                                      {sub.submittedFileName}
+                                    </a>
+                                  ) : (
+                                    'No file uploaded'
+                                  )}
+                                </span>
+                              </div>
+
+                              {isGraded ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-bold text-emerald-400 px-1">
+                                    {sub.grade} / {assignment.maxScore}
+                                  </span>
+                                  <button
+                                    className="apex-button-secondary py-0.5 px-1.5 text-[10px] hover:bg-white/10 text-amber-300 border-amber-400/20 flex items-center gap-1"
+                                    onClick={() => handlePrintReport(assignment, sub, sub.studentName, batchTitle)}
+                                    type="button"
+                                    title="Save as PDF / Print"
+                                  >
+                                    <Printer size={10} />
+                                    PDF
+                                  </button>
+                                  <button
+                                    className="apex-button-secondary py-0.5 px-1.5 text-[10px] hover:bg-white/10 text-emerald-300 border-emerald-400/20 flex items-center gap-1"
+                                    onClick={() => {
+                                      const text = encodeURIComponent(
+                                        `📚 *SmartChalk Academic Report* 📚\n\n` +
+                                        `*Student Name:* ${sub.studentName}\n` +
+                                        `*Batch/Subject:* ${batchTitle}\n` +
+                                        `*Assignment:* ${assignment.title}\n` +
+                                        `*Score:* *${sub.grade} / ${assignment.maxScore} marks*\n\n` +
+                                        `*Teacher's Feedback:*\n"${sub.feedback}"\n\n` +
+                                        `Log in to your SmartChalk account to download the full questions & answers PDF report.`
+                                      );
+                                      window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+                                    }}
+                                    type="button"
+                                    title="Send WhatsApp update to parents"
+                                  >
+                                    <Send size={10} />
+                                    WhatsApp
+                                  </button>
+                                  
+                                  {parentEmails[sub.studentId] ? (
+                                    <button
+                                      className="apex-button-secondary py-0.5 px-1.5 text-[10px] hover:bg-white/10 text-sky-300 border-sky-400/20 flex items-center gap-1"
+                                      onClick={() => {
+                                        const pEmail = parentEmails[sub.studentId];
+                                        const percentage = Math.round((sub.grade / assignment.maxScore) * 100);
+                                        console.log('[Email Action] Triggered email preview modal:', {
+                                          studentId: sub.studentId,
+                                          studentName: sub.studentName,
+                                          parentEmail: pEmail,
+                                          testTitle: assignment.title,
+                                          grade: sub.grade,
+                                          percentage
+                                        });
+                                        setEmailModalData({
+                                          to: pEmail,
+                                          subject: `SmartChalk Academic Report - ${sub.studentName} - ${assignment.title}`,
+                                          body: `Dear Parent,\n\n` +
+                                                `I hope this email finds you well.\n\n` +
+                                                `This is a professional academic update for your child, ${sub.studentName}, regarding their performance in our SmartChalk live class (${batchTitle}).\n\n` +
+                                                `We recently completed and evaluated the assignment: "${assignment.title}".\n\n` +
+                                                `Here is a summary of their performance:\n` +
+                                                `- Graded Score: ${sub.grade} / ${assignment.maxScore} marks (${percentage}%)\n` +
+                                                `- Performance Status: Evaluated & Graded\n\n` +
+                                                `Teacher's Feedback & Comments:\n` +
+                                                `--------------------------------------------------\n` +
+                                                `"${sub.feedback || ''}"\n` +
+                                                `--------------------------------------------------\n\n` +
+                                                `If you would like to view the complete details of the assignment paper, including the original questions and your child's submitted answers, you can access the SmartChalk Student Dashboard using your secure credentials.\n\n` +
+                                                `Thank you for your continued support in your child's learning journey. Please feel free to reply directly to this email if you have any questions or would like to discuss their progress in more detail.\n\n` +
+                                                `Warm regards,\n` +
+                                                `SmartChalk Tutoring`,
+                                          copied: false
+                                        });
+                                      }}
+                                      type="button"
+                                      title="Share professional email report with parents"
+                                    >
+                                      <Mail size={10} />
+                                      Email
+                                    </button>
+                                  ) : (
+                                    <span 
+                                      className="text-[9px] text-slate-500 italic px-1 cursor-help"
+                                      title="Add parent email under Roster tab to email report"
+                                    >
+                                      (No Parent Email)
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <button
+                                  className="apex-button-primary py-0.5 px-2 text-[10px]"
+                                  onClick={() => {
+                                    setGradingSubmissionId(sub.id);
+                                    setGradeInput('');
+                                    setFeedbackInput('');
+                                    setAiGradingError(null);
+                                    setPastedAnswers('');
+                                  }}
+                                  type="button"
+                                >
+                                  Grade
+                                </button>
+                              )}
+                            </div>
+
+                            {sub.studentText && (
+                              <div className="mt-1 bg-white/[0.02] border border-white/5 p-2.5 rounded-lg">
+                                <span className="text-[9px] text-slate-500 uppercase tracking-wider block mb-1">Student Text Answers</span>
+                                <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto font-mono">{sub.studentText}</p>
+                              </div>
+                            )}
+
+                            {/* Active grading panel */}
+                            {isGradingNow && (() => {
+                              const activeSub = sub;
+                              return (
+                                <form className="grid gap-3 border border-white/5 bg-white/[0.01] p-3.5 rounded-xl mt-2 animate-fadeIn" onSubmit={(e) => handleSaveGrade(e, sub.id)}>
+                                  <div className="flex items-center justify-between bg-amber-400/[0.02] border border-amber-400/10 p-2.5 rounded-xl gap-3">
+                                    <div className="flex items-center gap-2">
+                                      <Sparkles size={14} className="text-amber-400" />
+                                      <span className="text-[10px] text-slate-300 font-bold uppercase">AI Grading Assistant</span>
+                                    </div>
+                                    <button
+                                      className="apex-button-secondary bg-amber-400 text-slate-900 border-amber-300 py-0.5 px-2 text-[10px] font-bold flex items-center gap-1.5"
+                                      disabled={aiGradingLoading}
+                                      onClick={() => handleAIGrade(activeSub, assignment)}
+                                      type="button"
+                                    >
+                                      {aiGradingLoading ? <Loader2 className="animate-spin" size={10} /> : <Sparkles size={10} />}
+                                      {aiGradingLoading ? 'Analyzing...' : 'Grade with AI'}
+                                    </button>
+                                  </div>
+
+                                  {aiGradingError && (
+                                    <p className="text-[10px] text-red-300 bg-red-500/10 border border-red-500/20 p-2 rounded-lg">{aiGradingError}</p>
+                                  )}
+
+                                  {!activeSub.studentText && (
+                                    <label className="grid gap-1 text-[10px] font-semibold text-slate-300">
+                                      Student Answers Text (Paste answers here to enable AI Grading)
+                                      <textarea
+                                        className="apex-input py-1 px-2 text-xs min-h-[60px] resize-y font-mono"
+                                        onChange={(e) => setPastedAnswers(e.target.value)}
+                                        placeholder="Copy and paste the student's solution text or key calculations here..."
+                                        value={pastedAnswers}
+                                      />
+                                    </label>
+                                  )}
+
+                                  <div className="grid gap-2 sm:grid-cols-2">
+                                    <label className="grid gap-1 text-[11px] font-semibold text-slate-200">
+                                      Score
+                                      <input
+                                        className="apex-input py-1 px-2 text-xs"
+                                        max={assignment.maxScore}
+                                        min="0"
+                                        onChange={(e) => setGradeInput(e.target.value)}
+                                        required
+                                        type="number"
+                                        value={gradeInput}
+                                      />
+                                    </label>
+                                    <label className="grid gap-1 text-[11px] font-semibold text-slate-200">
+                                      Feedback
+                                      <input
+                                        className="apex-input py-1 px-2 text-xs"
+                                        onChange={(e) => setFeedbackInput(e.target.value)}
+                                        placeholder="Well done..."
+                                        type="text"
+                                        value={feedbackInput}
+                                      />
+                                    </label>
+                                  </div>
+                                  <div className="flex justify-end gap-2 text-xs">
+                                    <button
+                                      className="apex-button-secondary py-1 px-3 text-[10px]"
+                                      onClick={() => setGradingSubmissionId(null)}
+                                      type="button"
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      className="apex-button-primary py-1 px-3 text-[10px]"
+                                      disabled={gradingSubmitLoading}
+                                      type="submit"
+                                    >
+                                      {gradingSubmitLoading ? 'Saving...' : 'Save Grade'}
+                                    </button>
+                                  </div>
+                                </form>
+                              );
+                            })()}
+                          </div>
+                        );
+                      })}
+                      {testSubs.length === 0 && (
+                        <p className="text-[11px] text-slate-500 text-center py-4">No submissions received yet.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </article>
+            );
+          })}
+          {assignments.length === 0 && (
+            <p className="text-sm text-slate-400 text-center py-8">No assignments published yet.</p>
           )}
         </div>
       </section>

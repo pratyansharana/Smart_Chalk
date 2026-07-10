@@ -160,3 +160,25 @@ ${studentAnswers || 'No text answers provided.'}`;
 
   return fetchFromGroqVision(systemPrompt, userPrompt, imageUrl);
 }
+
+/**
+ * Generates an AI assignment based on grade, topic, difficulty level, and optional custom instructions.
+ */
+export async function generateAIAssignment({ grade, topic, level, instructions }) {
+  const systemPrompt = `You are an expert tutor. Create a formal assignment paper based on the requested topic, grade, and level.
+Return a JSON object in this EXACT format:
+{
+  "title": "Assignment Title (incorporating topic and grade)",
+  "description": "Short description of the assignment guidelines and goals",
+  "maxScore": 100,
+  "assignmentContent": "Detailed assignment instructions and problems in markdown format. Do not include answers."
+}`;
+
+  const userPrompt = `Grade: ${grade}
+Topic: ${topic}
+Difficulty Level: ${level}
+Additional Instructions: ${instructions || 'None'}`;
+
+  return fetchFromGroq(systemPrompt, userPrompt);
+}
+
