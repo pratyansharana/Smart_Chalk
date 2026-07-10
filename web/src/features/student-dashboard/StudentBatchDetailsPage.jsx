@@ -886,9 +886,9 @@ function StudentAssignmentPanel({ batch, studentId, studentName, assignments, su
 
               {/* Assignment Questions */}
               {assignment.assignmentContent && (
-                <div className="mt-4 p-4 rounded-xl bg-black/25 border border-white/5">
+                <div className="mt-4">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Assignment Tasks & Guidelines</span>
-                  <div className="text-slate-300 font-sans text-xs leading-relaxed whitespace-pre-wrap">{assignment.assignmentContent}</div>
+                  <QuestionPaperRenderer content={assignment.assignmentContent} />
                 </div>
               )}
 
