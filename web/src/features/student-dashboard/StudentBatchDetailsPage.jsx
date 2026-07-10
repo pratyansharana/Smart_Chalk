@@ -14,6 +14,9 @@ import {
   CheckCircle,
   HelpCircle,
   Upload,
+  Printer,
+  Mail,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useBatchDetails } from '../../hooks/useBatchDetails';
@@ -296,7 +299,8 @@ export function StudentBatchDetailsPage() {
                                   onClick={() => handlePrintReport(test, submission, studentName, batch?.title || batch?.name)}
                                   type="button"
                                 >
-                                  🖨️ Save PDF / Print
+                                  <Printer size={14} />
+                                  Save PDF / Print
                                 </button>
                                 <button
                                   className="apex-button-secondary bg-emerald-500/10 border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20 py-1.5 px-3 text-xs flex items-center gap-1.5"
@@ -314,7 +318,8 @@ export function StudentBatchDetailsPage() {
                                   }}
                                   type="button"
                                 >
-                                  📱 Send to WhatsApp
+                                  <Send size={14} />
+                                  Send to WhatsApp
                                 </button>
                               </div>
                             )}

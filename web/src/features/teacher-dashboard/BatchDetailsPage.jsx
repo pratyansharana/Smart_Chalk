@@ -19,6 +19,9 @@ import {
   Upload,
   Plus,
   Award,
+  Printer,
+  Mail,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useBatchDetails } from '../../hooks/useBatchDetails';
@@ -990,15 +993,16 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
                                     {sub.grade} / {test.maxScore}
                                   </span>
                                   <button
-                                    className="apex-button-secondary py-0.5 px-1.5 text-[10px] hover:bg-white/10 text-amber-300 border-amber-400/20"
+                                    className="apex-button-secondary py-0.5 px-1.5 text-[10px] hover:bg-white/10 text-amber-300 border-amber-400/20 flex items-center gap-1"
                                     onClick={() => handlePrintReport(test, sub, sub.studentName, batchTitle)}
                                     type="button"
                                     title="Save as PDF / Print"
                                   >
-                                    🖨️ PDF
+                                    <Printer size={10} />
+                                    PDF
                                   </button>
                                   <button
-                                    className="apex-button-secondary py-0.5 px-1.5 text-[10px] hover:bg-white/10 text-emerald-300 border-emerald-400/20"
+                                    className="apex-button-secondary py-0.5 px-1.5 text-[10px] hover:bg-white/10 text-emerald-300 border-emerald-400/20 flex items-center gap-1"
                                     onClick={() => {
                                       const text = encodeURIComponent(
                                         `📚 *SmartChalk Academic Report* 📚\n\n` +
@@ -1014,16 +1018,22 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
                                     type="button"
                                     title="Send WhatsApp update to parents"
                                   >
-                                    📱 Send
+                                    <Send size={10} />
+                                    WhatsApp
                                   </button>
                                   
                                   {parentEmails[sub.studentId] ? (
                                     <button
-                                      className="apex-button-secondary py-0.5 px-1.5 text-[10px] hover:bg-white/10 text-sky-300 border-sky-400/20"
+                                      className="apex-button-secondary py-0.5 px-1.5 text-[10px] hover:bg-white/10 text-sky-300 border-sky-400/20 flex items-center gap-1"
                                       onClick={() => {
                                         const pEmail = parentEmails[sub.studentId];
                                         const percentage = Math.round((sub.grade / test.maxScore) * 100);
                                         const subject = encodeURIComponent(`SmartChalk Academic Report - ${sub.studentName} - ${test.title}`);
+                                        const cleanFeedback = sub.feedback || '';
+                                        const displayFeedback = cleanFeedback.length > 600 
+                                          ? cleanFeedback.substring(0, 600) + '... (Detailed review available on dashboard)' 
+                                          : cleanFeedback;
+
                                         const body = encodeURIComponent(
                                           `Dear Parent,\n\n` +
                                           `I hope this email finds you well.\n\n` +
@@ -1034,19 +1044,20 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
                                           `- Performance Status: Evaluated & Graded\n\n` +
                                           `Teacher's Feedback & Comments:\n` +
                                           `--------------------------------------------------\n` +
-                                          `"${sub.feedback}"\n` +
+                                          `"${displayFeedback}"\n` +
                                           `--------------------------------------------------\n\n` +
                                           `If you would like to view the complete details of the test paper, including the original questions and your child's submitted answers, you can access the SmartChalk Student Dashboard using your secure credentials.\n\n` +
                                           `Thank you for your continued support in your child's learning journey. Please feel free to reply directly to this email if you have any questions or would like to discuss their progress in more detail.\n\n` +
                                           `Warm regards,\n` +
                                           `SmartChalk Tutoring`
                                         );
-                                        window.open(`mailto:${pEmail}?subject=${subject}&body=${body}`, '_self');
+                                        window.location.href = `mailto:${pEmail}?subject=${subject}&body=${body}`;
                                       }}
                                       type="button"
                                       title="Send professional email report to parents"
                                     >
-                                      📧 Email
+                                      <Mail size={10} />
+                                      Email
                                     </button>
                                   ) : (
                                     <span 
