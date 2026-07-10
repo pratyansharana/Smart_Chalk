@@ -576,15 +576,30 @@ function TestPanel({ batchId, teacherId, tests, submissions }) {
     setAiGradingError(null);
     setAiGradingLoading(true);
     try {
-      const answersText = activeSub.studentText || pastedAnswers;
-      if (!answersText || !answersText.trim()) {
-        throw new Error('Please type or paste the student\'s answers text in the textarea below before grading.');
+      let imageUrl = null;
+      if (activeSub.submittedFileURL && activeSub.submittedFileName) {
+        const lowerName = activeSub.submittedFileName.toLowerCase();
+        const isImg = lowerName.endsWith('.png') || 
+                      lowerName.endsWith('.jpg') || 
+                      lowerName.endsWith('.jpeg') || 
+                      lowerName.endsWith('.webp') ||
+                      lowerName.endsWith('.gif');
+        if (isImg) {
+          imageUrl = activeSub.submittedFileURL;
+        }
       }
+
+      const answersText = activeSub.studentText || pastedAnswers;
+      if ((!answersText || !answersText.trim()) && !imageUrl) {
+        throw new Error('Please type or paste the student\'s answers text in the textarea below before grading (or upload an image submission instead of PDF).');
+      }
+
       const result = await gradeSubmissionWithAI({
         testTitle: test.title,
         testQuestions: test.testContent || test.description,
         maxScore: test.maxScore,
-        studentAnswers: answersText.trim(),
+        studentAnswers: answersText ? answersText.trim() : null,
+        imageUrl: imageUrl,
       });
       setGradeInput(String(result.score));
       setFeedbackInput(result.feedback);

@@ -37,6 +37,56 @@ async function fetchFromGroq(systemPrompt, userPrompt) {
   return JSON.parse(content);
 }
 
+async function fetchFromGroqVision(systemPrompt, userPromptText, imageUrl) {
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+  if (!apiKey) {
+    throw new Error('Groq API Key not found in environment variables.');
+  }
+
+  const contentArray = [
+    { type: 'text', text: userPromptText }
+  ];
+
+  if (imageUrl) {
+    contentArray.push({
+      type: 'image_url',
+      image_url: {
+        url: imageUrl
+      }
+    });
+  }
+
+  const response = await fetch(GROQ_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'llama-3.2-90b-vision-preview',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: contentArray },
+      ],
+      temperature: 0.2,
+      response_format: { type: 'json_object' },
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Groq API Error: ${response.status} - ${errText}`);
+  }
+
+  const resData = await response.json();
+  const content = resData.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error('No content returned from Groq API.');
+  }
+
+  return JSON.parse(content);
+}
+
 /**
  * Generates an AI test based on grade, topic, difficulty level, and optional custom instructions.
  */
@@ -84,15 +134,16 @@ Difficulty Level: ${level}`;
 }
 
 /**
- * Grades a student's test submission based on test details and student answer text.
+ * Grades a student's test submission based on test details, student answer text, and optional solution image.
  */
-export async function gradeSubmissionWithAI({ testTitle, testQuestions, maxScore, studentAnswers }) {
+export async function gradeSubmissionWithAI({ testTitle, testQuestions, maxScore, studentAnswers, imageUrl }) {
   const systemPrompt = `You are an expert tutor. Grade the student's answers based on the test questions, guidelines, and max score.
 Evaluate each answer logically, calculate a total score, and write highly constructive, encouraging, and detailed feedback.
+If an image is attached, look at the image contents (the handwritten student paper or notebook page) to see the student's work, steps, and final answers, and grade accordingly.
 Return a JSON object in this EXACT format:
 {
   "score": 85, // Suggested numerical score out of the maximum score, MUST be a number, less than or equal to the maximum score.
-  "feedback": "Step-by-step breakdown of what was correct, what was incorrect, and suggestions for improvement."
+  "feedback": "Step-by-step breakdown of what was correct, what was incorrect, and suggestions for improvement based on the student's text/image solution."
 }`;
 
   const userPrompt = `Test Title: ${testTitle}
@@ -100,8 +151,8 @@ Maximum Score: ${maxScore}
 Test Questions (Markdown):
 ${testQuestions}
 
-Student's Written Answers:
+Student's Written Answers Text:
 ${studentAnswers || 'No text answers provided.'}`;
 
-  return fetchFromGroq(systemPrompt, userPrompt);
+  return fetchFromGroqVision(systemPrompt, userPrompt, imageUrl);
 }
