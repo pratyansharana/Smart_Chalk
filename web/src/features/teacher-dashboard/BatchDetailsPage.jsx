@@ -1269,10 +1269,28 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
                 ) : (
                   <>
                     <Copy size={14} />
-                    Copy Draft Content
+                    Copy Draft
                   </>
                 )}
               </button>
+
+              <a
+                className="apex-button-secondary border-red-500/20 text-red-400 hover:bg-red-500/10 py-2 px-4 text-xs font-semibold flex items-center gap-1.5 decoration-none"
+                href={`https://mail.google.com/mail/?view=cm&fs=1&to=${emailModalData.to}&su=${encodeURIComponent(emailModalData.subject)}&body=${encodeURIComponent(emailModalData.body)}`}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => {
+                  console.log('[Email Action] Opening browser web-Gmail composer:', {
+                    to: emailModalData.to,
+                    subjectLength: emailModalData.subject.length,
+                    bodyLength: emailModalData.body.length
+                  });
+                  setTimeout(() => setEmailModalData(null), 1000);
+                }}
+              >
+                <Mail size={14} />
+                Send via Gmail Web
+              </a>
               
               <a
                 className="apex-button-primary bg-sky-500 hover:bg-sky-600 text-slate-900 py-2 px-4 text-xs font-bold flex items-center gap-1.5 decoration-none"
@@ -1287,7 +1305,7 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
                 }}
               >
                 <Mail size={14} />
-                Send via Mail Client
+                Send via Mail App
               </a>
             </div>
           </div>
