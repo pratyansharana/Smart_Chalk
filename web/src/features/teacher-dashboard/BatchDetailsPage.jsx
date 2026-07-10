@@ -39,7 +39,7 @@ import {
 import { addVaultItem, deleteVaultItem } from '../../services/firebase/vaultService';
 import { createTestDocument, gradeTestSubmission } from '../../services/firebase/testService';
 import { createQuizDocument } from '../../services/firebase/quizService';
-import { generateAITest, generateAIQuiz } from '../../services/aiService';
+import { generateAITest, generateAIQuiz, gradeSubmissionWithAI } from '../../services/aiService';
 
 export function BatchDetailsPage() {
   const { batchId } = useParams();
@@ -568,6 +568,28 @@ function TestPanel({ batchId, teacherId, tests, submissions }) {
   const [gradeInput, setGradeInput] = useState('');
   const [feedbackInput, setFeedbackInput] = useState('');
   const [gradingSubmitLoading, setGradingSubmitLoading] = useState(false);
+  const [aiGradingLoading, setAiGradingLoading] = useState(false);
+  const [aiGradingError, setAiGradingError] = useState(null);
+
+  async function handleAIGrade(activeSub, test) {
+    setAiGradingError(null);
+    setAiGradingLoading(true);
+    try {
+      const result = await gradeSubmissionWithAI({
+        testTitle: test.title,
+        testQuestions: test.testContent || test.description,
+        maxScore: test.maxScore,
+        studentAnswers: activeSub.studentText || 'No text answers provided.',
+      });
+      setGradeInput(String(result.score));
+      setFeedbackInput(result.feedback);
+    } catch (err) {
+      console.error(err);
+      setAiGradingError(err.message || 'AI Grading failed.');
+    } finally {
+      setAiGradingLoading(false);
+    }
+  }
 
   async function handleAITestGenerate(e) {
     e.preventDefault();
@@ -873,44 +895,56 @@ function TestPanel({ batchId, teacherId, tests, submissions }) {
                       const isGraded = sub.status === 'graded';
                       return (
                         <div
-                          className="flex items-center justify-between gap-3 bg-white/[0.01] border border-white/5 p-2 rounded-xl text-xs"
+                          className="bg-white/[0.01] border border-white/5 p-3 rounded-xl text-xs grid gap-2"
                           key={sub.id}
                         >
-                          <div className="truncate flex-1">
-                            <span className="font-bold text-slate-200 block truncate">{sub.studentName}</span>
-                            <span className="text-[10px] text-slate-500 block truncate">{sub.submittedFileName}</span>
-                          </div>
-
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {sub.submittedFileURL && (
-                              <a
-                                className="apex-button-secondary py-0.5 px-2 text-[10px] hover:bg-white/10"
-                                href={sub.submittedFileURL}
-                                rel="noreferrer"
-                                target="_blank"
-                              >
-                                View
-                              </a>
-                            )}
-
-                            {isGraded ? (
-                              <span className="font-bold text-emerald-400 px-1">
-                                {sub.grade} / {test.maxScore}
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="truncate flex-1">
+                              <span className="font-bold text-slate-200 block truncate">{sub.studentName}</span>
+                              <span className="text-[10px] text-slate-500 block truncate">
+                                {sub.submittedFileName || 'No file uploaded'}
                               </span>
-                            ) : (
-                              <button
-                                className="apex-button-primary py-0.5 px-2 text-[10px]"
-                                onClick={() => {
-                                  setGradingSubmissionId(sub.id);
-                                  setGradeInput('');
-                                  setFeedbackInput('');
-                                }}
-                                type="button"
-                              >
-                                Grade
-                              </button>
-                            )}
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {sub.submittedFileURL && (
+                                <a
+                                  className="apex-button-secondary py-0.5 px-2 text-[10px] hover:bg-white/10"
+                                  href={sub.submittedFileURL}
+                                  rel="noreferrer"
+                                  target="_blank"
+                                >
+                                  View File
+                                </a>
+                              )}
+
+                              {isGraded ? (
+                                <span className="font-bold text-emerald-400 px-1">
+                                  {sub.grade} / {test.maxScore}
+                                </span>
+                              ) : (
+                                <button
+                                  className="apex-button-primary py-0.5 px-2 text-[10px]"
+                                  onClick={() => {
+                                    setGradingSubmissionId(sub.id);
+                                    setGradeInput('');
+                                    setFeedbackInput('');
+                                    setAiGradingError(null);
+                                  }}
+                                  type="button"
+                                >
+                                  Grade
+                                </button>
+                              )}
+                            </div>
                           </div>
+
+                          {sub.studentText && (
+                            <div className="mt-1 bg-white/[0.02] border border-white/5 p-2.5 rounded-lg">
+                              <span className="text-[9px] text-slate-500 uppercase tracking-wider block mb-1">Student Text Answers</span>
+                              <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto font-mono">{sub.studentText}</p>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -918,51 +952,77 @@ function TestPanel({ batchId, teacherId, tests, submissions }) {
                 </div>
 
                 {/* Inline submission grader popup */}
-                {gradingSubmissionId && testSubs.some((s) => s.id === gradingSubmissionId) && (
-                  <form className="mt-4 border-t border-amber-400/20 bg-amber-500/5 p-3 rounded-xl grid gap-3" onSubmit={handleGradeSubmit}>
-                    <p className="text-xs font-bold text-white">Grade student paper</p>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <label className="grid gap-1 text-[11px] font-semibold text-slate-200">
-                        Score
-                        <input
-                          className="apex-input py-1 px-2 text-xs"
-                          max={test.maxScore}
-                          min="0"
-                          onChange={(e) => setGradeInput(e.target.value)}
-                          required
-                          type="number"
-                          value={gradeInput}
-                        />
-                      </label>
-                      <label className="grid gap-1 text-[11px] font-semibold text-slate-200">
-                        Feedback
-                        <input
-                          className="apex-input py-1 px-2 text-xs"
-                          onChange={(e) => setFeedbackInput(e.target.value)}
-                          placeholder="Well done..."
-                          type="text"
-                          value={feedbackInput}
-                        />
-                      </label>
-                    </div>
-                    <div className="flex justify-end gap-2 text-xs">
-                      <button
-                        className="apex-button-secondary py-1 px-3 text-[10px]"
-                        onClick={() => setGradingSubmissionId(null)}
-                        type="button"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        className="apex-button-primary py-1 px-3 text-[10px]"
-                        disabled={gradingSubmitLoading}
-                        type="submit"
-                      >
-                        {gradingSubmitLoading ? 'Saving...' : 'Save Grade'}
-                      </button>
-                    </div>
-                  </form>
-                )}
+                {(() => {
+                  const activeSub = testSubs.find((s) => s.id === gradingSubmissionId);
+                  if (!gradingSubmissionId || !activeSub) return null;
+                  
+                  return (
+                    <form className="mt-4 border-t border-amber-400/20 bg-amber-500/5 p-3 rounded-xl grid gap-3" onSubmit={handleGradeSubmit}>
+                      <div className="flex justify-between items-center">
+                        <p className="text-xs font-bold text-white">Grade student paper</p>
+                        {activeSub.studentText && (
+                          <button
+                            className="apex-button-secondary bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20 text-purple-300 py-0.5 px-2 text-[9px] flex items-center gap-1"
+                            disabled={aiGradingLoading}
+                            onClick={() => handleAIGrade(activeSub, test)}
+                            type="button"
+                          >
+                            {aiGradingLoading ? (
+                              <Loader2 className="animate-spin" size={10} />
+                            ) : (
+                              '✨ Grade with AI'
+                            )}
+                          </button>
+                        )}
+                      </div>
+
+                      {aiGradingError && (
+                        <p className="text-[10px] text-red-300 bg-red-500/10 border border-red-500/20 p-2 rounded-lg">{aiGradingError}</p>
+                      )}
+
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <label className="grid gap-1 text-[11px] font-semibold text-slate-200">
+                          Score
+                          <input
+                            className="apex-input py-1 px-2 text-xs"
+                            max={test.maxScore}
+                            min="0"
+                            onChange={(e) => setGradeInput(e.target.value)}
+                            required
+                            type="number"
+                            value={gradeInput}
+                          />
+                        </label>
+                        <label className="grid gap-1 text-[11px] font-semibold text-slate-200">
+                          Feedback
+                          <input
+                            className="apex-input py-1 px-2 text-xs"
+                            onChange={(e) => setFeedbackInput(e.target.value)}
+                            placeholder="Well done..."
+                            type="text"
+                            value={feedbackInput}
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-end gap-2 text-xs">
+                        <button
+                          className="apex-button-secondary py-1 px-3 text-[10px]"
+                          onClick={() => setGradingSubmissionId(null)}
+                          type="button"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          className="apex-button-primary py-1 px-3 text-[10px]"
+                          disabled={gradingSubmitLoading}
+                          type="submit"
+                        >
+                          {gradingSubmitLoading ? 'Saving...' : 'Save Grade'}
+                        </button>
+                      </div>
+                    </form>
+                  );
+                })()}
               </article>
             );
           })}

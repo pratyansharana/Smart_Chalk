@@ -345,23 +345,32 @@ export function StudentBatchDetailsPage() {
 /* Sub-component: File uploader for test submissions */
 function TestUploader({ test, classId, studentId, studentName }) {
   const [file, setFile] = useState(null);
+  const [studentText, setStudentText] = useState('');
   const { upload, loading, progress } = useFileUpload();
   const [success, setSuccess] = useState(false);
 
   async function handleUpload(e) {
     e.preventDefault();
-    if (!file) return;
+    if (!file && !studentText.trim()) return;
 
     try {
-      const draftId = `${Date.now()}`;
-      const url = await upload(`test_submissions/${draftId}/${file.name}`, file);
+      let fileURL = null;
+      let fileName = null;
+
+      if (file) {
+        const draftId = `${Date.now()}`;
+        fileURL = await upload(`test_submissions/${draftId}/${file.name}`, file);
+        fileName = file.name;
+      }
+
       await submitTestSolution({
         testId: test.id,
         classId,
         studentId,
         studentName,
-        submittedFileURL: url,
-        submittedFileName: file.name,
+        submittedFileURL: fileURL,
+        submittedFileName: fileName,
+        studentText: studentText.trim() || null,
       });
       setSuccess(true);
     } catch (err) {
@@ -378,21 +387,38 @@ function TestUploader({ test, classId, studentId, studentName }) {
   }
 
   return (
-    <form className="flex flex-wrap items-end gap-3" onSubmit={handleUpload}>
-      <label className="grid gap-1.5 text-xs font-semibold text-slate-300 flex-1">
-        Upload Solution File (PDF/Image)
-        <input
-          className="apex-input py-1.5 px-3 text-xs"
-          disabled={loading}
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
-          required
-          type="file"
-        />
-      </label>
-      <button className="apex-button-primary py-1.5 px-4 text-xs" disabled={loading || !file} type="submit">
-        {loading ? `Uploading ${progress}%` : <Upload size={12} />}
-        {loading ? 'Submitting...' : 'Submit solution'}
-      </button>
+    <form className="grid gap-4" onSubmit={handleUpload}>
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="grid gap-1.5 text-xs font-semibold text-slate-300">
+          Upload Solution File (Optional - PDF/Image)
+          <input
+            className="apex-input py-1.5 px-3 text-xs"
+            disabled={loading}
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            type="file"
+          />
+        </label>
+        <label className="grid gap-1.5 text-xs font-semibold text-slate-300">
+          Or Type/Paste Written Answers (Enables AI Grading)
+          <textarea
+            className="apex-input py-1.5 px-3 text-xs min-h-[80px] resize-y"
+            disabled={loading}
+            onChange={(e) => setStudentText(e.target.value)}
+            placeholder="Type your questions answers, steps, or notes here..."
+            value={studentText}
+          />
+        </label>
+      </div>
+      <div className="flex justify-end">
+        <button
+          className="apex-button-primary py-1.5 px-4 text-xs flex items-center gap-1.5"
+          disabled={loading || (!file && !studentText.trim())}
+          type="submit"
+        >
+          {loading ? `Uploading ${progress}%` : <Upload size={12} />}
+          {loading ? 'Submitting...' : 'Submit solution'}
+        </button>
+      </div>
     </form>
   );
 }

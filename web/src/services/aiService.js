@@ -82,3 +82,26 @@ Difficulty Level: ${level}`;
 
   return fetchFromGroq(systemPrompt, userPrompt);
 }
+
+/**
+ * Grades a student's test submission based on test details and student answer text.
+ */
+export async function gradeSubmissionWithAI({ testTitle, testQuestions, maxScore, studentAnswers }) {
+  const systemPrompt = `You are an expert tutor. Grade the student's answers based on the test questions, guidelines, and max score.
+Evaluate each answer logically, calculate a total score, and write highly constructive, encouraging, and detailed feedback.
+Return a JSON object in this EXACT format:
+{
+  "score": 85, // Suggested numerical score out of the maximum score, MUST be a number, less than or equal to the maximum score.
+  "feedback": "Step-by-step breakdown of what was correct, what was incorrect, and suggestions for improvement."
+}`;
+
+  const userPrompt = `Test Title: ${testTitle}
+Maximum Score: ${maxScore}
+Test Questions (Markdown):
+${testQuestions}
+
+Student's Written Answers:
+${studentAnswers || 'No text answers provided.'}`;
+
+  return fetchFromGroq(systemPrompt, userPrompt);
+}
