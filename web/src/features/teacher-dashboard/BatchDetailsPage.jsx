@@ -1513,7 +1513,7 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, teacherId, as
         </div>
 
         {showAIPanel ? (
-          <form className="grid gap-3.5 bg-amber-400/[0.02] border border-amber-400/20 p-4 rounded-xl mb-4" onSubmit={handleAIQuizGenerate}>
+          <form className="grid gap-3.5 bg-amber-400/[0.02] border border-amber-400/20 p-4 rounded-xl mb-4" onSubmit={handleAIGenerate}>
             <div className="flex items-center gap-2">
               <Sparkles className="text-amber-400 animate-pulse" size={16} />
               <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider">AI Assignment Generator</h3>
