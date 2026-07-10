@@ -603,6 +603,7 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
   const [gradeInput, setGradeInput] = useState('');
   const [feedbackInput, setFeedbackInput] = useState('');
   const [gradingSubmitLoading, setGradingSubmitLoading] = useState(false);
+  const [emailModalData, setEmailModalData] = useState(null);
   const [aiGradingLoading, setAiGradingLoading] = useState(false);
   const [aiGradingError, setAiGradingError] = useState(null);
   const [pastedAnswers, setPastedAnswers] = useState('');
@@ -1028,33 +1029,29 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
                                       onClick={() => {
                                         const pEmail = parentEmails[sub.studentId];
                                         const percentage = Math.round((sub.grade / test.maxScore) * 100);
-                                        const subject = encodeURIComponent(`SmartChalk Academic Report - ${sub.studentName} - ${test.title}`);
-                                        const cleanFeedback = sub.feedback || '';
-                                        const displayFeedback = cleanFeedback.length > 600 
-                                          ? cleanFeedback.substring(0, 600) + '... (Detailed review available on dashboard)' 
-                                          : cleanFeedback;
-
-                                        const body = encodeURIComponent(
-                                          `Dear Parent,\n\n` +
-                                          `I hope this email finds you well.\n\n` +
-                                          `This is a professional academic update for your child, ${sub.studentName}, regarding their performance in our SmartChalk live class (${batchTitle}).\n\n` +
-                                          `We recently completed and evaluated the test: "${test.title}".\n\n` +
-                                          `Here is a summary of their performance:\n` +
-                                          `- Graded Score: ${sub.grade} / ${test.maxScore} marks (${percentage}%)\n` +
-                                          `- Performance Status: Evaluated & Graded\n\n` +
-                                          `Teacher's Feedback & Comments:\n` +
-                                          `--------------------------------------------------\n` +
-                                          `"${displayFeedback}"\n` +
-                                          `--------------------------------------------------\n\n` +
-                                          `If you would like to view the complete details of the test paper, including the original questions and your child's submitted answers, you can access the SmartChalk Student Dashboard using your secure credentials.\n\n` +
-                                          `Thank you for your continued support in your child's learning journey. Please feel free to reply directly to this email if you have any questions or would like to discuss their progress in more detail.\n\n` +
-                                          `Warm regards,\n` +
-                                          `SmartChalk Tutoring`
-                                        );
-                                        window.location.href = `mailto:${pEmail}?subject=${subject}&body=${body}`;
+                                        setEmailModalData({
+                                          to: pEmail,
+                                          subject: `SmartChalk Academic Report - ${sub.studentName} - ${test.title}`,
+                                          body: `Dear Parent,\n\n` +
+                                                `I hope this email finds you well.\n\n` +
+                                                `This is a professional academic update for your child, ${sub.studentName}, regarding their performance in our SmartChalk live class (${batchTitle}).\n\n` +
+                                                `We recently completed and evaluated the test: "${test.title}".\n\n` +
+                                                `Here is a summary of their performance:\n` +
+                                                `- Graded Score: ${sub.grade} / ${test.maxScore} marks (${percentage}%)\n` +
+                                                `- Performance Status: Evaluated & Graded\n\n` +
+                                                `Teacher's Feedback & Comments:\n` +
+                                                `--------------------------------------------------\n` +
+                                                `"${sub.feedback || ''}"\n` +
+                                                `--------------------------------------------------\n\n` +
+                                                `If you would like to view the complete details of the test paper, including the original questions and your child's submitted answers, you can access the SmartChalk Student Dashboard using your secure credentials.\n\n` +
+                                                `Thank you for your continued support in your child's learning journey. Please feel free to reply directly to this email if you have any questions or would like to discuss their progress in more detail.\n\n` +
+                                                `Warm regards,\n` +
+                                                `SmartChalk Tutoring`,
+                                          copied: false
+                                        });
                                       }}
                                       type="button"
-                                      title="Send professional email report to parents"
+                                      title="Share professional email report with parents"
                                     >
                                       <Mail size={10} />
                                       Email
@@ -1188,6 +1185,96 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
           )}
         </div>
       </section>
+
+      {/* Email Modal Overlay */}
+      {emailModalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-lg w-full shadow-2xl relative">
+            <h3 className="font-heading text-lg font-bold text-sky-400 flex items-center gap-2 mb-2">
+              <Mail size={20} />
+              Share Academic Report via Email
+            </h3>
+            
+            <div className="grid gap-3 text-xs mt-3">
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">To (Parent's Email):</label>
+                <input
+                  readOnly
+                  className="w-full bg-white/[0.04] border border-white/10 p-2.5 rounded-lg text-slate-300 font-medium font-sans"
+                  value={emailModalData.to}
+                />
+              </div>
+              
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Subject:</label>
+                <input
+                  readOnly
+                  className="w-full bg-white/[0.04] border border-white/10 p-2.5 rounded-lg text-slate-300 font-medium font-sans"
+                  value={emailModalData.subject}
+                />
+              </div>
+              
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Email Body Draft:</label>
+                <textarea
+                  readOnly
+                  className="w-full bg-white/[0.04] border border-white/10 p-3 rounded-lg text-slate-300 leading-relaxed font-sans resize-none h-48 select-all"
+                  value={emailModalData.body}
+                />
+              </div>
+            </div>
+            
+            <div className="flex flex-wrap gap-3 justify-end mt-6">
+              <button
+                className="apex-button-secondary py-2 px-4 text-xs font-semibold hover:bg-white/10"
+                onClick={() => setEmailModalData(null)}
+                type="button"
+              >
+                Close
+              </button>
+              
+              <button
+                className="apex-button-secondary bg-sky-500/10 border-sky-500/20 text-sky-300 hover:bg-sky-500/20 py-2 px-4 text-xs font-semibold flex items-center gap-1.5"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(emailModalData.body);
+                    setEmailModalData(prev => ({ ...prev, copied: true }));
+                    setTimeout(() => {
+                      setEmailModalData(prev => prev ? { ...prev, copied: false } : null);
+                    }, 2000);
+                  } catch (err) {
+                    console.error('Failed to copy text:', err);
+                  }
+                }}
+                type="button"
+              >
+                {emailModalData.copied ? (
+                  <>
+                    <Check size={14} className="text-emerald-400" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy size={14} />
+                    Copy Draft Content
+                  </>
+                )}
+              </button>
+              
+              <a
+                className="apex-button-primary bg-sky-500 hover:bg-sky-600 text-slate-900 py-2 px-4 text-xs font-bold flex items-center gap-1.5 decoration-none"
+                href={`mailto:${emailModalData.to}?subject=${encodeURIComponent(emailModalData.subject)}&body=${encodeURIComponent(emailModalData.body)}`}
+                onClick={() => {
+                  setTimeout(() => setEmailModalData(null), 1000);
+                }}
+              >
+                <Mail size={14} />
+                Send via Mail Client
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
