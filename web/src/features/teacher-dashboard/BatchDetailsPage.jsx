@@ -301,8 +301,10 @@ export function BatchDetailsPage() {
                           defaultValue={parentEmail}
                           onBlur={async (e) => {
                             const newEmail = e.target.value.trim();
+                            console.log('[Roster] Parent email input changed/blurred:', { studentId, oldEmail: parentEmail, newEmail });
                             if (newEmail !== parentEmail) {
                               try {
+                                console.log('[Roster] Sending parent email update to Firestore:', { batchId: batch.id, studentId, newEmail });
                                 const currentEmails = batch.parentEmails || {};
                                 await updateClassDocument(batch.id, {
                                   parentEmails: {
@@ -310,8 +312,9 @@ export function BatchDetailsPage() {
                                     [studentId]: newEmail
                                   }
                                 });
+                                console.log('[Roster] Parent email updated successfully in Firestore!');
                               } catch (err) {
-                                console.error('Failed to update parent email:', err);
+                                console.error('[Roster] Failed to update parent email in Firestore:', err);
                               }
                             }
                           }}
@@ -1029,6 +1032,14 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
                                       onClick={() => {
                                         const pEmail = parentEmails[sub.studentId];
                                         const percentage = Math.round((sub.grade / test.maxScore) * 100);
+                                        console.log('[Email Action] Triggered email preview modal:', {
+                                          studentId: sub.studentId,
+                                          studentName: sub.studentName,
+                                          parentEmail: pEmail,
+                                          testTitle: test.title,
+                                          grade: sub.grade,
+                                          percentage
+                                        });
                                         setEmailModalData({
                                           to: pEmail,
                                           subject: `SmartChalk Academic Report - ${sub.studentName} - ${test.title}`,
@@ -1236,14 +1247,16 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
               <button
                 className="apex-button-secondary bg-sky-500/10 border-sky-500/20 text-sky-300 hover:bg-sky-500/20 py-2 px-4 text-xs font-semibold flex items-center gap-1.5"
                 onClick={async () => {
+                  console.log('[Email Action] Copying email draft content to clipboard...', { bodyTextLength: emailModalData.body.length });
                   try {
                     await navigator.clipboard.writeText(emailModalData.body);
+                    console.log('[Email Action] Clipboard copy success!');
                     setEmailModalData(prev => ({ ...prev, copied: true }));
                     setTimeout(() => {
                       setEmailModalData(prev => prev ? { ...prev, copied: false } : null);
                     }, 2000);
                   } catch (err) {
-                    console.error('Failed to copy text:', err);
+                    console.error('[Email Action] Clipboard copy failed:', err);
                   }
                 }}
                 type="button"
@@ -1265,6 +1278,11 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
                 className="apex-button-primary bg-sky-500 hover:bg-sky-600 text-slate-900 py-2 px-4 text-xs font-bold flex items-center gap-1.5 decoration-none"
                 href={`mailto:${emailModalData.to}?subject=${encodeURIComponent(emailModalData.subject)}&body=${encodeURIComponent(emailModalData.body)}`}
                 onClick={() => {
+                  console.log('[Email Action] Navigating to mailto URL:', {
+                    to: emailModalData.to,
+                    subjectLength: emailModalData.subject.length,
+                    bodyLength: emailModalData.body.length
+                  });
                   setTimeout(() => setEmailModalData(null), 1000);
                 }}
               >
