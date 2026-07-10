@@ -475,7 +475,28 @@ function QuizRunner({ quiz, studentId, studentName, batchId, onClose }) {
   const [timeLeft, setTimeLeft] = useState(30);
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
+  if (!quiz) {
+    return (
+      <div className="flex justify-center p-6 text-slate-400 text-sm">
+        <Loader2 className="animate-spin text-amber-400 mr-2" size={18} />
+        Loading quiz content...
+      </div>
+    );
+  }
+
   const questions = quiz.questions || [];
+
+  if (questions.length === 0) {
+    return (
+      <div className="text-center p-6 text-slate-400 text-sm">
+        <p>This quiz has no questions published yet.</p>
+        <button className="apex-button-secondary mt-4 mx-auto py-1.5 px-4 text-xs" onClick={onClose} type="button">
+          Go Back
+        </button>
+      </div>
+    );
+  }
+
   const currentQuestion = questions[currentIdx];
 
   // Reset timer on question change
