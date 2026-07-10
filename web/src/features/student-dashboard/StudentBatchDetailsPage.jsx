@@ -290,13 +290,33 @@ export function StudentBatchDetailsPage() {
                             </div>
 
                             {submission.status === 'graded' && (
-                              <button
-                                className="apex-button-secondary bg-amber-500/10 border-amber-500/20 text-amber-300 hover:bg-amber-500/20 py-1.5 px-3 text-xs flex items-center gap-1.5"
-                                onClick={() => handlePrintReport(test, submission, studentName, batch?.title || batch?.name)}
-                                type="button"
-                              >
-                                🖨️ Save PDF / Print Report
-                              </button>
+                              <div className="flex gap-2">
+                                <button
+                                  className="apex-button-secondary bg-amber-500/10 border-amber-500/20 text-amber-300 hover:bg-amber-500/20 py-1.5 px-3 text-xs flex items-center gap-1.5"
+                                  onClick={() => handlePrintReport(test, submission, studentName, batch?.title || batch?.name)}
+                                  type="button"
+                                >
+                                  🖨️ Save PDF / Print
+                                </button>
+                                <button
+                                  className="apex-button-secondary bg-emerald-500/10 border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20 py-1.5 px-3 text-xs flex items-center gap-1.5"
+                                  onClick={() => {
+                                    const text = encodeURIComponent(
+                                      `📚 *SmartChalk Academic Report* 📚\n\n` +
+                                      `*Student Name:* ${studentName}\n` +
+                                      `*Batch/Subject:* ${batch?.title || batch?.name || ''}\n` +
+                                      `*Test:* ${test.title}\n` +
+                                      `*Score:* *${submission.grade} / ${test.maxScore} marks*\n\n` +
+                                      `*Teacher's Feedback:*\n"${submission.feedback}"\n\n` +
+                                      `Log in to the SmartChalk dashboard to download the full PDF report with questions, answers, and teacher remarks.`
+                                    );
+                                    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+                                  }}
+                                  type="button"
+                                >
+                                  📱 Send to WhatsApp
+                                </button>
+                              </div>
                             )}
                           </div>
 

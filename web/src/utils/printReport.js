@@ -116,9 +116,17 @@ export function handlePrintReport(test, submission, sName, batchTitle) {
             padding-bottom: 8px;
             color: #111;
           }
+          .action-bar {
+            text-align: center;
+            margin-top: 40px;
+            background: #fafafa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px dashed #ccc;
+          }
           @media print {
             body { padding: 20px; }
-            button { display: none; }
+            .action-bar { display: none; }
             .section { page-break-inside: avoid; }
           }
         </style>
@@ -142,11 +150,21 @@ export function handlePrintReport(test, submission, sName, batchTitle) {
         ${answersHtml}
         ${feedbackHtml}
 
-        <div style="margin-top: 50px; text-align: center;">
-          <button onclick="window.print()" style="background: #d97706; color: white; border: none; padding: 10px 20px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer;">
-            Save as PDF / Print Report
+        <div class="action-bar">
+          <p style="margin: 0 0 10px 0; font-size: 12px; color: #666;">Choose <strong>"Save as PDF"</strong> in your browser's print Destination list to download this report.</p>
+          <button onclick="window.print()" style="background: #d97706; color: white; border: none; padding: 10px 20px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: background 0.2s;">
+            🖨️ Save as PDF / Print Report
           </button>
         </div>
+
+        <script>
+          // Auto-trigger print view after a short delay to allow images/fonts to render
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 600);
+          }
+        </script>
       </body>
     </html>
   `);

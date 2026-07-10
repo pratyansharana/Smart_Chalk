@@ -954,16 +954,36 @@ function TestPanel({ batchId, batchTitle, teacherId, tests, submissions }) {
                               )}
 
                               {isGraded ? (
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5">
                                   <span className="font-bold text-emerald-400 px-1">
                                     {sub.grade} / {test.maxScore}
                                   </span>
                                   <button
-                                    className="apex-button-secondary py-0.5 px-2 text-[10px] hover:bg-white/10 text-amber-300 border-amber-400/20"
+                                    className="apex-button-secondary py-0.5 px-1.5 text-[10px] hover:bg-white/10 text-amber-300 border-amber-400/20"
                                     onClick={() => handlePrintReport(test, sub, sub.studentName, batchTitle)}
                                     type="button"
+                                    title="Save as PDF / Print"
                                   >
                                     🖨️ PDF
+                                  </button>
+                                  <button
+                                    className="apex-button-secondary py-0.5 px-1.5 text-[10px] hover:bg-white/10 text-emerald-300 border-emerald-400/20"
+                                    onClick={() => {
+                                      const text = encodeURIComponent(
+                                        `📚 *SmartChalk Academic Report* 📚\n\n` +
+                                        `*Student Name:* ${sub.studentName}\n` +
+                                        `*Batch/Subject:* ${batchTitle}\n` +
+                                        `*Test:* ${test.title}\n` +
+                                        `*Score:* *${sub.grade} / ${test.maxScore} marks*\n\n` +
+                                        `*Teacher's Feedback:*\n"${sub.feedback}"\n\n` +
+                                        `Log in to your SmartChalk account to download the full questions & answers PDF report.`
+                                      );
+                                      window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+                                    }}
+                                    type="button"
+                                    title="Send WhatsApp update to parents"
+                                  >
+                                    📱 Send
                                   </button>
                                 </div>
                               ) : (
