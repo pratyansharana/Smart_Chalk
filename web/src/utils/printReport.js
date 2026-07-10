@@ -4,32 +4,61 @@ export function handlePrintReport(test, submission, sName, batchTitle) {
     alert('Please allow popups to save or print the PDF report.');
     return;
   }
+
+  // Detect image file submission
+  const lowerName = (submission.submittedFileName || '').toLowerCase();
+  const isImg = lowerName.endsWith('.png') || 
+                lowerName.endsWith('.jpg') || 
+                lowerName.endsWith('.jpeg') || 
+                lowerName.endsWith('.webp') ||
+                lowerName.endsWith('.gif') ||
+                (submission.submittedFileURL && submission.submittedFileURL.includes('image'));
   
   const questionsHtml = test.testContent 
     ? `<div class="section">
          <h3>1. Test Questions Paper</h3>
-         <pre style="white-space: pre-wrap; font-family: monospace; font-size: 13px; line-height: 1.5; background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #ddd;">${test.testContent}</pre>
+         <pre style="white-space: pre-wrap; font-family: monospace; font-size: 13px; line-height: 1.5; background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #ddd; color: #334155;">${test.testContent}</pre>
        </div>`
     : '';
 
-  const answersHtml = submission.studentText
-    ? `<div class="section">
-         <h3>2. Student's Written Answers</h3>
-         <pre style="white-space: pre-wrap; font-family: monospace; font-size: 13px; line-height: 1.5; background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #ddd;">${submission.studentText}</pre>
-       </div>`
-    : (submission.submittedFileName 
-        ? `<div class="section">
-             <h3>2. Student's Submission</h3>
-             <p>Submitted file: <strong>${submission.submittedFileName}</strong></p>
-           </div>` 
-        : '');
+  let answersHtml = '';
+  if (submission.studentText || submission.submittedFileURL) {
+    answersHtml = `
+      <div class="section">
+        <h3>2. Student's Answer Submission</h3>
+        
+        ${submission.studentText 
+          ? `<div style="margin-bottom: 15px;">
+               <strong style="font-size: 12px; color: #475569; display: block; margin-bottom: 5px;">Written Answers Text:</strong>
+               <pre style="white-space: pre-wrap; font-family: monospace; font-size: 13px; line-height: 1.5; background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #ddd; color: #334155; margin: 0;">${submission.studentText}</pre>
+             </div>`
+          : ''
+        }
+
+        ${submission.submittedFileURL
+          ? (isImg 
+              ? `<div style="margin-top: 15px;">
+                   <strong style="font-size: 12px; color: #475569; display: block; margin-bottom: 5px;">Uploaded Work Image:</strong>
+                   <div style="border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; background: #f8fafc; text-align: center;">
+                     <img src="${submission.submittedFileURL}" style="max-width: 100%; max-height: 800px; border-radius: 6px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);" />
+                   </div>
+                 </div>`
+              : `<div style="margin-top: 15px;">
+                   <strong style="font-size: 12px; color: #475569; display: block; margin-bottom: 5px;">Uploaded Attachment File:</strong>
+                   <p style="margin: 0; font-size: 13px;">File Name: <strong>${submission.submittedFileName || 'solution-file'}</strong></p>
+                   <p style="margin: 5px 0 0 0; font-size: 12px; color: #d97706;"><em>(PDF/document files are attached to the digital classroom record. Open in dashboard to view.)</em></p>
+                 </div>`
+            )
+          : ''
+        }
+      </div>
+    `;
+  }
 
   const feedbackHtml = submission.feedback
     ? `<div class="section">
-         <h3>3. Teacher's Grade & Conversation Feedback</h3>
-         <div style="background: #fdf6e3; padding: 15px; border-radius: 6px; border: 1px solid #f5e0b3; font-size: 14px; line-height: 1.6; color: #5c3e00; font-family: inherit;">
-           ${submission.feedback.replace(/\n/g, '<br/>')}
-         </div>
+         <h3>3. Teacher's Grade & Conversational Feedback</h3>
+         <div style="background: #fffdf5; padding: 20px; border-radius: 8px; border: 1px solid #fef3c7; font-size: 14px; line-height: 1.7; color: #1e293b; white-space: pre-wrap; font-family: inherit; box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.02);"><b>Teacher Comments:</b>\n\n${submission.feedback}</div>
        </div>`
     : '';
 
@@ -79,6 +108,7 @@ export function handlePrintReport(test, submission, sName, batchTitle) {
           }
           .section {
             margin-top: 30px;
+            page-break-inside: avoid;
           }
           h3 {
             font-size: 18px;
@@ -89,6 +119,7 @@ export function handlePrintReport(test, submission, sName, batchTitle) {
           @media print {
             body { padding: 20px; }
             button { display: none; }
+            .section { page-break-inside: avoid; }
           }
         </style>
       </head>
