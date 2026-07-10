@@ -748,6 +748,12 @@ function TestPanel({ batchId, teacherId, tests, submissions }) {
           </form>
         ) : (
           <form className="grid gap-4" onSubmit={handleAddTest}>
+            {testContent && (
+              <div className="bg-purple-500/10 border border-purple-500/20 p-3.5 rounded-xl flex flex-col gap-1 text-[11px] text-purple-300 leading-normal">
+                <span className="font-bold uppercase tracking-wider flex items-center gap-1">✨ AI-Generated Test Content Loaded</span>
+                <span>We populated the title, description, max score, and markdown test paper content. Please review, edit if needed, and set the deadline below.</span>
+              </div>
+            )}
             <label className="grid gap-1 text-sm font-semibold text-slate-200">
               Test Title
               <input
@@ -1152,6 +1158,12 @@ function QuizPanel({ batchId, teacherId, quizzes }) {
           </form>
         ) : (
           <form className="grid gap-4" onSubmit={handlePublishQuiz}>
+            {questions.length > 0 && (
+              <div className="bg-purple-500/10 border border-purple-500/20 p-3.5 rounded-xl flex flex-col gap-1 text-[11px] text-purple-300 leading-normal">
+                <span className="font-bold uppercase tracking-wider flex items-center gap-1">✨ AI-Generated Quiz Loaded ({questions.length} questions)</span>
+                <span>We pre-filled the quiz title and the question list. Review them, add/edit items if needed, and click Publish below.</span>
+              </div>
+            )}
             <label className="grid gap-1 text-sm font-semibold text-slate-200">
               Quiz Title
               <input

@@ -473,6 +473,7 @@ function QuizRunner({ quiz, studentId, studentName, batchId, onClose }) {
   const [submitting, setSubmitting] = useState(false);
   const [quizFinished, setQuizFinished] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   const questions = quiz.questions || [];
   const currentQuestion = questions[currentIdx];
@@ -483,14 +484,15 @@ function QuizRunner({ quiz, studentId, studentName, batchId, onClose }) {
     setTimeLeft(30);
   }, [currentIdx, quizFinished]);
 
-  // Tick down timer every second
+  // Tick down timer every second (only if not submitted and quiz not finished)
   useEffect(() => {
-    if (quizFinished) return;
+    if (quizFinished || hasSubmitted) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          handleNext(true);
+          // If time expires, auto-check as incorrect/skipped
+          setHasSubmitted(true);
           return 30;
         }
         return prev - 1;
@@ -498,28 +500,31 @@ function QuizRunner({ quiz, studentId, studentName, batchId, onClose }) {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [currentIdx, quizFinished, selectedOpt, correctCount]);
+  }, [currentIdx, quizFinished, hasSubmitted]);
 
-  async function handleNext(isTimeout = false) {
-    const isCorrect = !isTimeout && selectedOpt === currentQuestion?.correctOptionIndex;
-    if (isCorrect) {
+  function handleCheckAnswer() {
+    if (selectedOpt === null) return;
+    setHasSubmitted(true);
+    if (selectedOpt === currentQuestion?.correctOptionIndex) {
       setCorrectCount((c) => c + 1);
     }
+  }
 
-    const finalCorrectCount = isCorrect ? correctCount + 1 : correctCount;
-
+  async function handleNextQuestion() {
     if (currentIdx < questions.length - 1) {
       setCurrentIdx((prev) => prev + 1);
       setSelectedOpt(null);
+      setHasSubmitted(false);
     } else {
       setSubmitting(true);
       try {
+        const finalScore = selectedOpt === currentQuestion?.correctOptionIndex ? correctCount : correctCount;
         await submitQuizScorecard({
           quizId: quiz.id,
           classId: batchId,
           studentId,
           studentName,
-          score: finalCorrectCount,
+          score: finalScore,
           totalQuestions: questions.length,
         });
         setQuizFinished(true);
@@ -565,7 +570,7 @@ function QuizRunner({ quiz, studentId, studentName, batchId, onClose }) {
           Question {currentIdx + 1} of {questions.length}
         </span>
         <span className="text-xs font-bold text-red-400 bg-red-400/10 px-2 py-0.5 rounded-md animate-pulse">
-          Time Remaining: {timeLeft}s
+          {hasSubmitted ? 'Paused' : `Time Remaining: ${timeLeft}s`}
         </span>
         <button className="text-xs text-slate-400 hover:text-white" onClick={onClose} type="button">
           Quit Quiz
@@ -579,13 +584,26 @@ function QuizRunner({ quiz, studentId, studentName, batchId, onClose }) {
       <div className="grid gap-3">
         {currentQuestion?.options.map((option, index) => {
           const isSelected = selectedOpt === index;
+          const isCorrectAnswer = index === currentQuestion?.correctOptionIndex;
+          const isMyWrongAnswer = isSelected && selectedOpt !== currentQuestion?.correctOptionIndex;
+
+          let btnClass = 'bg-white/[0.01] border-white/5 text-slate-300 hover:bg-white/[0.03] hover:text-white';
+          if (hasSubmitted) {
+            if (isCorrectAnswer) {
+              btnClass = 'bg-emerald-500/15 border-emerald-500 text-emerald-400 font-bold';
+            } else if (isMyWrongAnswer) {
+              btnClass = 'bg-red-500/15 border-red-500 text-red-400 font-bold';
+            } else {
+              btnClass = 'opacity-40 border-white/5 text-slate-500';
+            }
+          } else if (isSelected) {
+            btnClass = 'bg-amber-400/20 border-amber-300 text-amber-300';
+          }
+
           return (
             <button
-              className={`w-full py-3 px-4 rounded-xl text-left font-semibold text-sm transition-all border ${
-                isSelected
-                  ? 'bg-amber-400/20 border-amber-300 text-amber-300'
-                  : 'bg-white/[0.01] border-white/5 text-slate-300 hover:bg-white/[0.03] hover:text-white'
-              }`}
+              className={`w-full py-3 px-4 rounded-xl text-left font-semibold text-sm transition-all border ${btnClass}`}
+              disabled={hasSubmitted}
               key={index}
               onClick={() => setSelectedOpt(index)}
               type="button"
@@ -596,21 +614,50 @@ function QuizRunner({ quiz, studentId, studentName, batchId, onClose }) {
         })}
       </div>
 
-      <div className="mt-8 border-t border-white/5 pt-4 flex justify-end">
-        <button
-          className="apex-button-primary py-2 px-6 flex items-center gap-1"
-          disabled={selectedOpt === null || submitting}
-          onClick={handleNext}
-          type="button"
-        >
-          {submitting ? (
-            <Loader2 className="animate-spin" size={16} />
-          ) : currentIdx === questions.length - 1 ? (
-            'Finish & Submit'
+      {hasSubmitted && (
+        <div className="mt-4">
+          {selectedOpt === currentQuestion?.correctOptionIndex ? (
+            <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-400 font-bold flex items-center gap-2">
+              ✓ Correct Answer! Well done!
+            </div>
+          ) : selectedOpt === null ? (
+            <div className="p-3.5 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400 font-bold flex items-center gap-2">
+              ✗ Time expired! The correct answer was option {currentQuestion?.correctOptionIndex + 1}.
+            </div>
           ) : (
-            'Next Question'
+            <div className="p-3.5 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400 font-bold flex items-center gap-2">
+              ✗ Incorrect! The correct answer was option {currentQuestion?.correctOptionIndex + 1}.
+            </div>
           )}
-        </button>
+        </div>
+      )}
+
+      <div className="mt-8 border-t border-white/5 pt-4 flex justify-end">
+        {!hasSubmitted ? (
+          <button
+            className="apex-button-primary py-2 px-6 flex items-center gap-1"
+            disabled={selectedOpt === null}
+            onClick={handleCheckAnswer}
+            type="button"
+          >
+            Check Answer
+          </button>
+        ) : (
+          <button
+            className="apex-button-primary py-2 px-6 flex items-center gap-1"
+            disabled={submitting}
+            onClick={handleNextQuestion}
+            type="button"
+          >
+            {submitting ? (
+              <Loader2 className="animate-spin" size={16} />
+            ) : currentIdx === questions.length - 1 ? (
+              'Finish & Submit'
+            ) : (
+              'Next Question'
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { BookOpen, ClipboardList, Trophy, Loader2, Download } from 'lucide-react';
+import { BookOpen, ClipboardList, Trophy, Loader2, Download, FolderOpen, FileText } from 'lucide-react';
 import { useAssignments } from '../../hooks/useAssignments';
 import { useAuth } from '../../hooks/useAuth';
 import { useClasses } from '../../hooks/useClasses';
@@ -54,7 +54,11 @@ export function StudentDashboardPage() {
           </h2>
           {enrolledVault.loading && <Loader2 className="animate-spin text-amber-400" size={16} />}
           {!enrolledVault.loading && enrolledVault.data.length === 0 && (
-            <p className="text-sm text-slate-400">No vault resources uploaded yet.</p>
+            <div className="text-center py-6 border border-dashed border-white/10 rounded-xl bg-white/[0.005]">
+              <FolderOpen className="text-slate-600 mx-auto mb-2" size={24} />
+              <p className="text-xs text-slate-400 font-semibold">No vault resources uploaded</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">Your teacher will upload study materials here.</p>
+            </div>
           )}
           <div className="grid gap-3">
             {enrolledVault.data.slice(0, 3).map((item) => {
@@ -90,7 +94,11 @@ export function StudentDashboardPage() {
           </h2>
           {enrolledTests.loading && <Loader2 className="animate-spin text-amber-400" size={16} />}
           {!enrolledTests.loading && enrolledTests.data.length === 0 && (
-            <p className="text-sm text-slate-400">No active tests scheduled.</p>
+            <div className="text-center py-6 border border-dashed border-white/10 rounded-xl bg-white/[0.005]">
+              <FileText className="text-slate-600 mx-auto mb-2" size={24} />
+              <p className="text-xs text-slate-400 font-semibold">No active tests assigned</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">No syllabus-compliant tests scheduled right now.</p>
+            </div>
           )}
           <div className="grid gap-3">
             {enrolledTests.data.slice(0, 3).map((test) => {
@@ -122,7 +130,11 @@ export function StudentDashboardPage() {
           </h2>
           {enrolledQuizzes.loading && <Loader2 className="animate-spin text-amber-400" size={16} />}
           {!enrolledQuizzes.loading && enrolledQuizzes.data.length === 0 && (
-            <p className="text-sm text-slate-400">No quizzes published yet.</p>
+            <div className="text-center py-6 border border-dashed border-white/10 rounded-xl bg-white/[0.005]">
+              <Trophy className="text-slate-600 mx-auto mb-2" size={24} />
+              <p className="text-xs text-slate-400 font-semibold">No active quizzes published</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">Stay tuned for real-time quiz competitions!</p>
+            </div>
           )}
           <div className="grid gap-3">
             {enrolledQuizzes.data.slice(0, 3).map((quiz) => {
