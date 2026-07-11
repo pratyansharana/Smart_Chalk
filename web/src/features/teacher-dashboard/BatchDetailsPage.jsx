@@ -1017,7 +1017,8 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, parentPhones = {}, 
       const parentPhone = sub && parentPhones[sub.studentId];
       console.log('[Grading Debug] Test WhatsApp check:', {
         studentId: sub?.studentId,
-        availablePhones: parentPhones,
+        availablePhonesKeys: Object.keys(parentPhones || {}),
+        availablePhonesRaw: JSON.stringify(parentPhones || {}),
         resolvedPhone: parentPhone,
         hasTrigger: !!triggerWhatsAppSend,
         hasTest: !!test
@@ -1799,7 +1800,8 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones 
       const parentPhone = sub && parentPhones[sub.studentId];
       console.log('[Grading Debug] Assignment WhatsApp check:', {
         studentId: sub?.studentId,
-        availablePhones: parentPhones,
+        availablePhonesKeys: Object.keys(parentPhones || {}),
+        availablePhonesRaw: JSON.stringify(parentPhones || {}),
         resolvedPhone: parentPhone,
         hasTrigger: !!triggerWhatsAppSend,
         hasAssignment: !!assignment
