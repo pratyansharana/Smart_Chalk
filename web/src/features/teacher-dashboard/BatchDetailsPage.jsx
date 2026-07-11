@@ -1275,15 +1275,15 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, parentPhones = {}, 
                           className="bg-white/[0.01] border border-white/5 p-3 rounded-xl text-xs grid gap-2"
                           key={sub.id}
                         >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="truncate flex-1">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
+                            <div className="truncate flex-1 w-full">
                               <span className="font-bold text-slate-200 block truncate">{sub.studentName}</span>
                               <span className="text-[10px] text-slate-500 block truncate">
                                 {sub.submittedFileName || 'No file uploaded'}
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end flex-shrink-0">
                               {sub.submittedFileURL && (
                                 <a
                                   className="apex-button-secondary py-0.5 px-2 text-[10px] hover:bg-white/10"
@@ -1296,7 +1296,7 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, parentPhones = {}, 
                               )}
 
                               {isGraded ? (
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex flex-wrap items-center gap-1.5">
                                   <span className="font-bold text-emerald-400 px-1">
                                     {sub.grade} / {test.maxScore}
                                   </span>
@@ -2104,8 +2104,8 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones 
 
                         return (
                           <div className="bg-white/[0.02] border border-white/5 p-3 rounded-xl flex flex-col gap-3" key={sub.id}>
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                              <div>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
+                              <div className="truncate flex-1 w-full">
                                 <span className="font-bold text-slate-200 block truncate">{sub.studentName}</span>
                                 <span className="text-[10px] text-slate-400 mt-0.5 block">
                                   File:{' '}
@@ -2124,8 +2124,9 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones 
                                 </span>
                               </div>
 
-                              {isGraded ? (
-                                <div className="flex items-center gap-1.5">
+                              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end flex-shrink-0">
+                                {isGraded ? (
+                                  <div className="flex flex-wrap items-center gap-1.5">
                                   <span className="font-bold text-emerald-400 px-1">
                                     {sub.grade} / {assignment.maxScore}
                                   </span>
@@ -2225,6 +2226,7 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones 
                                 </button>
                               )}
                             </div>
+                          </div>
 
                             {sub.studentText && (
                               <div className="mt-1 bg-white/[0.02] border border-white/5 p-2.5 rounded-lg">

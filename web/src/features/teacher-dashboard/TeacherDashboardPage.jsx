@@ -40,8 +40,12 @@ export function TeacherDashboardPage() {
 
       {/* Main Workspace Split */}
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_1fr] lg:items-start">
-        <ScheduleManager classes={classes.data} students={students.data} teacherId={teacherId} />
-        <LeadsTable teacherId={teacherId} />
+        <div className="min-w-0">
+          <ScheduleManager classes={classes.data} students={students.data} teacherId={teacherId} />
+        </div>
+        <div className="min-w-0">
+          <LeadsTable teacherId={teacherId} />
+        </div>
       </div>
     </main>
   );
