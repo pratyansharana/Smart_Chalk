@@ -1,7 +1,7 @@
 const faqs = [
-  ['Which classes do you cover?', 'SmartChalk currently provides premium, subject-specific learning plans exclusively for Classes 4 to 10.'],
-  ['How do parents track progress?', 'Transparency is our guarantee. Parents get role-based access to our platform, providing complete visibility into assignment completion, class performance, and grade improvements.'],
-  ['Are the tech bootcamps suitable for beginners?', 'Absolutely. Our Python and AI summer courses are designed from the ground up for absolute beginners, focusing on making complex concepts accessible and fun.'],
+  ['Which classes do you cover?', 'We provide premium live tutoring for Classes 4 through 10 (CBSE, ICSE, and British/IB curriculums).'],
+  ['How do parents track progress?', 'No follow-up required. You receive automated point-wise email notifications the moment we grade any test or assignment, plus 24/7 portal access.'],
+  ['Are tech bootcamps suitable for beginners?', 'Yes. Our short-term Python coding and AI prompt engineering bootcamps require zero previous programming experience.'],
 ];
 
 export function FAQ() {

@@ -20,15 +20,15 @@ export function Hero() {
       )}
       <div className="mx-auto w-full max-w-7xl lg:col-span-2 lg:grid lg:grid-cols-[1fr_0.92fr] lg:items-center">
         <div className="glass-card max-w-3xl p-6 sm:p-8 lg:p-10">
-          <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Premium dark glass tutoring</p>
-          <h1 className="mt-4 font-heading text-5xl font-bold leading-none text-white sm:text-6xl lg:text-7xl">
-            Precision Tutoring for Ambitious Learners in the UAE.
+          <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Premium Math & Science Tutoring</p>
+          <h1 className="mt-4 font-heading text-4xl font-bold leading-none text-white sm:text-5xl lg:text-6xl">
+            Syllabus-Aligned Tutoring with Zero Parent Oversight Hassle.
           </h1>
-          <p className="mt-6 max-w-2xl text-base leading-relaxed text-slate-300">
-            Future-proof your child’s academic journey. SmartChalk blends world-class live instruction from India with strict syllabus compliance, future-ready tech skills (AI & Python), and a 100% transparent parent-tracking platform for Classes 4 through 10.
+          <p className="mt-6 max-w-2xl text-base leading-relaxed text-slate-300 font-sans">
+            We deliver highly rigorous live math and science classes for <strong>Classes 4 to 10</strong>. You get automated, point-wise progress reports sent straight to your email every time we grade a test—no constant follow-ups required.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <a className="apex-button-primary" href="#enquiry">Book a Free Trial Conversation</a>
+            <a className="apex-button-primary" href="#enquiry">Book a Free Trial Session</a>
             <Link className="apex-button-secondary" to={ROUTES.LOGIN}>Parent/Student Login</Link>
           </div>
         </div>
