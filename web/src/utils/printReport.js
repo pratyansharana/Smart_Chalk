@@ -1,4 +1,4 @@
-export function handlePrintReport(test, submission, sName, batchTitle) {
+export function handlePrintReport(test, submission, sName, batchTitle, parentEmail = null) {
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     alert('Please allow popups to save or print the PDF report.');
@@ -155,6 +155,40 @@ export function handlePrintReport(test, submission, sName, batchTitle) {
           <button onclick="window.print()" style="background: #d97706; color: white; border: none; padding: 10px 20px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: background 0.2s;">
             🖨️ Save as PDF / Print Report
           </button>
+          
+          ${(() => {
+            if (!parentEmail) return '';
+            const percentage = Math.round((submission.grade / test.maxScore) * 100);
+            const emailSubject = encodeURIComponent(`SmartChalk Academic Report - ${sName} - ${test.title}`);
+            const emailBodyText = `Dear Parent,\n\n` +
+              `I hope this email finds you well.\n\n` +
+              `This is a professional academic update for your child, ${sName}, regarding their performance in our SmartChalk live class (${batchTitle}).\n\n` +
+              `We recently completed and evaluated the evaluation: "${test.title}".\n\n` +
+              `Here is a summary of their performance:\n` +
+              `- Graded Score: ${submission.grade} / ${test.maxScore} marks (${percentage}%)\n` +
+              `- Performance Status: Evaluated & Graded\n\n` +
+              `Teacher's Feedback & Comments:\n` +
+              `--------------------------------------------------\n` +
+              `"${submission.feedback || ''}"\n` +
+              `--------------------------------------------------\n\n` +
+              `If you would like to view the complete details of the assessment paper, including the original questions and your child's submitted answers, you can access the SmartChalk Student Dashboard using your secure credentials.\n\n` +
+              `Thank you for your continued support in your child's learning journey. Please feel free to reply directly to this email if you have any questions or would like to discuss their progress in more detail.\n\n` +
+              `Warm regards,\n` +
+              `SmartChalk Tutoring`;
+            const emailBody = encodeURIComponent(emailBodyText);
+            
+            return `
+              <div style="margin-top: 15px; border-top: 1px solid #e5e7eb; padding-top: 15px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; align-items: center;">
+                <span style="font-size: 12px; color: #4b5563;">Parent Email: <strong>${parentEmail}</strong></span>
+                <a href="https://mail.google.com/mail/?view=cm&fs=1&to=${parentEmail}&su=${emailSubject}&body=${emailBody}" target="_blank" style="background: #ef4444; color: white; border: none; padding: 8px 15px; font-size: 12px; font-weight: bold; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; transition: background 0.2s;">
+                  📧 Email via Gmail Web
+                </a>
+                <a href="mailto:${parentEmail}?subject=${emailSubject}&body=${emailBody}" style="background: #0ea5e9; color: white; border: none; padding: 8px 15px; font-size: 12px; font-weight: bold; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; transition: background 0.2s;">
+                  📧 Email via Mail App
+                </a>
+              </div>
+            `;
+          })()}
         </div>
 
         <script>

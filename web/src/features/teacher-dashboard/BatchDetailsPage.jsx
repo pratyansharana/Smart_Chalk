@@ -1010,7 +1010,7 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
                                   </span>
                                   <button
                                     className="apex-button-secondary py-0.5 px-1.5 text-[10px] hover:bg-white/10 text-amber-300 border-amber-400/20 flex items-center gap-1"
-                                    onClick={() => handlePrintReport(test, sub, sub.studentName, batchTitle)}
+                                    onClick={() => handlePrintReport(test, sub, sub.studentName, batchTitle, parentEmails[sub.studentId])}
                                     type="button"
                                     title="Save as PDF / Print"
                                   >
@@ -1787,7 +1787,7 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, teacherId, as
                                   </span>
                                   <button
                                     className="apex-button-secondary py-0.5 px-1.5 text-[10px] hover:bg-white/10 text-amber-300 border-amber-400/20 flex items-center gap-1"
-                                    onClick={() => handlePrintReport(assignment, sub, sub.studentName, batchTitle)}
+                                    onClick={() => handlePrintReport(assignment, sub, sub.studentName, batchTitle, parentEmails[sub.studentId])}
                                     type="button"
                                     title="Save as PDF / Print"
                                   >

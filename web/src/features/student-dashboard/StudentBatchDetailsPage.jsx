@@ -302,7 +302,7 @@ export function StudentBatchDetailsPage() {
                               <div className="flex gap-2">
                                 <button
                                   className="apex-button-secondary bg-amber-500/10 border-amber-500/20 text-amber-300 hover:bg-amber-500/20 py-1.5 px-3 text-xs flex items-center gap-1.5"
-                                  onClick={() => handlePrintReport(test, submission, studentName, batch?.title || batch?.name)}
+                                  onClick={() => handlePrintReport(test, submission, studentName, batch?.title || batch?.name, batch?.parentEmails?.[studentId])}
                                   type="button"
                                 >
                                   <Printer size={14} />
@@ -907,7 +907,7 @@ function StudentAssignmentPanel({ batch, studentId, studentName, assignments, su
                         <div className="flex gap-2 mt-4">
                           <button
                             className="apex-button-secondary bg-amber-500/10 border-amber-500/20 text-amber-300 hover:bg-amber-500/20 py-1.5 px-3 text-xs flex items-center gap-1.5"
-                            onClick={() => handlePrintReport(assignment, submission, studentName, batch?.title || batch?.name)}
+                            onClick={() => handlePrintReport(assignment, submission, studentName, batch?.title || batch?.name, batch?.parentEmails?.[studentId])}
                             type="button"
                           >
                             <Printer size={14} />
