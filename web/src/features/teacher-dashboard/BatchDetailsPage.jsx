@@ -1306,6 +1306,12 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
                         <p className="text-[10px] text-red-300 bg-red-500/10 border border-red-500/20 p-2 rounded-lg">{aiGradingError}</p>
                       )}
 
+                      {activeSub.submittedFileName?.toLowerCase().endsWith('.pdf') && !pastedAnswers && (
+                        <div className="text-[10px] text-amber-300 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-lg leading-relaxed font-sans">
+                          <strong>PDF File Detected:</strong> AI vision grading cannot read text directly inside PDFs. Please open the student's PDF, copy their answers, and paste them into the box below before clicking "Grade with AI".
+                        </div>
+                      )}
+
                       {!activeSub.studentText && (
                         <label className="grid gap-1 text-[10px] font-semibold text-slate-300">
                           Student Answers Text (Paste answers here to enable AI Grading)
@@ -2098,6 +2104,12 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, teacherId, as
 
                                   {aiGradingError && (
                                     <p className="text-[10px] text-red-300 bg-red-500/10 border border-red-500/20 p-2 rounded-lg">{aiGradingError}</p>
+                                  )}
+
+                                  {activeSub.submittedFileName?.toLowerCase().endsWith('.pdf') && !pastedAnswers && (
+                                    <div className="text-[10px] text-amber-300 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-lg leading-relaxed font-sans">
+                                      <strong>PDF File Detected:</strong> AI vision grading cannot read text directly inside PDFs. Please open the student's PDF, copy their answers, and paste them into the box below before clicking "Grade with AI".
+                                    </div>
                                   )}
 
                                   {!activeSub.studentText && (
