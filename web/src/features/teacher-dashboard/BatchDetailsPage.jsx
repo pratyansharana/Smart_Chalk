@@ -70,6 +70,41 @@ export function BatchDetailsPage() {
   const [liveActionLoading, setLiveActionLoading] = useState(false);
   const [pendingActionLoading, setPendingActionLoading] = useState({});
   const [activeTab, setActiveTab] = useState('roster'); // 'roster' | 'announcements' | 'vault' | 'assignments' | 'tests' | 'quizzes'
+  
+  const [emailLogs, setEmailLogs] = useState([]);
+
+  function triggerEmailSend(params) {
+    const logId = Date.now();
+    setEmailLogs((prev) => [
+      ...prev,
+      { id: logId, studentName: params.studentName, status: 'sending', message: `Sending automated email to ${params.to}...` },
+    ]);
+
+    sendAcademicReportEmail(params)
+      .then(() => {
+        setEmailLogs((prev) =>
+          prev.map((log) =>
+            log.id === logId
+              ? { ...log, status: 'success', message: `Email successfully delivered to ${params.to}!` }
+              : log
+          )
+        );
+        // Auto-dismiss success logs after 6 seconds
+        setTimeout(() => {
+          setEmailLogs((prev) => prev.filter((log) => log.id !== logId));
+        }, 6000);
+      })
+      .catch((err) => {
+        const errorMsg = err.message || 'Unknown network error';
+        setEmailLogs((prev) =>
+          prev.map((log) =>
+            log.id === logId
+              ? { ...log, status: 'error', message: `Failed to send email to ${params.to}. Error: ${errorMsg}` }
+              : log
+          )
+        );
+      });
+  }
 
   if (batchLoading || students.loading) {
     return (
@@ -354,12 +389,12 @@ export function BatchDetailsPage() {
 
         {/* Tab 4: Test Centre */}
         {activeTab === 'tests' && (
-          <TestPanel batchId={batch.id} batchTitle={batch.title} parentEmails={batch.parentEmails || {}} teacherId={teacherId} tests={tests.data} submissions={testSubmissions.data} />
+          <TestPanel batchId={batch.id} batchTitle={batch.title} parentEmails={batch.parentEmails || {}} teacherId={teacherId} tests={tests.data} submissions={testSubmissions.data} triggerEmailSend={triggerEmailSend} />
         )}
 
         {/* Tab: Assignments */}
         {activeTab === 'assignments' && (
-          <AssignmentPanel batchId={batch.id} batchTitle={batch.title} parentEmails={batch.parentEmails || {}} teacherId={teacherId} assignments={assignments.data} submissions={assignmentSubmissions.data} />
+          <AssignmentPanel batchId={batch.id} batchTitle={batch.title} parentEmails={batch.parentEmails || {}} teacherId={teacherId} assignments={assignments.data} submissions={assignmentSubmissions.data} triggerEmailSend={triggerEmailSend} />
         )}
 
         {/* Tab 5: Quiz Centre */}
@@ -367,6 +402,46 @@ export function BatchDetailsPage() {
           <QuizPanel batchId={batch.id} teacherId={teacherId} quizzes={quizzes.data} />
         )}
       </div>
+
+      {/* Floating Email Status Logs Panel */}
+      {emailLogs.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+          {emailLogs.map((log) => (
+            <div
+              key={log.id}
+              className={`pointer-events-auto glass-card p-3.5 rounded-xl border flex items-start gap-3 shadow-2xl transition-all animate-slideIn ${
+                log.status === 'success'
+                  ? 'border-emerald-500/30 bg-emerald-500/[0.03]'
+                  : log.status === 'error'
+                  ? 'border-red-500/30 bg-red-500/[0.03]'
+                  : 'border-amber-500/30 bg-amber-500/[0.03]'
+              }`}
+            >
+              {log.status === 'success' ? (
+                <Check className="text-emerald-400 shrink-0 mt-0.5" size={16} />
+              ) : log.status === 'error' ? (
+                <Ban className="text-red-400 shrink-0 mt-0.5" size={16} />
+              ) : (
+                <Loader2 className="text-amber-400 shrink-0 mt-0.5 animate-spin" size={16} />
+              )}
+              
+              <div className="flex-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                  Email Status Log
+                </span>
+                <p className="text-xs text-slate-200 mt-1 font-sans leading-relaxed">{log.message}</p>
+              </div>
+
+              <button
+                className="text-slate-500 hover:text-slate-300 transition-colors"
+                onClick={() => setEmailLogs((prev) => prev.filter((l) => l.id !== log.id))}
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </main>
   );
 }
@@ -598,7 +673,7 @@ function VaultPanel({ batchId, teacherId, items }) {
 }
 
 /* SUB PANEL: Test Centre manager */
-function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, submissions }) {
+function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, submissions, triggerEmailSend }) {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [maxScore, setMaxScore] = useState(100);
@@ -751,8 +826,8 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
       const sub = submissions.find((s) => s.id === gradingSubmissionId);
       const test = tests.find((t) => t.id === sub?.testId);
       const parentEmail = sub && parentEmails[sub.studentId];
-      if (parentEmail && test) {
-        sendAcademicReportEmail({
+      if (parentEmail && test && triggerEmailSend) {
+        triggerEmailSend({
           to: parentEmail,
           studentName: sub.studentName,
           title: test.title,
@@ -1356,7 +1431,7 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
 }
 
 /* SUB PANEL: Assignments Manager */
-function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, teacherId, assignments, submissions }) {
+function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, teacherId, assignments, submissions, triggerEmailSend }) {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [maxScore, setMaxScore] = useState(100);
@@ -1507,8 +1582,8 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, teacherId, as
       const sub = submissions.find((s) => s.id === submissionId);
       const assignment = assignments.find((a) => a.id === sub?.assignmentId);
       const parentEmail = sub && parentEmails[sub.studentId];
-      if (parentEmail && assignment) {
-        sendAcademicReportEmail({
+      if (parentEmail && assignment && triggerEmailSend) {
+        triggerEmailSend({
           to: parentEmail,
           studentName: sub.studentName,
           title: assignment.title,

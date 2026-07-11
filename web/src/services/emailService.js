@@ -75,6 +75,6 @@ export async function sendAcademicReportEmail({ to, studentName, title, batchTit
     return data;
   } catch (err) {
     console.error('[Email Service] Error sending automated email via Resend:', err);
-    // Don't throw to prevent blocking the UI flow, just log it.
+    throw err;
   }
 }
