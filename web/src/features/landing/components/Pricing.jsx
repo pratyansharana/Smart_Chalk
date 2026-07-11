@@ -2,22 +2,22 @@ import { motion } from 'framer-motion';
 
 const plans = [
   {
-    name: 'Foundation',
-    price: '₹2,500/mo',
-    bestFor: 'Building strong daily study habits.',
-    detail: '2 live classes weekly, custom worksheets, and a monthly parent review loop.',
+    name: 'Foundation (3 Days/Week)',
+    price: '₹3,500/mo',
+    bestFor: 'Building strong concept foundations.',
+    detail: '3 live classes weekly, customized homework sheets, and automated parent grade reports.',
   },
   {
-    name: 'Core',
-    price: '₹4,000/mo',
-    bestFor: 'Deep concept clarity and steady grade improvement.',
-    detail: '4 live classes weekly, priority doubt support, and active test tracking.',
+    name: 'Standard (5 Days/Week)',
+    price: '₹5,000/mo',
+    bestFor: 'Daily study tracking and grade acceleration.',
+    detail: '5 live classes weekly, real-time doubt support, and monthly mock test cycles.',
   },
   {
-    name: 'Board Prep',
-    price: '₹6,500/mo',
-    bestFor: 'Intense focus, revision, and maximum exam readiness.',
-    detail: 'Mock tests, focused syllabus revision, and weekly parent reviews.',
+    name: 'Board Prep (Class 9 & 10)',
+    price: '₹7,000/mo',
+    bestFor: 'Targeted syllabus mastery and exam excellence.',
+    detail: 'Complete 9th & 10th grade prep, previous years papers mock-drills, and focus revision sessions.',
   },
 ];
 
