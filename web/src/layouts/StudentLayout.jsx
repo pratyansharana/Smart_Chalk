@@ -33,7 +33,51 @@ export function StudentLayout() {
 
   return (
     <div className="min-h-screen bg-navy-950 text-slate-100 lg:grid lg:grid-cols-[260px_1fr]">
-      <aside className={`border-b border-white/10 bg-navy-900/80 p-4 backdrop-blur-xl lg:min-h-screen lg:border-b-0 lg:border-r flex flex-col justify-between transition-colors duration-300 ${
+      {/* Mobile Top Header */}
+      <header className={`lg:hidden flex items-center justify-between border-b bg-navy-900/80 p-4 sticky top-0 z-40 backdrop-blur-xl transition-all duration-300 ${
+        parentMode ? 'border-b-indigo-500/20' : 'border-b-white/10'
+      }`}>
+        <div className="flex items-center gap-3">
+          <span className={`grid size-11 place-items-center rounded-2xl border font-black transition-all ${
+            parentMode 
+              ? 'border-indigo-400/30 bg-indigo-500/10 text-indigo-400'
+              : 'border-amber-400/30 bg-amber-500/10 text-amber-400'
+          }`}>
+            {parentMode ? 'PP' : 'AT'}
+          </span>
+          <div>
+            <p className="font-heading font-bold text-white text-base">
+              {parentMode ? 'Parent Portal' : 'Student Hub'}
+            </p>
+            <p className="text-[10px] text-slate-400">
+              {parentMode ? `Child: ${profile?.displayName || 'Learner'}` : (profile?.displayName || 'Apex learner')}
+            </p>
+          </div>
+        </div>
+
+        {/* Parent View Switch Toggle */}
+        <div className={`p-2 rounded-xl border flex items-center gap-2 shadow-inner transition-all ${
+          parentMode ? 'border-indigo-500/20 bg-indigo-500/[0.02]' : 'border-white/5 bg-white/[0.02]'
+        }`}>
+          <Users size={14} className={parentMode ? 'text-indigo-400' : 'text-slate-500'} />
+          <button
+            onClick={toggleParentMode}
+            type="button"
+            className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              parentMode ? 'bg-indigo-400' : 'bg-navy-800'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-navy-950 shadow ring-0 transition duration-200 ease-in-out ${
+                parentMode ? 'translate-x-3' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+      </header>
+
+      {/* Desktop Sidebar (Hidden on mobile) */}
+      <aside className={`hidden lg:flex border-b border-white/10 bg-navy-900/80 p-4 backdrop-blur-xl lg:min-h-screen lg:border-b-0 lg:border-r flex-col justify-between transition-colors duration-300 ${
         parentMode ? 'border-r-indigo-500/20' : 'border-r-white/10'
       }`}>
         <div>
@@ -109,7 +153,38 @@ export function StudentLayout() {
           Sign out
         </button>
       </aside>
-      <Outlet context={{ parentMode }} />
+
+      {/* Main Content Viewport */}
+      <div className={`transition-all ${!parentMode ? 'pb-20 lg:pb-0' : 'pb-6 lg:pb-0'}`}>
+        <Outlet context={{ parentMode }} />
+      </div>
+
+      {/* Mobile Sticky Bottom Tab Bar (Only when parentMode is false) */}
+      {!parentMode && (
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-navy-900/90 p-2 backdrop-blur-xl flex items-center justify-around shadow-2xl">
+          {studentLinks.map(([label, to, Icon]) => (
+            <NavLink 
+              className={({ isActive }) => `flex flex-col items-center justify-center p-2 rounded-xl text-[10px] font-bold transition-all min-h-12 w-16 ${
+                isActive ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+              }`} 
+              end 
+              key={label} 
+              to={to}
+            >
+              <Icon size={20} className="mb-1" />
+              {label}
+            </NavLink>
+          ))}
+          <button
+            onClick={logout}
+            type="button"
+            className="flex flex-col items-center justify-center p-2 rounded-xl text-[10px] font-bold text-slate-400 hover:text-red-400 transition-all min-h-12 w-16"
+          >
+            <LogOut size={20} className="mb-1" />
+            Exit
+          </button>
+        </nav>
+      )}
     </div>
   );
 }
