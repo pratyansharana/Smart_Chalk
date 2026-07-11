@@ -14,7 +14,15 @@ export async function sendAcademicReportWhatsApp({ to, studentName, title, batch
     (feedback ? `*Teacher's Remarks:*\n"${feedback.trim()}"\n\n` : '') +
     `To download the full graded answer sheets and questions, please log in to the SmartChalk Student Dashboard.`;
 
-  console.log('[WhatsApp Service] Sending automated WhatsApp notification...', { to });
+  console.log('[WhatsApp Service] Preparing payload:', {
+    to: to,
+    studentName: studentName,
+    title: title,
+    batchTitle: batchTitle,
+    gradeScore: `${grade}/${maxScore} (${percentage}%)`,
+    messageLength: bodyText.length,
+    originHostname: window.location.hostname
+  });
   
   try {
     const response = await fetch('/api/send-whatsapp', {

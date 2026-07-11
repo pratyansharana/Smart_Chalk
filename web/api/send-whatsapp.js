@@ -23,6 +23,7 @@ export default async function handler(req, res) {
   const { to, body } = req.body;
 
   if (!to || !body) {
+    console.warn('[Serverless WhatsApp] Rejected invocation: Missing to or body');
     return res.status(400).json({ error: 'Missing parameter "to" or "body"' });
   }
 
@@ -30,9 +31,25 @@ export default async function handler(req, res) {
   const ultraToken = process.env.ULTRAMSG_TOKEN || process.env.VITE_ULTRAMSG_TOKEN;
   const ultraInstance = process.env.ULTRAMSG_INSTANCE_ID || process.env.VITE_ULTRAMSG_INSTANCE_ID;
 
+  // 2. Try Twilio Provider
+  const twilioSid = process.env.TWILIO_ACCOUNT_SID;
+  const twilioToken = process.env.TWILIO_AUTH_TOKEN;
+  const twilioFrom = process.env.TWILIO_WHATSAPP_FROM || 'whatsapp:+14155238886';
+
+  console.log('[Serverless WhatsApp] Invoked payload details:', {
+    recipient: to,
+    messageLength: body.length,
+    detectedProviders: {
+      ultramsg: !!(ultraToken && ultraInstance),
+      twilio: !!(twilioSid && twilioToken)
+    }
+  });
+
   if (ultraToken && ultraInstance) {
     try {
       const cleanPhone = to.replace(/\+/g, '').trim();
+      console.log('[Serverless WhatsApp] Routing via UltraMsg:', { instance: ultraInstance, phone: cleanPhone });
+      
       const response = await fetch(`https://api.ultramsg.com/${ultraInstance}/messages/chat`, {
         method: 'POST',
         headers: {
@@ -45,27 +62,28 @@ export default async function handler(req, res) {
         }),
       });
 
+      console.log('[Serverless WhatsApp] UltraMsg responded with status:', response.status);
+
       if (!response.ok) {
         const errText = await response.text();
+        console.error('[Serverless WhatsApp] UltraMsg API Error:', errText);
         return res.status(response.status).json({ error: `UltraMsg error: ${errText}` });
       }
 
       const data = await response.json();
+      console.log('[Serverless WhatsApp] UltraMsg successfully processed message:', data);
       return res.status(200).json({ success: true, provider: 'ultramsg', data });
     } catch (err) {
+      console.error('[Serverless WhatsApp] UltraMsg system catch exception:', err);
       return res.status(500).json({ error: `UltraMsg dispatch failed: ${err.message}` });
     }
   }
-
-  // 2. Try Twilio Provider
-  const twilioSid = process.env.TWILIO_ACCOUNT_SID;
-  const twilioToken = process.env.TWILIO_AUTH_TOKEN;
-  const twilioFrom = process.env.TWILIO_WHATSAPP_FROM || 'whatsapp:+14155238886';
 
   if (twilioSid && twilioToken) {
     try {
       const formattedTo = to.startsWith('whatsapp:') ? to : `whatsapp:${to.startsWith('+') ? to : `+${to}`}`;
       const authHeader = `Basic ${Buffer.from(`${twilioSid}:${twilioToken}`).toString('base64')}`;
+      console.log('[Serverless WhatsApp] Routing via Twilio:', { toPhone: formattedTo, fromPhone: twilioFrom });
 
       const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`, {
         method: 'POST',
@@ -80,20 +98,25 @@ export default async function handler(req, res) {
         }),
       });
 
+      console.log('[Serverless WhatsApp] Twilio responded with status:', response.status);
+
       if (!response.ok) {
         const errText = await response.text();
+        console.error('[Serverless WhatsApp] Twilio API Error:', errText);
         return res.status(response.status).json({ error: `Twilio error: ${errText}` });
       }
 
       const data = await response.json();
+      console.log('[Serverless WhatsApp] Twilio successfully processed message:', data);
       return res.status(200).json({ success: true, provider: 'twilio', data });
     } catch (err) {
+      console.error('[Serverless WhatsApp] Twilio system catch exception:', err);
       return res.status(500).json({ error: `Twilio dispatch failed: ${err.message}` });
     }
   }
 
   // 3. Fallback: Mock Sandbox Log
-  console.log('[WhatsApp Serverless] No credentials found. Sandbox Mock:', { to, body });
+  console.log('[WhatsApp Serverless] Fallback executed. No provider configured. Sandbox Mock:', { to, body });
   return res.status(200).json({
     success: true,
     provider: 'mock',
