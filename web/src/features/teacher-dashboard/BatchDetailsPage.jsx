@@ -1014,8 +1014,14 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, parentPhones = {}, 
         });
       }
 
-      // Send automated parent WhatsApp
       const parentPhone = sub && parentPhones[sub.studentId];
+      console.log('[Grading Debug] Test WhatsApp check:', {
+        studentId: sub?.studentId,
+        availablePhones: parentPhones,
+        resolvedPhone: parentPhone,
+        hasTrigger: !!triggerWhatsAppSend,
+        hasTest: !!test
+      });
       if (parentPhone && test && triggerWhatsAppSend) {
         triggerWhatsAppSend({
           to: parentPhone,
@@ -1790,8 +1796,14 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones 
         });
       }
 
-      // Send automated parent WhatsApp
       const parentPhone = sub && parentPhones[sub.studentId];
+      console.log('[Grading Debug] Assignment WhatsApp check:', {
+        studentId: sub?.studentId,
+        availablePhones: parentPhones,
+        resolvedPhone: parentPhone,
+        hasTrigger: !!triggerWhatsAppSend,
+        hasAssignment: !!assignment
+      });
       if (parentPhone && assignment && triggerWhatsAppSend) {
         triggerWhatsAppSend({
           to: parentPhone,
