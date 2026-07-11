@@ -63,7 +63,7 @@ export function StudentDashboardPage() {
       : 0;
 
     return (
-      <main className="p-5 lg:p-8 animate-fadeIn">
+      <main className="p-4 lg:p-8 animate-fadeIn">
         <p className="text-sm font-bold uppercase tracking-wide text-indigo-400">Parent oversight portal</p>
         <h1 className="mt-3 font-heading text-4xl font-bold text-white">Child's Academic Performance</h1>
         <p className="mt-2 text-slate-300 text-sm leading-relaxed max-w-3xl font-sans">
@@ -132,7 +132,7 @@ export function StudentDashboardPage() {
                         setSelectedTestId(state.activePayload[0].payload.id);
                       }
                     }}
-                    margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
+                    margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
                   >
                     <defs>
                       <linearGradient id="colorPercent" x1="0" y1="0" x2="0" y2="1">

@@ -142,3 +142,14 @@
 input:focus, textarea:focus, select:focus, button:focus-visible {
   @apply ring-2 ring-amber-500/50 outline-none border-amber-500/40;
 }
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}

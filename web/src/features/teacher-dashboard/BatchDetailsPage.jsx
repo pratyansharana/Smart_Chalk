@@ -280,7 +280,7 @@ export function BatchDetailsPage() {
       </section>
 
       {/* Roster & Announcements & Tabbed workspace */}
-      <nav className="mt-6 flex flex-wrap items-center gap-4 border-b border-white/10 pb-4">
+      <nav className="mt-6 flex items-center gap-3 overflow-x-auto pb-4 no-scrollbar -mx-5 px-5 lg:mx-0 lg:px-0 lg:flex-wrap lg:overflow-visible border-b border-white/10">
         {/* Category: Core */}
         <div className="flex items-center gap-1 bg-white/[0.02] border border-white/5 p-1 rounded-2xl">
           {[

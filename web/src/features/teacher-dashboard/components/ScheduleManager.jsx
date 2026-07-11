@@ -82,7 +82,7 @@ export function ScheduleManager({ teacherId, students, classes }) {
           {classes.map((item) => {
             const enrolledCount = item.studentIds?.length || 0;
             return (
-              <article className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 hover:border-amber-400/25 transition-all" key={item.id}>
+              <article className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 hover:border-amber-400/25 transition-all" key={item.id}>
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold uppercase text-amber-400">{item.subject}</span>
@@ -97,7 +97,7 @@ export function ScheduleManager({ teacherId, students, classes }) {
                 </div>
 
                 <Link
-                  className="apex-button-secondary py-2 px-3 text-xs flex items-center gap-1 bg-amber-500/5 hover:bg-amber-500/10 border-amber-500/10 hover:border-amber-500/20 text-amber-300"
+                  className="apex-button-secondary py-2 px-3 text-xs flex items-center gap-1 bg-amber-500/5 hover:bg-amber-500/10 border-amber-500/10 hover:border-amber-500/20 text-amber-300 w-full sm:w-auto justify-center sm:justify-start"
                   to={`batch/${item.id}`}
                 >
                   Workspace
