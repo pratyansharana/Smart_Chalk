@@ -103,6 +103,10 @@
     @apply absolute inset-0 rounded-full bg-emerald-400 content-[''];
     animation: ping 1.3s cubic-bezier(0, 0, 0.2, 1) infinite;
   }
+
+  .animate-slideIn {
+    animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
 }
 
 @keyframes shimmer {
@@ -117,4 +121,19 @@
     transform: scale(2);
     opacity: 0;
   }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(1.5rem) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+input:focus, textarea:focus, select:focus, button:focus-visible {
+  @apply ring-2 ring-amber-500/50 outline-none border-amber-500/40;
 }

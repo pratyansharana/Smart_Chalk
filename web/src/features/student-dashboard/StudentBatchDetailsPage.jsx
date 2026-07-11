@@ -18,6 +18,7 @@ import {
   Mail,
   Sparkles,
   Paperclip,
+  UploadCloud,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useBatchDetails } from '../../hooks/useBatchDetails';
@@ -146,31 +147,82 @@ export function StudentBatchDetailsPage() {
       </section>
 
       {/* Navigation tabs */}
-      <nav className="mt-6 flex flex-wrap gap-2 border-b border-white/10 pb-3">
-        {[
-          ['announcements', 'Announcements', Send],
-          ['vault', 'Batch Vault', BookOpen],
-          ['assignments', 'Assignments', Award],
-          ['tests', 'Test Centre', ClipboardList],
-          ['quizzes', 'Quiz Centre', Trophy],
-        ].map(([tab, label, Icon]) => (
-          <button
-            className={`py-2 px-4 text-sm font-bold flex items-center gap-2 rounded-xl border transition-all ${
-              activeTab === tab
-                ? 'bg-amber-400 border-amber-300 text-slate-900 shadow-lg'
-                : 'bg-white/[0.02] border-white/5 text-slate-300 hover:text-white hover:bg-white/[0.04]'
-            }`}
-            key={tab}
-            onClick={() => {
-              setActiveTab(tab);
-              setActiveQuizId(null);
-            }}
-            type="button"
-          >
-            <Icon size={16} />
-            {label}
-          </button>
-        ))}
+      <nav className="mt-6 flex flex-wrap items-center gap-4 border-b border-white/10 pb-4">
+        {/* Category: Core */}
+        <div className="flex items-center gap-1 bg-white/[0.02] border border-white/5 p-1 rounded-2xl">
+          {[
+            ['announcements', 'Announcements', Send],
+          ].map(([tab, label, Icon]) => (
+            <button
+              className={`py-2 px-3 text-xs font-bold flex items-center gap-1.5 rounded-xl border transition-all ${
+                activeTab === tab
+                  ? 'bg-amber-400 border-amber-300 text-slate-900 shadow-md'
+                  : 'border-transparent text-slate-300 hover:text-white hover:bg-white/[0.04]'
+              }`}
+              key={tab}
+              onClick={() => {
+                setActiveTab(tab);
+                setActiveQuizId(null);
+              }}
+              type="button"
+            >
+              <Icon size={14} />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Category: Resources */}
+        <div className="flex items-center gap-1 bg-white/[0.02] border border-white/5 p-1 rounded-2xl">
+          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest pl-2 pr-1">Resources</span>
+          {[
+            ['vault', 'Batch Vault', BookOpen],
+          ].map(([tab, label, Icon]) => (
+            <button
+              className={`py-2 px-3 text-xs font-bold flex items-center gap-1.5 rounded-xl border transition-all ${
+                activeTab === tab
+                  ? 'bg-amber-400 border-amber-300 text-slate-900 shadow-md'
+                  : 'border-transparent text-slate-300 hover:text-white hover:bg-white/[0.04]'
+              }`}
+              key={tab}
+              onClick={() => {
+                setActiveTab(tab);
+                setActiveQuizId(null);
+              }}
+              type="button"
+            >
+              <Icon size={14} />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Category: Evaluations */}
+        <div className="flex items-center gap-1 bg-white/[0.02] border border-white/5 p-1 rounded-2xl">
+          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest pl-2 pr-1">Evaluations</span>
+          {[
+            ['assignments', 'Assignments', Award],
+            ['tests', 'Test Centre', ClipboardList],
+            ['quizzes', 'Quiz Centre', Trophy],
+          ].map(([tab, label, Icon]) => (
+            <button
+              className={`py-2 px-3 text-xs font-bold flex items-center gap-1.5 rounded-xl border transition-all ${
+                activeTab === tab
+                  ? 'bg-amber-400 border-amber-300 text-slate-900 shadow-md'
+                  : 'border-transparent text-slate-300 hover:text-white hover:bg-white/[0.04]'
+              }`}
+              key={tab}
+              onClick={() => {
+                setActiveTab(tab);
+                setActiveQuizId(null);
+              }}
+              type="button"
+            >
+              <Icon size={14} />
+              {label}
+            </button>
+          ))}
+        </div>
       </nav>
 
       {/* Content pane */}
@@ -409,6 +461,97 @@ export function StudentBatchDetailsPage() {
   );
 }
 
+/* Reusable premium drag-and-drop file uploader */
+function DropzoneUploader({ file, setFile, loading, progress }) {
+  const [dragActive, setDragActive] = useState(false);
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleChange = (e) => {
+    e.preventDefault();
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+    }
+  };
+
+  return (
+    <div className="grid gap-1.5 w-full">
+      <div
+        className={`relative rounded-xl border-2 border-dashed p-5 transition-all text-center flex flex-col items-center justify-center min-h-[140px] ${
+          dragActive
+            ? 'border-amber-400 bg-amber-400/[0.03] scale-[1.01]'
+            : file
+            ? 'border-emerald-500/40 bg-emerald-500/[0.01]'
+            : 'border-white/10 bg-white/[0.01] hover:border-white/20'
+        }`}
+        onDragEnter={handleDrag}
+        onDragOver={handleDrag}
+        onDragLeave={handleDrag}
+        onDrop={handleDrop}
+      >
+        {loading ? (
+          <div className="w-full flex flex-col items-center justify-center gap-3">
+            <div className="w-full max-w-[180px] h-2 bg-navy-800 rounded-full overflow-hidden relative">
+              <div
+                className="h-full bg-amber-400 transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest animate-pulse">
+              Uploading {Math.round(progress)}%...
+            </span>
+          </div>
+        ) : file ? (
+          <div className="flex flex-col items-center gap-2">
+            <CheckCircle className="text-emerald-400 animate-bounce" size={24} />
+            <div>
+              <p className="text-xs font-semibold text-slate-200 truncate max-w-[200px]">{file.name}</p>
+              <p className="text-[10px] text-slate-500">{(file.size / 1024).toFixed(1)} KB</p>
+            </div>
+            <button
+              type="button"
+              className="text-[10px] text-red-400 hover:text-red-300 font-bold underline mt-1"
+              onClick={() => setFile(null)}
+            >
+              Remove File
+            </button>
+          </div>
+        ) : (
+          <>
+            <UploadCloud className="text-slate-500 mb-1.5" size={26} />
+            <p className="text-xs font-semibold text-slate-300">
+              Drag & Drop solution file here
+            </p>
+            <p className="text-[10px] text-slate-500 mt-0.5">or click to browse from device</p>
+            <input
+              type="file"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              onChange={handleChange}
+            />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* Sub-component: File uploader for test submissions */
 function TestUploader({ test, classId, studentId, studentName }) {
   const [file, setFile] = useState(null);
@@ -456,19 +599,14 @@ function TestUploader({ test, classId, studentId, studentName }) {
   return (
     <form className="grid gap-4" onSubmit={handleUpload}>
       <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-1.5 text-xs font-semibold text-slate-300">
+          <span>Upload Solution File (Optional - PDF/Image)</span>
+          <DropzoneUploader file={file} setFile={setFile} loading={loading} progress={progress} />
+        </div>
         <label className="grid gap-1.5 text-xs font-semibold text-slate-300">
-          Upload Solution File (Optional - PDF/Image)
-          <input
-            className="apex-input py-1.5 px-3 text-xs"
-            disabled={loading}
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-            type="file"
-          />
-        </label>
-        <label className="grid gap-1.5 text-xs font-semibold text-slate-300">
-          Or Type/Paste Written Answers (Enables AI Grading)
+          <span>Or Type/Paste Written Answers (Enables AI Grading)</span>
           <textarea
-            className="apex-input py-1.5 px-3 text-xs min-h-[80px] resize-y"
+            className="apex-input py-1.5 px-3 text-xs min-h-[140px] resize-y flex-1"
             disabled={loading}
             onChange={(e) => setStudentText(e.target.value)}
             placeholder="Type your questions answers, steps, or notes here..."
@@ -782,18 +920,18 @@ export function QuestionPaperRenderer({ content }) {
   const lines = content.split('\n').map((l) => l.trim()).filter(Boolean);
 
   return (
-    <div className="space-y-4 bg-slate-950/40 p-6 rounded-2xl border border-white/5 my-4">
+    <div className="space-y-5 bg-slate-950/60 p-7 rounded-2xl border border-white/5 my-5 shadow-2xl">
       {lines.map((line, idx) => {
         if (line.startsWith('# ')) {
           return (
-            <h3 key={idx} className="font-heading text-2xl font-black text-white mt-4 mb-3 border-b border-white/10 pb-2">
+            <h3 key={idx} className="font-heading text-xl font-bold text-white mt-5 mb-4 border-b border-white/10 pb-2.5 tracking-wide">
               {line.replace('# ', '')}
             </h3>
           );
         }
         if (line.startsWith('## ')) {
           return (
-            <h4 key={idx} className="font-heading text-lg font-bold text-amber-400 mt-4 mb-2">
+            <h4 key={idx} className="font-heading text-sm uppercase tracking-wider text-amber-400/90 mt-5 mb-3">
               {line.replace('## ', '')}
             </h4>
           );
@@ -803,10 +941,10 @@ export function QuestionPaperRenderer({ content }) {
           const matchNum = line.match(/^(\d+)[\.\)]/);
           const qNum = matchNum ? matchNum[1] : idx + 1;
           return (
-            <div key={idx} className="bg-white/[0.02] border border-white/5 p-4 rounded-xl shadow-sm hover:border-amber-400/20 transition-all">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="bg-amber-400/10 text-amber-300 font-bold px-2 py-0.5 rounded text-[10px]">
-                  Q{qNum}
+            <div key={idx} className="bg-white/[0.01] border border-white/5 p-5 rounded-xl shadow-md hover:border-amber-400/30 hover:bg-white/[0.02] transition-all grid gap-1.5">
+              <div className="flex items-center gap-2">
+                <span className="bg-amber-400/10 text-amber-300 font-bold px-2 py-0.5 rounded text-[9px] tracking-wide uppercase">
+                  Question {qNum}
                 </span>
               </div>
               <p className="text-sm font-semibold text-slate-200 leading-relaxed">
@@ -816,7 +954,7 @@ export function QuestionPaperRenderer({ content }) {
           );
         }
         return (
-          <p key={idx} className="text-xs text-slate-400 mt-1 leading-relaxed pl-1">
+          <p key={idx} className="text-xs text-slate-300 mt-2 leading-relaxed pl-3 border-l-2 border-amber-400/20">
             {line.replace(/^\*\s/, '').replace(/\*\*/g, '')}
           </p>
         );
@@ -1025,32 +1163,22 @@ function AssignmentUploader({ assignment, classId, studentId, studentName }) {
       <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl">
         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Submit Your Solution</span>
 
-        <div className="grid gap-3">
-          <label className="grid gap-1 text-[11px] font-semibold text-slate-300">
-            Write/Type your Answer notes here
+        <div className="grid gap-3.5 md:grid-cols-2">
+          <label className="grid gap-1.5 text-[11px] font-semibold text-slate-300">
+            <span>Write/Type your Answer notes here</span>
             <textarea
-              className="apex-input py-2 px-3 text-xs min-h-[90px] resize-y font-mono"
+              className="apex-input py-2 px-3 text-xs min-h-[140px] resize-y font-mono"
               onChange={(e) => setStudentText(e.target.value)}
               placeholder="Type your final answers or details here..."
               value={studentText}
             />
           </label>
 
-          <label className="grid gap-1 text-[11px] font-semibold text-slate-300">
-            Upload solution attachment (e.g. Snapshot image of notebook pages)
-            <input
-              className="file:apex-button-secondary file:py-1 file:px-2.5 file:text-xs file:mr-3 text-slate-400 text-xs"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-              type="file"
-            />
-          </label>
-        </div>
-
-        {uploading && (
-          <div className="text-[10px] text-amber-300 mt-2">
-            Uploading files: {Math.round(progress)}% complete
+          <div className="grid gap-1.5 text-[11px] font-semibold text-slate-300">
+            <span>Upload solution attachment (Optional - PDF/Image)</span>
+            <DropzoneUploader file={file} setFile={setFile} loading={uploading} progress={progress} />
           </div>
-        )}
+        </div>
       </div>
 
       <div className="flex justify-end mt-1">

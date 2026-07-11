@@ -72,6 +72,7 @@ export function BatchDetailsPage() {
   const [activeTab, setActiveTab] = useState('roster'); // 'roster' | 'announcements' | 'vault' | 'assignments' | 'tests' | 'quizzes'
   
   const [emailLogs, setEmailLogs] = useState([]);
+  const [emailSaveStates, setEmailSaveStates] = useState({});
 
   function triggerEmailSend(params) {
     const logId = Date.now();
@@ -239,97 +240,144 @@ export function BatchDetailsPage() {
       </section>
 
       {/* Roster & Announcements & Tabbed workspace */}
-      <nav className="mt-6 flex flex-wrap gap-2 border-b border-white/10 pb-3">
-        {[
-          ['roster', 'Roster & Waitlist', Users],
-          ['announcements', 'Announcements', Send],
-          ['vault', 'Batch Vault', BookOpen],
-          ['assignments', 'Assignments', Award],
-          ['tests', 'Test Centre', ClipboardList],
-          ['quizzes', 'Quiz Centre', Trophy],
-        ].map(([tab, label, Icon]) => (
-          <button
-            className={`py-2 px-4 text-sm font-bold flex items-center gap-2 rounded-xl border transition-all ${
-              activeTab === tab
-                ? 'bg-amber-400 border-amber-300 text-slate-900 shadow-lg'
-                : 'bg-white/[0.02] border-white/5 text-slate-300 hover:text-white hover:bg-white/[0.04]'
-            }`}
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            type="button"
-          >
-            <Icon size={16} />
-            {label}
-          </button>
-        ))}
+      <nav className="mt-6 flex flex-wrap items-center gap-4 border-b border-white/10 pb-4">
+        {/* Category: Core */}
+        <div className="flex items-center gap-1 bg-white/[0.02] border border-white/5 p-1 rounded-2xl">
+          {[
+            ['roster', 'Roster & Waitlist', Users],
+          ].map(([tab, label, Icon]) => (
+            <button
+              className={`py-2 px-3 text-xs font-bold flex items-center gap-1.5 rounded-xl border transition-all ${
+                activeTab === tab
+                  ? 'bg-amber-400 border-amber-300 text-slate-900 shadow-md'
+                  : 'border-transparent text-slate-300 hover:text-white hover:bg-white/[0.04]'
+              }`}
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              type="button"
+            >
+              <Icon size={14} />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Category: Resources */}
+        <div className="flex items-center gap-1 bg-white/[0.02] border border-white/5 p-1 rounded-2xl">
+          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest pl-2 pr-1">Resources</span>
+          {[
+            ['announcements', 'Announcements', Send],
+            ['vault', 'Batch Vault', BookOpen],
+          ].map(([tab, label, Icon]) => (
+            <button
+              className={`py-2 px-3 text-xs font-bold flex items-center gap-1.5 rounded-xl border transition-all ${
+                activeTab === tab
+                  ? 'bg-amber-400 border-amber-300 text-slate-900 shadow-md'
+                  : 'border-transparent text-slate-300 hover:text-white hover:bg-white/[0.04]'
+              }`}
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              type="button"
+            >
+              <Icon size={14} />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Category: Evaluations */}
+        <div className="flex items-center gap-1 bg-white/[0.02] border border-white/5 p-1 rounded-2xl">
+          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest pl-2 pr-1">Evaluations</span>
+          {[
+            ['assignments', 'Assignments', Award],
+            ['tests', 'Test Centre', ClipboardList],
+            ['quizzes', 'Quiz Centre', Trophy],
+          ].map(([tab, label, Icon]) => (
+            <button
+              className={`py-2 px-3 text-xs font-bold flex items-center gap-1.5 rounded-xl border transition-all ${
+                activeTab === tab
+                  ? 'bg-amber-400 border-amber-300 text-slate-900 shadow-md'
+                  : 'border-transparent text-slate-300 hover:text-white hover:bg-white/[0.04]'
+              }`}
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              type="button"
+            >
+              <Icon size={14} />
+              {label}
+            </button>
+          ))}
+        </div>
       </nav>
 
       {/* Main Tab Panels */}
       <div className="mt-6">
         {/* Tab 1: Roster & Requests */}
         {activeTab === 'roster' && (
-          <div className="grid gap-6 md:grid-cols-2 lg:items-start">
-            {/* Enrollment requests */}
-            <section className="glass-card p-5">
-              <h2 className="font-heading text-lg font-bold text-amber-400 flex items-center gap-2 mb-3">
-                <UserCheck size={18} />
-                Pending Join Requests ({pendingStudentIds.length})
-              </h2>
-              <div className="grid gap-2">
-                {pendingStudentIds.map((studentId) => {
-                  const student = studentMap.get(studentId);
-                  const isApprove = pendingActionLoading[studentId] === 'approve';
-                  const isReject = pendingActionLoading[studentId] === 'reject';
-                  return (
-                    <div
-                      className="flex items-center justify-between gap-3 bg-white/[0.02] p-2.5 rounded-xl border border-white/5"
-                      key={studentId}
-                    >
-                      <div className="truncate">
-                        <p className="text-sm font-semibold text-slate-200 truncate">{student?.displayName || `Student (${studentId.slice(0, 6)})`}</p>
-                        <p className="text-xs text-slate-400 truncate">{student?.email}</p>
+          <div className="max-w-3xl mx-auto grid gap-6">
+            {/* Enrollment requests (Collapsible) */}
+            {pendingStudentIds.length > 0 && (
+              <details className="glass-card p-5 border border-amber-400/25 bg-amber-400/[0.01]" open>
+                <summary className="font-heading text-sm font-bold text-amber-400 flex items-center gap-2 cursor-pointer select-none outline-none">
+                  <UserCheck size={18} className="animate-pulse text-amber-400" />
+                  <span>Pending Join Requests ({pendingStudentIds.length})</span>
+                  <span className="text-[10px] text-slate-500 font-normal ml-auto hover:text-slate-300">(Click to toggle)</span>
+                </summary>
+                <div className="grid gap-2.5 mt-4">
+                  {pendingStudentIds.map((studentId) => {
+                    const student = studentMap.get(studentId);
+                    const isApprove = pendingActionLoading[studentId] === 'approve';
+                    const isReject = pendingActionLoading[studentId] === 'reject';
+                    return (
+                      <div
+                        className="flex items-center justify-between gap-3 bg-white/[0.01] p-3 rounded-xl border border-white/5"
+                        key={studentId}
+                      >
+                        <div className="truncate">
+                          <p className="text-sm font-semibold text-slate-200 truncate">{student?.displayName || `Student (${studentId.slice(0, 6)})`}</p>
+                          <p className="text-xs text-slate-400 truncate">{student?.email}</p>
+                        </div>
+                        <div className="flex gap-2 flex-shrink-0">
+                          <button
+                            className="apex-button-primary py-1 px-3 text-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20 h-8 flex items-center gap-1.5"
+                            disabled={Boolean(pendingActionLoading[studentId])}
+                            onClick={() => handleApprove(studentId)}
+                            type="button"
+                          >
+                            {isApprove ? <Loader2 size={12} className="animate-spin" /> : <UserCheck size={12} />}
+                            Approve
+                          </button>
+                          <button
+                            className="apex-button-secondary py-1 px-3 text-xs hover:bg-red-500/10 hover:text-red-300 h-8 flex items-center gap-1.5"
+                            disabled={Boolean(pendingActionLoading[studentId])}
+                            onClick={() => handleReject(studentId)}
+                            type="button"
+                          >
+                            {isReject ? <Loader2 size={12} className="animate-spin" /> : <UserX size={12} />}
+                            Reject
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex gap-2 flex-shrink-0">
-                        <button
-                          className="apex-button-primary py-1 px-2.5 text-xs bg-emerald-500/10 border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20"
-                          disabled={Boolean(pendingActionLoading[studentId])}
-                          onClick={() => handleApprove(studentId)}
-                          type="button"
-                        >
-                          {isApprove ? <Loader2 size={12} className="animate-spin" /> : <UserCheck size={12} />}
-                          Approve
-                        </button>
-                        <button
-                          className="apex-button-secondary py-1 px-2.5 text-xs hover:bg-red-500/10 hover:text-red-300"
-                          disabled={Boolean(pendingActionLoading[studentId])}
-                          onClick={() => handleReject(studentId)}
-                          type="button"
-                        >
-                          {isReject ? <Loader2 size={12} className="animate-spin" /> : <UserX size={12} />}
-                          Reject
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-                {pendingStudentIds.length === 0 && (
-                  <p className="text-xs text-slate-500 text-center py-4">No pending join requests.</p>
-                )}
-              </div>
-            </section>
+                    );
+                  })}
+                </div>
+              </details>
+            )}
 
             {/* Student Roster Card */}
             <section className="glass-card p-5">
-              <h2 className="font-heading text-lg font-bold text-white flex items-center gap-2 mb-3">
+              <h2 className="font-heading text-lg font-bold text-white flex items-center gap-2 mb-4">
                 <Users size={18} className="text-amber-400" />
                 Approved Student Roster ({enrolledStudentIds.length})
               </h2>
-              <div className="grid gap-2">
+              <div className="grid gap-3">
                 {enrolledStudentIds.map((studentId) => {
                   const student = studentMap.get(studentId);
                   const parentEmail = batch?.parentEmails?.[studentId] || '';
+                  const saveStatus = emailSaveStates[studentId];
+
                   return (
-                    <div className="flex flex-col gap-2 bg-white/[0.02] p-3 rounded-xl border border-white/5" key={studentId}>
+                    <div className="flex flex-col gap-2.5 bg-white/[0.02] p-3.5 rounded-xl border border-white/5" key={studentId}>
                       <div className="flex items-center justify-between gap-3">
                         <div className="truncate">
                           <p className="text-sm font-semibold text-slate-200 truncate">{student?.displayName || `Student (${studentId.slice(0, 6)})`}</p>
@@ -338,33 +386,51 @@ export function BatchDetailsPage() {
                       </div>
 
                       {/* Parent Email Form Row */}
-                      <div className="mt-1 pt-2 border-t border-white/5 flex gap-2 items-center">
+                      <div className="mt-1 pt-2 border-t border-white/5 flex gap-2.5 items-center">
                         <label className="text-[10px] text-slate-400 font-bold uppercase flex-shrink-0">Parent Email:</label>
-                        <input
-                          className="apex-input py-0.5 px-2 text-xs flex-1 min-w-0"
-                          defaultValue={parentEmail}
-                          onBlur={async (e) => {
-                            const newEmail = e.target.value.trim();
-                            console.log('[Roster] Parent email input changed/blurred:', { studentId, oldEmail: parentEmail, newEmail });
-                            if (newEmail !== parentEmail) {
-                              try {
-                                console.log('[Roster] Sending parent email update to Firestore:', { batchId: batch.id, studentId, newEmail });
-                                const currentEmails = batch.parentEmails || {};
-                                await updateClassDocument(batch.id, {
-                                  parentEmails: {
-                                    ...currentEmails,
-                                    [studentId]: newEmail
-                                  }
-                                });
-                                console.log('[Roster] Parent email updated successfully in Firestore!');
-                              } catch (err) {
-                                console.error('[Roster] Failed to update parent email in Firestore:', err);
+                        <div className="relative flex-1 flex items-center">
+                          <input
+                            className="apex-input py-1 px-3 text-xs flex-1 min-w-0 pr-8"
+                            defaultValue={parentEmail}
+                            onBlur={async (e) => {
+                              const newEmail = e.target.value.trim();
+                              if (newEmail !== parentEmail) {
+                                setEmailSaveStates(prev => ({ ...prev, [studentId]: 'saving' }));
+                                console.log('[Roster] Auto-saving parent email:', { studentId, newEmail });
+                                try {
+                                  const currentEmails = batch.parentEmails || {};
+                                  await updateClassDocument(batch.id, {
+                                    parentEmails: {
+                                      ...currentEmails,
+                                      [studentId]: newEmail
+                                    }
+                                  });
+                                  setEmailSaveStates(prev => ({ ...prev, [studentId]: 'saved' }));
+                                  setTimeout(() => {
+                                    setEmailSaveStates(prev => ({ ...prev, [studentId]: null }));
+                                  }, 3000);
+                                  console.log('[Roster] Auto-save success!');
+                                } catch (err) {
+                                  console.error('[Roster] Auto-save error:', err);
+                                  setEmailSaveStates(prev => ({ ...prev, [studentId]: 'error' }));
+                                }
                               }
-                            }
-                          }}
-                          placeholder="parent@example.com"
-                          type="email"
-                        />
+                            }}
+                            placeholder="parent@example.com"
+                            type="email"
+                          />
+                          <div className="absolute right-2.5 flex items-center justify-center pointer-events-none">
+                            {saveStatus === 'saving' && (
+                              <Loader2 size={12} className="animate-spin text-amber-400" />
+                            )}
+                            {saveStatus === 'saved' && (
+                              <Check size={12} className="text-emerald-400" />
+                            )}
+                            {saveStatus === 'error' && (
+                              <Ban size={12} className="text-red-400" />
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
