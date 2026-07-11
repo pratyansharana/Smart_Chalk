@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Skeleton } from '../../../components/common/Skeleton';
 import { getClassDocument, requestToJoinClass } from '../../../services/firebase/classesService';
 
-export function UpcomingClassesCard({ classes, studentId, loading, error }) {
+export function UpcomingClassesCard({ classes, studentId, loading, error, className = '' }) {
   const [requestBatchId, setRequestBatchId] = useState('');
   const [requestStatus, setRequestStatus] = useState(null);
   const [requestLoading, setRequestLoading] = useState(false);
@@ -48,7 +48,7 @@ export function UpcomingClassesCard({ classes, studentId, loading, error }) {
   if (loading) return <Skeleton className="h-96" />;
 
   return (
-    <section className="glass-card p-6 md:col-span-2">
+    <section className={`glass-card p-6 ${className}`}>
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Class Batches</p>

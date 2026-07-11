@@ -9,7 +9,7 @@ function toDate(value) {
   return value.toDate ? value.toDate() : new Date(value);
 }
 
-export function AssignmentsCard({ assignments, submissions, studentId, loading, error, parentMode }) {
+export function AssignmentsCard({ assignments, submissions, studentId, loading, error, parentMode, className = '' }) {
   const [tab, setTab] = useState('pending');
   const submissionByAssignment = useMemo(
     () => new Map(submissions.map((submission) => [submission.assignmentId, submission])),
@@ -27,7 +27,7 @@ export function AssignmentsCard({ assignments, submissions, studentId, loading, 
   if (loading) return <Skeleton className="h-96" />;
 
   return (
-    <section className="glass-card p-6 md:col-span-3">
+    <section className={`glass-card p-6 ${className}`}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Assignments</p>

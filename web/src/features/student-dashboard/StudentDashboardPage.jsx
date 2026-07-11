@@ -71,7 +71,7 @@ export function StudentDashboardPage() {
         </p>
 
         {/* KPI Insights Grid */}
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
+        <div className="mt-8 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           <div className="glass-card p-5 border border-indigo-500/15 bg-indigo-500/[0.01] flex items-center justify-between">
             <div>
               <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Active Batches</p>
@@ -225,7 +225,7 @@ export function StudentDashboardPage() {
         </div>
 
         {/* Worksheet Queue and Upload resources */}
-        <div className="mt-8 grid gap-6 md:grid-cols-2">
+        <div className="mt-8 grid gap-6 grid-cols-1 lg:grid-cols-2">
           {/* Assignments overview card */}
           <AssignmentsCard
             assignments={assignments.data}
@@ -289,8 +289,8 @@ export function StudentDashboardPage() {
       </p>
 
       {/* Main interactive grid */}
-      <div className="mt-8 grid gap-4 md:grid-cols-3">
-        <UpcomingClassesCard classes={classes.data} studentId={studentId} error={classes.error} loading={classes.loading} />
+      <div className="mt-8 grid gap-4 grid-cols-1 lg:grid-cols-3">
+        <UpcomingClassesCard classes={classes.data} studentId={studentId} error={classes.error} loading={classes.loading} className="lg:col-span-2" />
         <GradeVisualizerCard error={submissions.error} loading={submissions.loading} submissions={submissions.data} />
         <AssignmentsCard
           assignments={assignments.data}
@@ -298,6 +298,7 @@ export function StudentDashboardPage() {
           loading={assignments.loading || submissions.loading}
           studentId={studentId}
           submissions={submissions.data}
+          className="lg:col-span-3"
         />
       </div>
 

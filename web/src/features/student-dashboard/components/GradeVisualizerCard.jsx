@@ -2,7 +2,7 @@ import { Trophy } from 'lucide-react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Skeleton } from '../../../components/common/Skeleton';
 
-export function GradeVisualizerCard({ submissions, loading, error }) {
+export function GradeVisualizerCard({ submissions, loading, error, className = '' }) {
   const graded = submissions.filter((submission) => typeof submission.grade === 'number');
   const latest = graded.at(-1);
   const chartData = graded.map((submission, index) => ({
@@ -13,7 +13,7 @@ export function GradeVisualizerCard({ submissions, loading, error }) {
   if (loading) return <Skeleton className="h-64" />;
 
   return (
-    <section className="glass-card min-h-64 p-6">
+    <section className={`glass-card min-h-64 p-6 ${className}`}>
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Recent grades</p>
