@@ -1,0 +1,102 @@
+// Vercel Serverless Function: api/send-whatsapp.js
+// Handles automated WhatsApp notifications via UltraMsg or Twilio APIs.
+
+export default async function handler(req, res) {
+  // CORS Headers
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  const { to, body } = req.body;
+
+  if (!to || !body) {
+    return res.status(400).json({ error: 'Missing parameter "to" or "body"' });
+  }
+
+  // 1. Try UltraMsg Provider
+  const ultraToken = process.env.ULTRAMSG_TOKEN || process.env.VITE_ULTRAMSG_TOKEN;
+  const ultraInstance = process.env.ULTRAMSG_INSTANCE_ID || process.env.VITE_ULTRAMSG_INSTANCE_ID;
+
+  if (ultraToken && ultraInstance) {
+    try {
+      const cleanPhone = to.replace(/\+/g, '').trim();
+      const response = await fetch(`https://api.ultramsg.com/${ultraInstance}/messages/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: ultraToken,
+          to: cleanPhone,
+          body: body,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        return res.status(response.status).json({ error: `UltraMsg error: ${errText}` });
+      }
+
+      const data = await response.json();
+      return res.status(200).json({ success: true, provider: 'ultramsg', data });
+    } catch (err) {
+      return res.status(500).json({ error: `UltraMsg dispatch failed: ${err.message}` });
+    }
+  }
+
+  // 2. Try Twilio Provider
+  const twilioSid = process.env.TWILIO_ACCOUNT_SID;
+  const twilioToken = process.env.TWILIO_AUTH_TOKEN;
+  const twilioFrom = process.env.TWILIO_WHATSAPP_FROM || 'whatsapp:+14155238886';
+
+  if (twilioSid && twilioToken) {
+    try {
+      const formattedTo = to.startsWith('whatsapp:') ? to : `whatsapp:${to.startsWith('+') ? to : `+${to}`}`;
+      const authHeader = `Basic ${Buffer.from(`${twilioSid}:${twilioToken}`).toString('base64')}`;
+
+      const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`, {
+        method: 'POST',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          From: twilioFrom,
+          To: formattedTo,
+          Body: body,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        return res.status(response.status).json({ error: `Twilio error: ${errText}` });
+      }
+
+      const data = await response.json();
+      return res.status(200).json({ success: true, provider: 'twilio', data });
+    } catch (err) {
+      return res.status(500).json({ error: `Twilio dispatch failed: ${err.message}` });
+    }
+  }
+
+  // 3. Fallback: Mock Sandbox Log
+  console.log('[WhatsApp Serverless] No credentials found. Sandbox Mock:', { to, body });
+  return res.status(200).json({
+    success: true,
+    provider: 'mock',
+    message: 'Mock dispatch success. Set ULTRAMSG_TOKEN or TWILIO_ACCOUNT_SID to send real messages.',
+  });
+}

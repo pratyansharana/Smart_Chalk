@@ -51,6 +51,7 @@ import { createQuizDocument } from '../../services/firebase/quizService';
 import { generateAITest, generateAIQuiz, generateAIAssignment, gradeSubmissionWithAI } from '../../services/aiService';
 import { handlePrintReport } from '../../utils/printReport';
 import { sendAcademicReportEmail } from '../../services/emailService';
+import { sendAcademicReportWhatsApp } from '../../services/whatsappService';
 
 export function BatchDetailsPage() {
   const { batchId } = useParams();
@@ -73,6 +74,7 @@ export function BatchDetailsPage() {
   
   const [emailLogs, setEmailLogs] = useState([]);
   const [emailSaveStates, setEmailSaveStates] = useState({});
+  const [phoneSaveStates, setPhoneSaveStates] = useState({});
 
   function triggerEmailSend(params) {
     const logId = Date.now();
@@ -101,6 +103,44 @@ export function BatchDetailsPage() {
           prev.map((log) =>
             log.id === logId
               ? { ...log, status: 'error', message: `Failed to send email to ${params.to}. Error: ${errorMsg}` }
+              : log
+          )
+        );
+      });
+  }
+
+  function triggerWhatsAppSend(params) {
+    const logId = Date.now();
+    setEmailLogs((prev) => [
+      ...prev,
+      { id: logId, type: 'whatsapp', studentName: params.studentName, status: 'sending', message: `Sending automated WhatsApp to ${params.to}...` },
+    ]);
+
+    sendAcademicReportWhatsApp(params)
+      .then((data) => {
+        const isMock = data && data.provider === 'mock';
+        const msg = isMock 
+          ? `Mock WhatsApp success for ${params.to} (Check Vercel logs/setup).`
+          : `WhatsApp message successfully delivered to ${params.to}!`;
+          
+        setEmailLogs((prev) =>
+          prev.map((log) =>
+            log.id === logId
+              ? { ...log, status: 'success', message: msg }
+              : log
+          )
+        );
+        // Auto-dismiss success logs after 6 seconds
+        setTimeout(() => {
+          setEmailLogs((prev) => prev.filter((log) => log.id !== logId));
+        }, 6000);
+      })
+      .catch((err) => {
+        const errorMsg = err.message || 'Unknown network error';
+        setEmailLogs((prev) =>
+          prev.map((log) =>
+            log.id === logId
+              ? { ...log, status: 'error', message: `Failed to send WhatsApp to ${params.to}. Error: ${errorMsg}` }
               : log
           )
         );
@@ -374,7 +414,9 @@ export function BatchDetailsPage() {
                 {enrolledStudentIds.map((studentId) => {
                   const student = studentMap.get(studentId);
                   const parentEmail = batch?.parentEmails?.[studentId] || '';
+                  const parentPhone = batch?.parentPhones?.[studentId] || '';
                   const saveStatus = emailSaveStates[studentId];
+                  const phoneSaveStatus = phoneSaveStates[studentId];
 
                   return (
                     <div className="flex flex-col gap-2.5 bg-white/[0.02] p-3.5 rounded-xl border border-white/5" key={studentId}>
@@ -387,7 +429,7 @@ export function BatchDetailsPage() {
 
                       {/* Parent Email Form Row */}
                       <div className="mt-1 pt-2 border-t border-white/5 flex gap-2.5 items-center">
-                        <label className="text-[10px] text-slate-400 font-bold uppercase flex-shrink-0">Parent Email:</label>
+                        <label className="text-[10px] text-slate-400 font-bold uppercase flex-shrink-0 w-20">Parent Email:</label>
                         <div className="relative flex-1 flex items-center">
                           <input
                             className="apex-input py-1 px-3 text-xs flex-1 min-w-0 pr-8"
@@ -424,10 +466,58 @@ export function BatchDetailsPage() {
                               <Loader2 size={12} className="animate-spin text-amber-400" />
                             )}
                             {saveStatus === 'saved' && (
-                              <Check size={12} className="text-emerald-400" />
+                              <span className="text-[9px] text-emerald-400 font-bold animate-slideIn">Saved</span>
                             )}
                             {saveStatus === 'error' && (
-                              <Ban size={12} className="text-red-400" />
+                              <span className="text-[9px] text-red-400 font-bold animate-slideIn">Error</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Parent Phone Form Row */}
+                      <div className="flex gap-2.5 items-center">
+                        <label className="text-[10px] text-slate-400 font-bold uppercase flex-shrink-0 w-20">Parent Phone:</label>
+                        <div className="relative flex-1 flex items-center">
+                          <input
+                            className="apex-input py-1 px-3 text-xs flex-1 min-w-0 pr-8"
+                            defaultValue={parentPhone}
+                            onBlur={async (e) => {
+                              const newPhone = e.target.value.trim();
+                              if (newPhone !== parentPhone) {
+                                setPhoneSaveStates(prev => ({ ...prev, [studentId]: 'saving' }));
+                                console.log('[Roster] Auto-saving parent phone:', { studentId, newPhone });
+                                try {
+                                  const currentPhones = batch.parentPhones || {};
+                                  await updateClassDocument(batch.id, {
+                                    parentPhones: {
+                                      ...currentPhones,
+                                      [studentId]: newPhone
+                                    }
+                                  });
+                                  setPhoneSaveStates(prev => ({ ...prev, [studentId]: 'saved' }));
+                                  setTimeout(() => {
+                                    setPhoneSaveStates(prev => ({ ...prev, [studentId]: null }));
+                                  }, 3000);
+                                  console.log('[Roster] Auto-save success!');
+                                } catch (err) {
+                                  console.error('[Roster] Auto-save error:', err);
+                                  setPhoneSaveStates(prev => ({ ...prev, [studentId]: 'error' }));
+                                }
+                              }
+                            }}
+                            placeholder="+91 9999999999"
+                            type="tel"
+                          />
+                          <div className="absolute right-2.5 flex items-center justify-center pointer-events-none">
+                            {phoneSaveStatus === 'saving' && (
+                              <Loader2 size={12} className="animate-spin text-amber-400" />
+                            )}
+                            {phoneSaveStatus === 'saved' && (
+                              <span className="text-[9px] text-emerald-400 font-bold animate-slideIn">Saved</span>
+                            )}
+                            {phoneSaveStatus === 'error' && (
+                              <span className="text-[9px] text-red-400 font-bold animate-slideIn">Error</span>
                             )}
                           </div>
                         </div>
@@ -455,12 +545,32 @@ export function BatchDetailsPage() {
 
         {/* Tab 4: Test Centre */}
         {activeTab === 'tests' && (
-          <TestPanel batchId={batch.id} batchTitle={batch.title} parentEmails={batch.parentEmails || {}} teacherId={teacherId} tests={tests.data} submissions={testSubmissions.data} triggerEmailSend={triggerEmailSend} />
+          <TestPanel 
+            batchId={batch.id} 
+            batchTitle={batch.title} 
+            parentEmails={batch.parentEmails || {}} 
+            parentPhones={batch.parentPhones || {}} 
+            teacherId={teacherId} 
+            tests={tests.data} 
+            submissions={testSubmissions.data} 
+            triggerEmailSend={triggerEmailSend} 
+            triggerWhatsAppSend={triggerWhatsAppSend} 
+          />
         )}
 
         {/* Tab: Assignments */}
         {activeTab === 'assignments' && (
-          <AssignmentPanel batchId={batch.id} batchTitle={batch.title} parentEmails={batch.parentEmails || {}} teacherId={teacherId} assignments={assignments.data} submissions={assignmentSubmissions.data} triggerEmailSend={triggerEmailSend} />
+          <AssignmentPanel 
+            batchId={batch.id} 
+            batchTitle={batch.title} 
+            parentEmails={batch.parentEmails || {}} 
+            parentPhones={batch.parentPhones || {}} 
+            teacherId={teacherId} 
+            assignments={assignments.data} 
+            submissions={assignmentSubmissions.data} 
+            triggerEmailSend={triggerEmailSend} 
+            triggerWhatsAppSend={triggerWhatsAppSend} 
+          />
         )}
 
         {/* Tab 5: Quiz Centre */}
@@ -739,7 +849,7 @@ function VaultPanel({ batchId, teacherId, items }) {
 }
 
 /* SUB PANEL: Test Centre manager */
-function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, submissions, triggerEmailSend }) {
+function TestPanel({ batchId, batchTitle, parentEmails = {}, parentPhones = {}, teacherId, tests, submissions, triggerEmailSend, triggerWhatsAppSend }) {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [maxScore, setMaxScore] = useState(100);
@@ -895,6 +1005,20 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
       if (parentEmail && test && triggerEmailSend) {
         triggerEmailSend({
           to: parentEmail,
+          studentName: sub.studentName,
+          title: test.title,
+          batchTitle: batchTitle,
+          grade: Number(gradeInput),
+          maxScore: test.maxScore,
+          feedback: feedbackInput.trim(),
+        });
+      }
+
+      // Send automated parent WhatsApp
+      const parentPhone = sub && parentPhones[sub.studentId];
+      if (parentPhone && test && triggerWhatsAppSend) {
+        triggerWhatsAppSend({
+          to: parentPhone,
           studentName: sub.studentName,
           title: test.title,
           batchTitle: batchTitle,
@@ -1503,7 +1627,7 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
 }
 
 /* SUB PANEL: Assignments Manager */
-function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, teacherId, assignments, submissions, triggerEmailSend }) {
+function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones = {}, teacherId, assignments, submissions, triggerEmailSend, triggerWhatsAppSend }) {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [maxScore, setMaxScore] = useState(100);
@@ -1657,6 +1781,20 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, teacherId, as
       if (parentEmail && assignment && triggerEmailSend) {
         triggerEmailSend({
           to: parentEmail,
+          studentName: sub.studentName,
+          title: assignment.title,
+          batchTitle: batchTitle,
+          grade: Number(gradeInput),
+          maxScore: assignment.maxScore,
+          feedback: feedbackInput.trim(),
+        });
+      }
+
+      // Send automated parent WhatsApp
+      const parentPhone = sub && parentPhones[sub.studentId];
+      if (parentPhone && assignment && triggerWhatsAppSend) {
+        triggerWhatsAppSend({
+          to: parentPhone,
           studentName: sub.studentName,
           title: assignment.title,
           batchTitle: batchTitle,
