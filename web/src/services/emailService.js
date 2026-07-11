@@ -1,5 +1,13 @@
 export async function sendAcademicReportEmail({ to, studentName, title, batchTitle, grade, maxScore, feedback }) {
   const apiKey = import.meta.env.VITE_RESEND_API_KEY;
+  
+  console.log('[Email Service] Diagnostic logs:', {
+    hasApiKey: !!apiKey,
+    apiKeyLength: apiKey ? apiKey.length : 0,
+    apiKeyPreview: apiKey ? `${apiKey.substring(0, 5)}...` : 'none',
+    availableViteEnvKeys: Object.keys(import.meta.env).filter((k) => k.startsWith('VITE_')),
+  });
+
   if (!apiKey || apiKey.includes('YOUR_RESEND_API_KEY_HERE')) {
     console.warn('[Email Service] Resend API key is not configured yet. Skipping automated email.');
     return;
