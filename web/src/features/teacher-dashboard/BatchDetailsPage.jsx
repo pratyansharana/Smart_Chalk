@@ -239,14 +239,14 @@ export function BatchDetailsPage() {
             <p className="mt-1 text-sm text-slate-300">{batch.schedule}</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button className="apex-button-secondary py-2 px-3 text-xs" onClick={handleCopyId} type="button">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto mt-4 sm:mt-0">
+            <button className="apex-button-secondary py-2 px-3 text-xs w-full sm:w-auto justify-center" onClick={handleCopyId} type="button">
               {copiedId ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
               {copiedId ? 'Copied ID' : 'Copy Batch ID'}
             </button>
 
             <button
-              className={`py-2 px-4 text-sm flex items-center gap-2 rounded-xl font-bold transition-all ${
+              className={`py-2 px-4 text-sm flex items-center justify-center gap-2 rounded-xl font-bold transition-all w-full sm:w-auto ${
                 isLive
                   ? 'bg-red-500/20 border border-red-400/30 text-red-300 hover:bg-red-500/30'
                   : 'bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 hover:bg-emerald-500/30'
@@ -267,7 +267,7 @@ export function BatchDetailsPage() {
 
             {batch.meetingLink && (
               <a
-                className="apex-button-primary py-2 px-4 text-sm bg-indigo-500/25 border-indigo-500/35 hover:bg-indigo-500/35 text-indigo-200"
+                className="apex-button-primary py-2 px-4 text-sm bg-indigo-500/25 border-indigo-500/35 hover:bg-indigo-500/35 text-indigo-200 w-full sm:w-auto justify-center flex items-center gap-1.5"
                 href={batch.meetingLink}
                 rel="noreferrer"
                 target="_blank"

@@ -1,8 +1,16 @@
+import { useState, useEffect } from 'react';
 import { Trophy } from 'lucide-react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Skeleton } from '../../../components/common/Skeleton';
 
 export function GradeVisualizerCard({ submissions, loading, error, className = '' }) {
+  const [chartReady, setChartReady] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setChartReady(true), 250);
+    return () => clearTimeout(t);
+  }, []);
+
   const graded = submissions.filter((submission) => typeof submission.grade === 'number');
   const latest = graded.at(-1);
   const chartData = graded.map((submission, index) => ({
@@ -25,14 +33,16 @@ export function GradeVisualizerCard({ submissions, loading, error, className = '
       {!error && chartData.length === 0 && <p className="mt-5 text-sm text-slate-300">Graded submissions will appear here after your teacher reviews your work.</p>}
       {chartData.length > 0 && (
         <div className="mt-5 h-36">
-          <ResponsiveContainer height="100%" width="100%">
-            <BarChart data={chartData}>
-              <XAxis dataKey="name" stroke="#94a3b8" />
-              <YAxis domain={[0, 100]} stroke="#94a3b8" />
-              <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,.12)', color: '#fff' }} />
-              <Bar dataKey="grade" fill="#F59E0B" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {chartReady && (
+            <ResponsiveContainer height="100%" width="100%">
+              <BarChart data={chartData}>
+                <XAxis dataKey="name" stroke="#94a3b8" />
+                <YAxis domain={[0, 100]} stroke="#94a3b8" />
+                <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,.12)', color: '#fff' }} />
+                <Bar dataKey="grade" fill="#F59E0B" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       )}
     </section>

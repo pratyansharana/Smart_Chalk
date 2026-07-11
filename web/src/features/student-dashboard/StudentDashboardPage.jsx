@@ -1,5 +1,5 @@
 import { Link, useOutletContext } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BookOpen, ClipboardList, Trophy, Loader2, Download, FolderOpen, FileText, TrendingUp, Calendar, AlertCircle, Award } from 'lucide-react';
 import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAssignments } from '../../hooks/useAssignments';
@@ -28,6 +28,12 @@ export function StudentDashboardPage() {
 
   const { parentMode } = useOutletContext() || {};
   const [selectedTestId, setSelectedTestId] = useState(null);
+  const [chartReady, setChartReady] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setChartReady(true), 250);
+    return () => clearTimeout(t);
+  }, []);
 
   // Group graded test results chronologically
   const testSubmissionsList = submissions.data
@@ -124,42 +130,44 @@ export function StudentDashboardPage() {
               </div>
             ) : (
               <div className="mt-6 h-56 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    data={testSubmissionsList}
-                    onClick={(state) => {
-                      if (state && state.activePayload && state.activePayload.length > 0) {
-                        setSelectedTestId(state.activePayload[0].payload.id);
-                      }
-                    }}
-                    margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
-                  >
-                    <defs>
-                      <linearGradient id="colorPercent" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25}/>
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
-                    <XAxis dataKey="dateStr" stroke="#64748b" tickLine={false} style={{ fontSize: 10 }} />
-                    <YAxis domain={[0, 100]} stroke="#64748b" tickLine={false} style={{ fontSize: 10 }} />
-                    <Tooltip
-                      contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,.08)', borderRadius: '12px' }}
-                      labelStyle={{ color: '#94a3b8', fontSize: 11, fontWeight: 'bold' }}
-                      itemStyle={{ color: '#fff', fontSize: 12 }}
-                      formatter={(value) => [`${value}% Score`, 'Performance']}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="percentage"
-                      stroke="#6366f1"
-                      fillOpacity={1}
-                      fill="url(#colorPercent)"
-                      strokeWidth={2.5}
-                      activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 1.5 }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {chartReady && (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={testSubmissionsList}
+                      onClick={(state) => {
+                        if (state && state.activePayload && state.activePayload.length > 0) {
+                          setSelectedTestId(state.activePayload[0].payload.id);
+                        }
+                      }}
+                      margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+                    >
+                      <defs>
+                        <linearGradient id="colorPercent" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25}/>
+                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
+                      <XAxis dataKey="dateStr" stroke="#64748b" tickLine={false} style={{ fontSize: 10 }} />
+                      <YAxis domain={[0, 100]} stroke="#64748b" tickLine={false} style={{ fontSize: 10 }} />
+                      <Tooltip
+                        contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,.08)', borderRadius: '12px' }}
+                        labelStyle={{ color: '#94a3b8', fontSize: 11, fontWeight: 'bold' }}
+                        itemStyle={{ color: '#fff', fontSize: 12 }}
+                        formatter={(value) => [`${value}% Score`, 'Performance']}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="percentage"
+                        stroke="#6366f1"
+                        fillOpacity={1}
+                        fill="url(#colorPercent)"
+                        strokeWidth={2.5}
+                        activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 1.5 }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             )}
           </section>
