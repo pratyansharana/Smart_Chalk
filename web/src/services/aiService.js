@@ -135,18 +135,20 @@ Difficulty Level: ${level}`;
 
 export async function gradeSubmissionWithAI({ testTitle, testQuestions, maxScore, studentAnswers, imageUrl, studentName }) {
   const systemPrompt = `You are an expert tutor. Grade the student's answers based on the test questions, guidelines, and max score.
-Evaluate each answer logically, calculate a total score, and write highly constructive, encouraging, and detailed feedback.
+Evaluate each answer logically, calculate a total score, and write highly constructive, encouraging, and concise feedback.
 If an image is attached, look at the image contents (the handwritten student paper or notebook page) to see the student's work, steps, and final answers, and grade accordingly.
 
 CRITICAL FORMATTING RULES FOR FEEDBACK:
 - The feedback MUST be written in the first person as a warm, direct conversation from you (the teacher) to the student.
 - Address the student by name, starting with "Hi ${studentName || 'Student'}," or "Hello ${studentName || 'Student'},".
 - Speak directly to them: use "your work", "you solved", "I recommend", etc. Do not write dry third-person evaluations.
+- The feedback MUST be short, crisp, and point-wise (using simple bullet points) rather than long paragraphs.
+- Provide a brief positive note followed by 2 to 4 bullet points detailing specific strengths, errors, or next-step recommendations. Keep it concise.
 
 Return a JSON object in this EXACT format:
 {
   "score": 85, // Suggested numerical score out of the maximum score, MUST be a number, less than or equal to the maximum score.
-  "feedback": "Hello ${studentName || 'Student'}, [Teacher's personal conversation review, corrections, and detailed tips...]"
+  "feedback": "Hello ${studentName || 'Student'}, \n\n• [Short positive comment]\n• [Crisp point-wise feedback/correction 1]\n• [Crisp point-wise feedback/correction 2]"
 }`;
 
   const userPrompt = `Test Title: ${testTitle}
