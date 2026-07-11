@@ -50,6 +50,7 @@ import { createTestDocument, gradeTestSubmission } from '../../services/firebase
 import { createQuizDocument } from '../../services/firebase/quizService';
 import { generateAITest, generateAIQuiz, generateAIAssignment, gradeSubmissionWithAI } from '../../services/aiService';
 import { handlePrintReport } from '../../utils/printReport';
+import { sendAcademicReportEmail } from '../../services/emailService';
 
 export function BatchDetailsPage() {
   const { batchId } = useParams();
@@ -744,6 +745,24 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
         feedback: feedbackInput.trim(),
         gradedBy: teacherId,
       });
+      console.log('[Grading] Grade saved successfully!');
+
+      // Send automated parent email
+      const sub = submissions.find((s) => s.id === gradingSubmissionId);
+      const test = tests.find((t) => t.id === sub?.testId);
+      const parentEmail = sub && parentEmails[sub.studentId];
+      if (parentEmail && test) {
+        sendAcademicReportEmail({
+          to: parentEmail,
+          studentName: sub.studentName,
+          title: test.title,
+          batchTitle: batchTitle,
+          grade: Number(gradeInput),
+          maxScore: test.maxScore,
+          feedback: feedbackInput.trim(),
+        });
+      }
+
       setGradingSubmissionId(null);
       setGradeInput('');
       setFeedbackInput('');
@@ -1483,6 +1502,23 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, teacherId, as
         gradedBy: teacherId,
       });
       console.log('[Grading] Grade saved successfully!');
+
+      // Send automated parent email
+      const sub = submissions.find((s) => s.id === submissionId);
+      const assignment = assignments.find((a) => a.id === sub?.assignmentId);
+      const parentEmail = sub && parentEmails[sub.studentId];
+      if (parentEmail && assignment) {
+        sendAcademicReportEmail({
+          to: parentEmail,
+          studentName: sub.studentName,
+          title: assignment.title,
+          batchTitle: batchTitle,
+          grade: Number(gradeInput),
+          maxScore: assignment.maxScore,
+          feedback: feedbackInput.trim(),
+        });
+      }
+
       setGradingSubmissionId(null);
       setGradeInput('');
       setFeedbackInput('');
