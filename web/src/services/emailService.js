@@ -56,33 +56,51 @@ export async function sendAcademicReportEmail({ to, studentName, title, batchTit
     </div>
   `;
 
-  console.log('[Email Service] Sending automated email via Resend proxy...', { to, subject });
+  console.log('[Email Service] Sending automated email via proxy or serverless function...', { to, subject });
   
   try {
-    const response = await fetch(`https://corsproxy.io/?url=${encodeURIComponent('https://api.resend.com/emails')}`, {
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const url = isLocal 
+      ? 'https://thingproxy.freeboard.io/fetch/https://api.resend.com/emails'
+      : '/api/send-email';
+
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+
+    if (isLocal) {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    }
+
+    const bodyPayload = isLocal
+      ? {
+          from: 'SmartChalk <updates@smartchalk.online>',
+          to: [to],
+          subject: subject,
+          html: htmlContent,
+        }
+      : {
+          to: to,
+          subject: subject,
+          html: htmlContent,
+        };
+
+    const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'SmartChalk <updates@smartchalk.online>',
-        to: [to],
-        subject: subject,
-        html: htmlContent,
-      }),
+      headers: headers,
+      body: JSON.stringify(bodyPayload),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`Resend email dispatch failed: ${response.status} - ${errText}`);
+      throw new Error(`Email dispatch failed: ${response.status} - ${errText}`);
     }
 
     const data = await response.json();
-    console.log('[Email Service] Resend email dispatched successfully!', data);
+    console.log('[Email Service] Email dispatched successfully!', data);
     return data;
   } catch (err) {
-    console.error('[Email Service] Error sending automated email via Resend:', err);
+    console.error('[Email Service] Error sending automated email:', err);
     throw err;
   }
 }
