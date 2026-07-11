@@ -9,7 +9,7 @@ function toDate(value) {
   return value.toDate ? value.toDate() : new Date(value);
 }
 
-export function AssignmentsCard({ assignments, submissions, studentId, loading, error }) {
+export function AssignmentsCard({ assignments, submissions, studentId, loading, error, parentMode }) {
   const [tab, setTab] = useState('pending');
   const submissionByAssignment = useMemo(
     () => new Map(submissions.map((submission) => [submission.assignmentId, submission])),
@@ -49,25 +49,47 @@ export function AssignmentsCard({ assignments, submissions, studentId, loading, 
         </div>
       )}
       <div className="mt-5 grid gap-4">
-        {filteredAssignments.map((assignment) => (
-          <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4" key={assignment.id}>
-            <div className="grid gap-3 lg:grid-cols-[1fr_360px] lg:items-start">
-              <div>
-                <h3 className="font-heading text-xl font-bold text-white">{assignment.title}</h3>
-                <p className="mt-1 text-sm text-slate-300">{assignment.description || assignment.subject}</p>
-                <p className="mt-3 text-xs font-bold uppercase tracking-wide text-slate-500">
-                  Due {toDate(assignment.dueDate)?.toLocaleDateString() || 'pending'} / Max score {assignment.maxScore || 100}
-                </p>
-                {assignment.worksheetFileURL && (
-                  <a className="mt-4 inline-flex text-sm font-bold text-amber-400 hover:text-amber-300" href={assignment.worksheetFileURL} rel="noreferrer" target="_blank">
-                    Download worksheet
-                  </a>
+        {filteredAssignments.map((assignment) => {
+          const sub = submissionByAssignment.get(assignment.id);
+          return (
+            <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4" key={assignment.id}>
+              <div className="grid gap-3 lg:grid-cols-[1fr_360px] lg:items-start">
+                <div>
+                  <h3 className="font-heading text-xl font-bold text-white">{assignment.title}</h3>
+                  <p className="mt-1 text-sm text-slate-300">{assignment.description || assignment.subject}</p>
+                  <p className="mt-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Due {toDate(assignment.dueDate)?.toLocaleDateString() || 'pending'} / Max score {assignment.maxScore || 100}
+                  </p>
+                  {assignment.worksheetFileURL && (
+                    <a className="mt-4 inline-flex text-sm font-bold text-amber-400 hover:text-amber-300" href={assignment.worksheetFileURL} rel="noreferrer" target="_blank">
+                      Download worksheet
+                    </a>
+                  )}
+                </div>
+                {!parentMode ? (
+                  <WorksheetUploader assignment={assignment} studentId={studentId} submission={sub} />
+                ) : (
+                  <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl text-center self-stretch flex flex-col justify-center min-h-[90px]">
+                    {sub ? (
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider block">Graded Score:</span>
+                        <span className="text-base font-black text-slate-200 mt-1 block">
+                          {sub.grade !== undefined && sub.grade !== null
+                            ? `${sub.grade} / ${assignment.maxScore || 100} marks (${Math.round((sub.grade / (assignment.maxScore || 100)) * 100)}%)`
+                            : 'Pending teacher review...'}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs font-bold text-amber-500 uppercase tracking-widest block">
+                        Pending Submission
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
-              <WorksheetUploader assignment={assignment} studentId={studentId} submission={submissionByAssignment.get(assignment.id)} />
-            </div>
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
     </section>
   );

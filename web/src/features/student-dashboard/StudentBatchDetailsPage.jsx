@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useOutletContext } from 'react-router-dom';
 import {
   ChevronLeft,
   Loader2,
@@ -48,6 +48,8 @@ export function StudentBatchDetailsPage() {
   const quizzes = useBatchQuizzes(batchId);
   const assignments = useBatchAssignments(batchId);
   const submissions = useSubmissions(studentId);
+
+  const { parentMode } = useOutletContext() || {};
 
   const [activeTab, setActiveTab] = useState('announcements'); // 'announcements' | 'vault' | 'assignments' | 'tests' | 'quizzes'
   const [activeQuizId, setActiveQuizId] = useState(null);
@@ -413,8 +415,12 @@ export function StudentBatchDetailsPage() {
                             </div>
                           )}
                         </div>
-                      ) : (
+                      ) : !parentMode ? (
                         <TestUploader test={test} classId={batch.id} studentId={studentId} studentName={studentName} />
+                      ) : (
+                        <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl text-center flex items-center justify-center min-h-[90px]">
+                          <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">Pending Student Test Submission</span>
+                        </div>
                       )}
                     </div>
                   </article>
@@ -426,7 +432,7 @@ export function StudentBatchDetailsPage() {
 
         {/* Tab: Assignments */}
         {activeTab === 'assignments' && (
-          <StudentAssignmentPanel batch={batch} studentId={studentId} studentName={studentName} assignments={assignments.data} submissions={submissions.data} />
+          <StudentAssignmentPanel batch={batch} studentId={studentId} studentName={studentName} assignments={assignments.data} submissions={submissions.data} parentMode={parentMode} />
         )}
         {activeTab === 'quizzes' && (
           <section className="glass-card p-5">
@@ -442,7 +448,7 @@ export function StudentBatchDetailsPage() {
             {!activeQuizId ? (
               <div className="grid gap-4 md:grid-cols-2">
                 {quizzes.data.map((quiz) => (
-                  <QuizCard key={quiz.id} quiz={quiz} batchId={batch.id} studentId={studentId} onStartQuiz={setActiveQuizId} />
+                  <QuizCard key={quiz.id} quiz={quiz} batchId={batch.id} studentId={studentId} onStartQuiz={setActiveQuizId} parentMode={parentMode} />
                 ))}
               </div>
             ) : (
@@ -629,7 +635,7 @@ function TestUploader({ test, classId, studentId, studentName }) {
 }
 
 /* Sub-component: Quiz Item Card and Leaderboard listing */
-function QuizCard({ quiz, batchId, studentId, onStartQuiz }) {
+function QuizCard({ quiz, batchId, studentId, onStartQuiz, parentMode }) {
   const { data: scores } = useQuizScores(quiz.id);
   const myScore = scores.find((s) => s.studentId === studentId);
 
@@ -644,7 +650,7 @@ function QuizCard({ quiz, batchId, studentId, onStartQuiz }) {
             <span className="text-[10px] text-emerald-400 uppercase tracking-wider font-bold block">Your Score</span>
             <span className="text-xl font-black text-emerald-300">{myScore.score} / {myScore.totalQuestions}</span>
           </div>
-        ) : (
+        ) : !parentMode ? (
           <button
             className="apex-button-primary w-full py-2 text-sm flex items-center justify-center gap-1.5"
             onClick={() => onStartQuiz(quiz.id)}
@@ -653,6 +659,10 @@ function QuizCard({ quiz, batchId, studentId, onStartQuiz }) {
             <HelpCircle size={16} />
             Start Quiz Competition
           </button>
+        ) : (
+          <div className="bg-white/[0.01] border border-white/5 p-3 rounded-xl text-center mb-4 min-h-[44px] flex items-center justify-center">
+            <span className="text-xs font-bold text-amber-500 uppercase tracking-widest block">Not Taken by Student</span>
+          </div>
         )}
       </div>
 
@@ -964,7 +974,7 @@ export function QuestionPaperRenderer({ content }) {
 }
 
 /* SUB PANEL: Student Assignments Hub */
-function StudentAssignmentPanel({ batch, studentId, studentName, assignments, submissions }) {
+function StudentAssignmentPanel({ batch, studentId, studentName, assignments, submissions, parentMode }) {
   return (
     <section className="glass-card p-5 animate-fadeIn">
       <h2 className="font-heading text-2xl font-bold text-white mb-5 flex items-center gap-2">
@@ -1083,8 +1093,12 @@ function StudentAssignmentPanel({ batch, studentId, studentName, assignments, su
                       </div>
                     )}
                   </div>
-                ) : (
+                ) : !parentMode ? (
                   <AssignmentUploader assignment={assignment} classId={batch.id} studentId={studentId} studentName={studentName} />
+                ) : (
+                  <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl text-center flex items-center justify-center min-h-[90px]">
+                    <span className="text-xs font-bold text-amber-500 uppercase tracking-widest block">Pending Student Submission</span>
+                  </div>
                 )}
               </div>
             </article>

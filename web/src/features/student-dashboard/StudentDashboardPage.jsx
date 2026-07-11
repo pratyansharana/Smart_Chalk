@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useOutletContext } from 'react-router-dom';
 import { BookOpen, ClipboardList, Trophy, Loader2, Download, FolderOpen, FileText } from 'lucide-react';
 import { useAssignments } from '../../hooks/useAssignments';
 import { useAuth } from '../../hooks/useAuth';
@@ -22,6 +22,81 @@ export function StudentDashboardPage() {
   const enrolledTests = useEnrolledTests(batchIds);
   const enrolledQuizzes = useEnrolledQuizzes(batchIds);
   const enrolledVault = useEnrolledVaultItems(batchIds);
+
+  const { parentMode } = useOutletContext() || {};
+
+  if (parentMode) {
+    return (
+      <main className="p-5 lg:p-8 animate-fadeIn">
+        <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Parent oversight workspace</p>
+        <h1 className="mt-3 font-heading text-4xl font-bold text-white">Academic Progress Portal</h1>
+        <p className="mt-2 text-slate-300 text-sm leading-relaxed max-w-3xl font-sans">
+          Real-time grades, evaluation history, and pointwise teacher comments for <strong>{profile?.displayName || 'Student'}</strong>.
+        </p>
+
+        {/* Parent Analytics Summary */}
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          <UpcomingClassesCard classes={classes.data} studentId={studentId} error={classes.error} loading={classes.loading} />
+          <GradeVisualizerCard error={submissions.error} loading={submissions.loading} submissions={submissions.data} />
+          <AssignmentsCard
+            assignments={assignments.data}
+            error={assignments.error}
+            loading={assignments.loading || submissions.loading}
+            studentId={studentId}
+            submissions={submissions.data}
+            parentMode={true}
+          />
+        </div>
+
+        {/* Detailed Graded Evaluations History */}
+        <div className="mt-8 glass-card p-6 border border-white/5">
+          <h2 className="font-heading text-xl font-bold text-white flex items-center gap-2 mb-4">
+            <BookOpen size={20} className="text-amber-400" />
+            Teacher Remarks & Graded Performance List
+          </h2>
+          
+          <div className="grid gap-4">
+            {submissions.loading && <Loader2 className="animate-spin text-amber-400 mx-auto" size={24} />}
+            {!submissions.loading && (!submissions.data || submissions.data.length === 0) && (
+              <p className="text-sm text-slate-500 text-center py-6">No graded evaluations available right now.</p>
+            )}
+            {!submissions.loading && submissions.data && submissions.data.map((sub) => {
+              const percent = sub.maxScore ? Math.round((sub.grade / sub.maxScore) * 100) : 0;
+              const isTest = sub.testId !== undefined;
+              return (
+                <div key={sub.id} className="border border-white/5 bg-white/[0.01] p-4 rounded-xl flex flex-col gap-3 shadow-md">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded mr-2 uppercase tracking-wide ${
+                        isTest ? 'bg-amber-500/10 text-amber-300' : 'bg-indigo-500/10 text-indigo-300'
+                      }`}>
+                        {isTest ? 'Test Paper' : 'Homework Assignment'}
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        {sub.submittedAt ? new Date(sub.submittedAt.seconds ? sub.submittedAt.seconds * 1000 : sub.submittedAt).toLocaleDateString() : ''}
+                      </span>
+                      <h3 className="font-bold text-slate-200 text-sm mt-1">{sub.testTitle || sub.taskTitle || 'Evaluated Task'}</h3>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-bold text-emerald-400 block">{sub.grade} / {sub.maxScore || 100} marks</span>
+                      <span className="text-xs text-slate-400 font-semibold">({percent}%)</span>
+                    </div>
+                  </div>
+
+                  {sub.feedback && (
+                    <div className="border-t border-white/5 pt-2.5">
+                      <h4 className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Teacher Point-wise Feedback:</h4>
+                      <p className="text-xs text-slate-300 mt-1 font-sans leading-relaxed whitespace-pre-wrap">{sub.feedback}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="p-5 lg:p-8">
