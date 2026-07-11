@@ -20,7 +20,7 @@ export function TeacherDashboardPage() {
   ];
 
   return (
-    <main className="p-5 lg:p-8">
+    <main className="p-4 lg:p-8">
       <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Teacher workspace</p>
       <h1 className="mt-3 font-heading text-4xl font-bold text-white">Command center</h1>
       <p className="mt-3 max-w-3xl text-slate-300">

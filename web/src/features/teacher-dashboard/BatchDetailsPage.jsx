@@ -157,7 +157,7 @@ export function BatchDetailsPage() {
 
   if (batchError || !batch) {
     return (
-      <main className="p-5 lg:p-8">
+      <main className="p-4 lg:p-8">
         <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-center">
           <h2 className="font-heading text-xl font-bold text-red-200">Batch Workspace Error</h2>
           <p className="mt-2 text-sm text-red-300/80">{batchError?.message || 'Batch not found.'}</p>
@@ -215,7 +215,7 @@ export function BatchDetailsPage() {
   }
 
   return (
-    <main className="p-5 lg:p-8">
+    <main className="p-4 lg:p-8">
       {/* Back button */}
       <Link className="inline-flex items-center gap-1 text-sm font-bold text-amber-400 hover:text-amber-300 transition-colors mb-4" to="/teacher">
         <ChevronLeft size={16} />
@@ -428,9 +428,9 @@ export function BatchDetailsPage() {
                       </div>
 
                       {/* Parent Email Form Row */}
-                      <div className="mt-1 pt-2 border-t border-white/5 flex gap-2.5 items-center">
-                        <label className="text-[10px] text-slate-400 font-bold uppercase flex-shrink-0 w-20">Parent Email:</label>
-                        <div className="relative flex-1 flex items-center">
+                      <div className="mt-1 pt-2 border-t border-white/5 flex flex-col sm:flex-row gap-1.5 sm:gap-2.5 sm:items-center">
+                        <label className="text-[10px] text-slate-400 font-bold uppercase flex-shrink-0 w-full sm:w-20">Parent Email:</label>
+                        <div className="relative flex-1 flex items-center w-full">
                           <input
                             className="apex-input py-1 px-3 text-xs flex-1 min-w-0 pr-8"
                             defaultValue={parentEmail}
@@ -476,9 +476,9 @@ export function BatchDetailsPage() {
                       </div>
 
                       {/* Parent Phone Form Row */}
-                      <div className="flex gap-2.5 items-center">
-                        <label className="text-[10px] text-slate-400 font-bold uppercase flex-shrink-0 w-20">Parent Phone:</label>
-                        <div className="relative flex-1 flex items-center">
+                      <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2.5 sm:items-center mt-1.5 sm:mt-0">
+                        <label className="text-[10px] text-slate-400 font-bold uppercase flex-shrink-0 w-full sm:w-20">Parent Phone:</label>
+                        <div className="relative flex-1 flex items-center w-full">
                           <input
                             className="apex-input py-1 px-3 text-xs flex-1 min-w-0 pr-8"
                             defaultValue={parentPhone}
@@ -824,10 +824,10 @@ function VaultPanel({ batchId, teacherId, items }) {
                 </button>
               </div>
               {item.fileURL && (
-                <div className="mt-3 border-t border-white/5 pt-2 flex items-center justify-between gap-3">
-                  <span className="text-[10px] text-slate-500 truncate max-w-xs">{item.fileName || 'Attachment'}</span>
+                <div className="mt-3 border-t border-white/5 pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <span className="text-[10px] text-slate-500 truncate max-w-full sm:max-w-xs">{item.fileName || 'Attachment'}</span>
                   <a
-                    className="apex-button-primary py-1 px-2.5 text-xs flex items-center gap-1 bg-amber-400/10 border-amber-400/20 text-amber-300 hover:bg-amber-400/20"
+                    className="apex-button-primary py-1 px-2.5 text-xs flex items-center gap-1 bg-amber-400/10 border-amber-400/20 text-amber-300 hover:bg-amber-400/20 w-full sm:w-auto justify-center"
                     href={item.fileURL}
                     rel="noreferrer"
                     target="_blank"

@@ -66,7 +66,7 @@ export function StudentBatchDetailsPage() {
 
   if (batchError || !batch) {
     return (
-      <main className="p-5 lg:p-8">
+      <main className="p-4 lg:p-8">
         <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-center">
           <h2 className="font-heading text-xl font-bold text-red-200">Workspace Error</h2>
           <p className="mt-2 text-sm text-red-300/80">{batchError?.message || 'Batch not found or you are not enrolled.'}</p>
@@ -85,7 +85,7 @@ export function StudentBatchDetailsPage() {
 
   if (!isEnrolled) {
     return (
-      <main className="p-5 lg:p-8">
+      <main className="p-4 lg:p-8">
         <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-5 text-center">
           <h2 className="font-heading text-xl font-bold text-amber-200">Access Restricted</h2>
           <p className="mt-2 text-sm text-amber-300/80">Your enrollment request for this batch is currently pending teacher approval.</p>
@@ -102,7 +102,7 @@ export function StudentBatchDetailsPage() {
   const announcements = batch.notes || [];
 
   return (
-    <main className="p-5 lg:p-8">
+    <main className="p-4 lg:p-8">
       {/* Back button */}
       <Link className="inline-flex items-center gap-1 text-sm font-bold text-amber-400 hover:text-amber-300 transition-colors mb-4" to="/student">
         <ChevronLeft size={16} />
