@@ -17,6 +17,7 @@ import {
   Printer,
   Mail,
   Sparkles,
+  Paperclip,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useBatchDetails } from '../../hooks/useBatchDetails';

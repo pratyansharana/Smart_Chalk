@@ -187,6 +187,7 @@ export function handlePrintReport(test, submission, sName, batchTitle, parentEma
                   📧 Email via Mail App
                 </a>
               </div>
+              <p style="margin: 8px 0 0 0; font-size: 10px; color: #b45309; text-align: center;">📎 <em>Attachment Tip: Browser security sandbox rules block auto-attaching local files. Save this report as PDF first, then drag & drop it to your email compose window to attach.</em></p>
             `;
           })()}
         </div>

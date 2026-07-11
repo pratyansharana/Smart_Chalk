@@ -5,6 +5,7 @@ import {
   Loader2,
   Copy,
   Check,
+  Paperclip,
   Radio,
   Ban,
   Send,
@@ -1246,6 +1247,14 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, teacherId, tests, s
                 />
               </div>
             </div>
+
+            <div className="bg-amber-400/10 border border-amber-400/20 p-3.5 rounded-xl flex items-start gap-2.5 mt-4 text-[11px] text-amber-200">
+              <Paperclip size={14} className="mt-0.5 shrink-0 text-amber-400 animate-pulse" />
+              <div>
+                <strong className="text-white block mb-0.5">How to attach the PDF Report:</strong>
+                Due to browser security policies, files cannot be attached automatically. First click <strong>"Save PDF"</strong> to download the report, then choose Gmail/Mail App and drag & drop the PDF to attach it.
+              </div>
+            </div>
             
             <div className="flex flex-wrap gap-3 justify-end mt-6">
               <button
@@ -2022,6 +2031,14 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, teacherId, as
                   className="w-full bg-white/[0.04] border border-white/10 p-3 rounded-lg text-slate-300 leading-relaxed font-sans resize-none h-48 select-all"
                   value={emailModalData.body}
                 />
+              </div>
+            </div>
+
+            <div className="bg-amber-400/10 border border-amber-400/20 p-3.5 rounded-xl flex items-start gap-2.5 mt-4 text-[11px] text-amber-200">
+              <Paperclip size={14} className="mt-0.5 shrink-0 text-amber-400 animate-pulse" />
+              <div>
+                <strong className="text-white block mb-0.5">How to attach the PDF Report:</strong>
+                Due to browser security policies, files cannot be attached automatically. First click <strong>"Save PDF"</strong> to download the report, then choose Gmail/Mail App and drag & drop the PDF to attach it.
               </div>
             </div>
             
