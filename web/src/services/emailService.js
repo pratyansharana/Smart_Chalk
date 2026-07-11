@@ -58,7 +58,7 @@ export async function sendAcademicReportEmail({ to, studentName, title, batchTit
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'SmartChalk <onboarding@resend.dev>',
+        from: 'SmartChalk <updates@smartchalk.online>',
         to: [to],
         subject: subject,
         html: htmlContent,
