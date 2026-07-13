@@ -76,12 +76,12 @@ async function fetchFromGroqVision(systemPrompt, userPromptText, imageUrls) {
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+      model: 'llama-3.2-90b-vision-preview',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: contentArray },
       ],
-      temperature: 0.2,
+      temperature: 0.1, // Lower temperature for more deterministic, strictly factual grading
       response_format: { type: 'json_object' },
     }),
   });
@@ -104,7 +104,16 @@ async function fetchFromGroqVision(systemPrompt, userPromptText, imageUrls) {
  * Generates an AI test based on grade, topic, difficulty level, and optional custom instructions.
  */
 export async function generateAITest({ grade, topic, level, instructions }) {
-  const systemPrompt = `You are an expert tutor. Create a formal test paper based on the requested topic, grade, and level.
+  const systemPrompt = `You are an elite academic tutor. Your task is to create a formal test paper that is perfectly aligned with the requested grade level, topic, and difficulty level.
+
+STRICT TOPIC & SYLLABUS ALIGNMENT DIRECTIVE:
+1. STRICT TOPIC ADHERENCE: Focus exclusively on the requested topic: "${topic}". Do not introduce questions, terms, or mathematical concepts from unrelated topics. Keep every single question directly relevant to the topic.
+2. GRADE-LEVEL COMPLIANCE: Target the educational complexity level of Grade: "${grade}". Avoid questions that are too advanced (e.g. college or high school math for elementary students) or too simple.
+3. DIFFICULTY SPECIFICATION: Calibrate questions according to the difficulty: "${level}".
+   - Easy: Direct questions, basic recall, simple exercises.
+   - Medium: Conceptual application, standard multi-step problems.
+   - Hard: Advanced problem solving, complex calculations, deep reasoning.
+4. CUSTOM INSTRUCTIONS: Incorporate these instructions strictly: "${instructions || 'None'}".
 
 LaTeX MATH FORMATTING RULES:
 1. Wrap all mathematical equations, variables, symbols, and expressions inside standard delimiters:
@@ -138,7 +147,15 @@ Additional Instructions: ${instructions || 'None'}`;
  * Generates an AI MCQ quiz based on grade, topic, difficulty level, and number of questions.
  */
 export async function generateAIQuiz({ grade, topic, level, count = 5 }) {
-  const systemPrompt = `You are an expert tutor. Create a multiple choice question (MCQ) quiz based on the requested topic, grade, and level.
+  const systemPrompt = `You are an elite academic tutor. Create a multiple choice question (MCQ) quiz based on the requested topic, grade, and level.
+
+STRICT TOPIC & SYLLABUS ALIGNMENT DIRECTIVE:
+1. STRICT TOPIC ADHERENCE: Focus exclusively on the requested topic: "${topic}". Do not introduce questions, terms, or mathematical concepts from unrelated topics. Keep every single question directly relevant to the topic.
+2. GRADE-LEVEL COMPLIANCE: Target the educational complexity level of Grade: "${grade}". Avoid questions that are too advanced (e.g. college or high school math for elementary students) or too simple.
+3. DIFFICULTY SPECIFICATION: Calibrate questions according to the difficulty: "${level}".
+   - Easy: Direct questions, basic recall, simple exercises.
+   - Medium: Conceptual application, standard multi-step problems.
+   - Hard: Advanced problem solving, complex calculations, deep reasoning.
 
 LaTeX MATH FORMATTING RULES:
 1. Wrap all mathematical equations, variables, symbols, and expressions inside standard delimiters:
@@ -168,21 +185,35 @@ Difficulty Level: ${level}`;
 }
 
 export async function gradeSubmissionWithAI({ testTitle, testQuestions, maxScore, studentAnswers, imageUrls, imageUrl, studentName }) {
-  const systemPrompt = `You are an expert tutor. Grade the student's answers based on the test questions, guidelines, and max score.
-Evaluate each answer logically, calculate a total score, and write highly constructive, encouraging, and concise feedback.
-If images are attached, look at the image contents (the handwritten student paper or notebook pages) to see the student's work, steps, and final answers, and grade accordingly.
+  const systemPrompt = `You are an elite academic tutor. Your task is to grade the student's submission with extreme precision, accuracy, and fairness.
+
+GRADING RUBRIC & STRATEGY:
+1. STEP-BY-STEP EVALUATION:
+   - For each question in the test paper, analyze the correct answer/method.
+   - Look at the student's written text answers AND scan all attached submission images carefully to check their work, derivations, formulas, and final answers.
+   - Do not guess or assume. Grade strictly based on visible correct work.
+2. STRICT SCORE CALCULATION:
+   - Assign partial points for correct steps and full points for correct final solutions.
+   - Sum the individual question scores to calculate the final total score.
+   - The final total score MUST be a number, and it MUST be less than or equal to the maximum score (${maxScore}).
+3. NO HALLUCINATIONS:
+   - If a student's answer is mathematically incorrect, do not give full marks. Deduct points appropriately and point out the exact error.
+   - If the student's answer is blank or missing, assign 0 points for that question.
 
 CRITICAL FORMATTING RULES FOR FEEDBACK:
 - The feedback MUST be written in the first person as a warm, direct conversation from you (the teacher) to the student.
 - Address the student by name, starting with "Hi ${studentName || 'Student'}," or "Hello ${studentName || 'Student'},".
 - Speak directly to them: use "your work", "you solved", "I recommend", etc. Do not write dry third-person evaluations.
 - The feedback MUST be short, crisp, and point-wise (using simple bullet points) rather than long paragraphs.
-- Provide a brief positive note followed by 2 to 4 bullet points detailing specific strengths, errors, or next-step recommendations. Keep it concise.
+- Provide a brief encouraging opening sentence, followed by 2 to 4 bullet points detailing:
+  • Specific strengths (what they did well).
+  • Precise errors and misconceptions (why they lost points).
+  • Clear corrections/recommendations for next time.
 
 Return a JSON object in this EXACT format:
 {
-  "score": 85, // Suggested numerical score out of the maximum score, MUST be a number, less than or equal to the maximum score.
-  "feedback": "Hello ${studentName || 'Student'}, \n\n• [Short positive comment]\n• [Crisp point-wise feedback/correction 1]\n• [Crisp point-wise feedback/correction 2]"
+  "score": 85, // Calculated total numerical score (out of ${maxScore}), must be a number.
+  "feedback": "Hello ${studentName || 'Student'},\n\n[Encouraging sentence]\n• [Point-wise strength]\n• [Point-wise error/correction]\n• [Point-wise recommendation]"
 }`;
 
   const userPrompt = `Test Title: ${testTitle}
@@ -202,7 +233,15 @@ ${studentAnswers || 'No text answers provided.'}`;
  * Generates an AI assignment based on grade, topic, difficulty level, and optional custom instructions.
  */
 export async function generateAIAssignment({ grade, topic, level, instructions }) {
-  const systemPrompt = `You are an expert tutor. Create a formal assignment paper based on the requested topic, grade, and level.
+  const systemPrompt = `You are an elite academic tutor. Create a formal assignment paper based on the requested topic, grade, and level.
+
+STRICT TOPIC & SYLLABUS ALIGNMENT DIRECTIVE:
+1. STRICT TOPIC ADHERENCE: Focus exclusively on the requested topic: "${topic}". Do not introduce questions, terms, or mathematical concepts from unrelated topics. Keep every single question directly relevant to the topic.
+2. GRADE-LEVEL COMPLIANCE: Target the educational complexity level of Grade: "${grade}". Avoid questions that are too advanced (e.g. college or high school math for elementary students) or too simple.
+3. DIFFICULTY SPECIFICATION: Calibrate questions according to the difficulty: "${level}".
+   - Easy: Direct questions, basic recall, simple exercises.
+   - Medium: Conceptual application, standard multi-step problems.
+   - Hard: Advanced problem solving, complex calculations, deep reasoning.
 
 LaTeX MATH FORMATTING RULES:
 1. Wrap all mathematical equations, variables, symbols, and expressions inside standard delimiters:
