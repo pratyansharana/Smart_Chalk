@@ -25,8 +25,18 @@ export function MathView({ text, className = '', as = 'div' }) {
     }
   }, [text]);
 
-  const formattedHtml = text
-    ? text
+  // Sanitize and restore JSON-escaped control characters inside LaTeX back into backslash commands
+  let cleanedText = text || '';
+  if (typeof cleanedText === 'string') {
+    cleanedText = cleanedText
+      .replace(/\x0c/g, '\\f') // Restore Form Feed (\x0c) to \f (e.g. \frac)
+      .replace(/\x08/g, '\\b') // Restore Backspace (\x08) to \b (e.g. \begin)
+      .replace(/\x0b/g, '\\v') // Restore Vertical Tab (\x0b) to \v (e.g. \vec)
+      .replace(/\t/g, '\\t');  // Restore Horizontal Tab (\t) to \t (e.g. \times)
+  }
+
+  const formattedHtml = cleanedText
+    ? cleanedText
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
