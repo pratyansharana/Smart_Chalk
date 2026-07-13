@@ -105,6 +105,19 @@ async function fetchFromGroqVision(systemPrompt, userPromptText, imageUrls) {
  */
 export async function generateAITest({ grade, topic, level, instructions }) {
   const systemPrompt = `You are an expert tutor. Create a formal test paper based on the requested topic, grade, and level.
+
+LaTeX MATH FORMATTING RULES:
+1. Wrap all mathematical equations, variables, symbols, and expressions inside standard delimiters:
+   - Use "$" for inline equations (e.g., "$a^2 + b^2 = c^2$").
+   - Use "$$" for display/block equations (e.g., "$$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$").
+2. CRITICAL: Never split a single math formula or its "$" delimiters across multiple newlines/line breaks. A formula and its delimiters must reside entirely on a single line.
+3. CRITICAL: You MUST double-escape all backslashes inside JSON strings. Write "\\frac" instead of "\frac", "\\cdot" instead of "\cdot", "\\times" instead of "\times", etc.
+
+MARKDOWN FORMATTING RULES:
+- Use "# [Section Title]" for main headers.
+- Use "## [Sub-Header]" for sub-sections.
+- Questions must start with a number followed by a period (e.g., "1. Solve the following...").
+
 Return a JSON object in this EXACT format:
 {
   "title": "Test Title (incorporating topic and grade)",
@@ -126,6 +139,14 @@ Additional Instructions: ${instructions || 'None'}`;
  */
 export async function generateAIQuiz({ grade, topic, level, count = 5 }) {
   const systemPrompt = `You are an expert tutor. Create a multiple choice question (MCQ) quiz based on the requested topic, grade, and level.
+
+LaTeX MATH FORMATTING RULES:
+1. Wrap all mathematical equations, variables, symbols, and expressions inside standard delimiters:
+   - Use "$" for inline equations (e.g., "$a^2 + b^2 = c^2$").
+   - Use "$$" for display/block equations (e.g., "$$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$").
+2. CRITICAL: Never split a single math formula or its "$" delimiters across multiple newlines/line breaks. A formula and its delimiters must reside entirely on a single line.
+3. CRITICAL: You MUST double-escape all backslashes inside JSON strings. Write "\\frac" instead of "\frac", "\\cdot" instead of "\cdot", "\\times" instead of "\times", etc.
+
 Return a JSON object in this EXACT format:
 {
   "title": "Quiz Title (incorporating topic and grade)",
@@ -182,6 +203,19 @@ ${studentAnswers || 'No text answers provided.'}`;
  */
 export async function generateAIAssignment({ grade, topic, level, instructions }) {
   const systemPrompt = `You are an expert tutor. Create a formal assignment paper based on the requested topic, grade, and level.
+
+LaTeX MATH FORMATTING RULES:
+1. Wrap all mathematical equations, variables, symbols, and expressions inside standard delimiters:
+   - Use "$" for inline equations (e.g., "$a^2 + b^2 = c^2$").
+   - Use "$$" for display/block equations (e.g., "$$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$").
+2. CRITICAL: Never split a single math formula or its "$" delimiters across multiple newlines/line breaks. A formula and its delimiters must reside entirely on a single line.
+3. CRITICAL: You MUST double-escape all backslashes inside JSON strings. Write "\\frac" instead of "\frac", "\\cdot" instead of "\cdot", "\\times" instead of "\times", etc.
+
+MARKDOWN FORMATTING RULES:
+- Use "# [Section Title]" for main headers.
+- Use "## [Sub-Header]" for sub-sections.
+- Questions must start with a number followed by a period (e.g., "1. Solve the following...").
+
 Return a JSON object in this EXACT format:
 {
   "title": "Assignment Title (incorporating topic and grade)",
