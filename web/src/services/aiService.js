@@ -237,17 +237,20 @@ GRADING RUBRIC & STRATEGY:
 CRITICAL FORMATTING RULES FOR FEEDBACK:
 - The feedback MUST be written in the first person as a warm, direct conversation from you (the teacher) to the student.
 - Address the student by name, starting with "Hi ${studentName || 'Student'}," or "Hello ${studentName || 'Student'},".
-- Speak directly to them: use "your work", "you solved", "I recommend", etc. Do not write dry third-person evaluations.
-- The feedback MUST be short, crisp, and point-wise (using simple bullet points) rather than long paragraphs.
-- Provide a brief encouraging opening sentence, followed by 2 to 4 bullet points detailing:
+- Speak directly to them: use "your work", "you solved", "I recommend", etc.
+- You MUST provide a **Question-wise Score Breakdown** at the very beginning of the feedback. Format it like this:
+  📋 **Marks Breakdown:**
+  • **Question 1**: X/Y marks — [Reason for full marks OR explanation of deductions]
+  • **Question 2**: X/Y marks — [Reason for full marks OR explanation of deductions]
+  (Make sure the sum of all question marks matches the final total score returned).
+- Following the breakdown, write a brief encouraging summary and 2 to 4 crisp, actionable bullet points detailing:
   • Specific strengths (what they did well).
-  • Precise errors and misconceptions (why they lost points).
-  • Clear corrections/recommendations for next time.
+  • Precise corrections/recommendations for next time.
 
 Return a JSON object in this EXACT format:
 {
   "score": 85, // Calculated total numerical score (out of ${maxScore}), must be a number.
-  "feedback": "Hello ${studentName || 'Student'},\n\n[Encouraging sentence]\n• [Point-wise strength]\n• [Point-wise error/correction]\n• [Point-wise recommendation]"
+  "feedback": "Hello ${studentName || 'Student'},\n\n📋 **Marks Breakdown:**\n• **Question 1**: X/Y marks — [Reason]\n• **Question 2**: X/Y marks — [Reason]\n\n[Brief encouraging summary]\n• [Point-wise strength]\n• [Point-wise recommendation]"
 }`;
 
   const userPrompt = `Test Title: ${testTitle}
