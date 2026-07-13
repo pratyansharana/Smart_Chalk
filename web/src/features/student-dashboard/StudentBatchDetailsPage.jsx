@@ -34,6 +34,8 @@ import { createSubmissionDocument } from '../../services/firebase/submissionsSer
 import { submitTestSolution } from '../../services/firebase/testService';
 import { submitQuizScorecard } from '../../services/firebase/quizService';
 import { handlePrintReport } from '../../utils/printReport';
+import { uploadFileResumable } from '../../services/firebase/storageService';
+import { MathView } from '../../components/common/MathView';
 
 export function StudentBatchDetailsPage() {
   const { batchId } = useParams();
@@ -467,8 +469,8 @@ export function StudentBatchDetailsPage() {
   );
 }
 
-/* Reusable premium drag-and-drop file uploader */
-function DropzoneUploader({ file, setFile, loading, progress }) {
+/* Reusable premium drag-and-drop file uploader for multiple files */
+function DropzoneUploader({ files, setFiles, uploadingState }) {
   const [dragActive, setDragActive] = useState(false);
 
   const handleDrag = (e) => {
@@ -485,25 +487,31 @@ function DropzoneUploader({ file, setFile, loading, progress }) {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files) {
+      const newFiles = Array.from(e.dataTransfer.files);
+      setFiles((prev) => [...prev, ...newFiles]);
     }
   };
 
   const handleChange = (e) => {
     e.preventDefault();
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      setFiles((prev) => [...prev, ...newFiles]);
     }
   };
 
+  const removeFile = (index) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   return (
-    <div className="grid gap-1.5 w-full">
+    <div className="grid gap-2.5 w-full">
       <div
-        className={`relative rounded-xl border-2 border-dashed p-5 transition-all text-center flex flex-col items-center justify-center min-h-[140px] ${
+        className={`relative rounded-xl border border-dashed p-4 transition-all text-center flex flex-col items-center justify-center min-h-[120px] ${
           dragActive
             ? 'border-amber-400 bg-amber-400/[0.03] scale-[1.01]'
-            : file
+            : files.length > 0
             ? 'border-emerald-500/40 bg-emerald-500/[0.01]'
             : 'border-white/10 bg-white/[0.01] hover:border-white/20'
         }`}
@@ -512,85 +520,119 @@ function DropzoneUploader({ file, setFile, loading, progress }) {
         onDragLeave={handleDrag}
         onDrop={handleDrop}
       >
-        {loading ? (
-          <div className="w-full flex flex-col items-center justify-center gap-3">
+        {uploadingState ? (
+          <div className="w-full flex flex-col items-center justify-center gap-2">
             <div className="w-full max-w-[180px] h-2 bg-navy-800 rounded-full overflow-hidden relative">
               <div
                 className="h-full bg-amber-400 transition-all duration-300"
-                style={{ width: `${progress}%` }}
+                style={{ width: `${uploadingState.progress}%` }}
               />
             </div>
             <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest animate-pulse">
-              Uploading {Math.round(progress)}%...
+              {uploadingState.status || `Uploading ${Math.round(uploadingState.progress)}%...`}
             </span>
-          </div>
-        ) : file ? (
-          <div className="flex flex-col items-center gap-2">
-            <CheckCircle className="text-emerald-400 animate-bounce" size={24} />
-            <div>
-              <p className="text-xs font-semibold text-slate-200 truncate max-w-[200px]">{file.name}</p>
-              <p className="text-[10px] text-slate-500">{(file.size / 1024).toFixed(1)} KB</p>
-            </div>
-            <button
-              type="button"
-              className="text-[10px] text-red-400 hover:text-red-300 font-bold underline mt-1"
-              onClick={() => setFile(null)}
-            >
-              Remove File
-            </button>
           </div>
         ) : (
           <>
-            <UploadCloud className="text-slate-500 mb-1.5" size={26} />
+            <UploadCloud className="text-slate-500 mb-1" size={24} />
             <p className="text-xs font-semibold text-slate-300">
-              Drag & Drop solution file here
+              Drag & Drop solution images or files here
             </p>
-            <p className="text-[10px] text-slate-500 mt-0.5">or click to browse from device</p>
+            <p className="text-[9px] text-slate-500 mt-0.5">or click to browse (Multiple allowed)</p>
             <input
               type="file"
+              multiple
+              accept="image/*,.pdf"
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               onChange={handleChange}
             />
           </>
         )}
       </div>
+
+      {files.length > 0 && !uploadingState && (
+        <div className="grid gap-1.5 mt-1 max-h-40 overflow-y-auto pr-1">
+          {files.map((file, idx) => (
+            <div key={idx} className="flex items-center justify-between gap-3 bg-white/[0.02] border border-white/5 px-3 py-1.5 rounded-lg text-[11px]">
+              <div className="truncate flex-1">
+                <p className="text-xs text-slate-300 truncate font-mono">{file.name}</p>
+                <p className="text-[9px] text-slate-500 mt-0.5">{(file.size / 1024).toFixed(1)} KB</p>
+              </div>
+              <button
+                type="button"
+                className="text-[10px] text-red-400 hover:text-red-300 font-bold underline flex-shrink-0"
+                onClick={() => removeFile(idx)}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 /* Sub-component: File uploader for test submissions */
 function TestUploader({ test, classId, studentId, studentName }) {
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [studentText, setStudentText] = useState('');
-  const { upload, loading, progress } = useFileUpload();
   const [success, setSuccess] = useState(false);
+  const [uploadState, setUploadState] = useState(null); // { progress, status }
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleUpload(e) {
     e.preventDefault();
-    if (!file && !studentText.trim()) return;
+    if (files.length === 0 && !studentText.trim()) return;
 
+    setSubmitting(true);
+    setUploadState({ progress: 0, status: 'Initializing upload...' });
     try {
-      let fileURL = null;
-      let fileName = null;
+      let uploadedUrls = [];
+      const draftId = `${Date.now()}`;
 
-      if (file) {
-        const draftId = `${Date.now()}`;
-        fileURL = await upload(`test_submissions/${draftId}/${file.name}`, file);
-        fileName = file.name;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setUploadState({
+          progress: Math.round((i / files.length) * 100),
+          status: `Uploading file ${i + 1} of ${files.length}...`
+        });
+
+        const path = `test_submissions/${draftId}/${file.name}`;
+        const fileURL = await uploadFileResumable(path, file, (progressVal) => {
+          const fileContribution = progressVal / files.length;
+          const currentBase = (i / files.length) * 100;
+          setUploadState({
+            progress: Math.round(currentBase + fileContribution),
+            status: `Uploading file ${i + 1} of ${files.length} (${progressVal}%)...`
+          });
+        });
+
+        uploadedUrls.push({
+          fileURL,
+          fileName: file.name
+        });
       }
+
+      setUploadState({ progress: 100, status: 'Saving submission...' });
 
       await submitTestSolution({
         testId: test.id,
         classId,
         studentId,
         studentName,
-        submittedFileURL: fileURL,
-        submittedFileName: fileName,
+        submittedFileURL: uploadedUrls[0]?.fileURL || null,
+        submittedFileName: uploadedUrls[0]?.fileName || null,
+        submittedFiles: uploadedUrls,
         studentText: studentText.trim() || null,
       });
       setSuccess(true);
     } catch (err) {
       console.error(err);
+      alert('Upload failed: ' + err.message);
+      setUploadState(null);
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -606,14 +648,14 @@ function TestUploader({ test, classId, studentId, studentName }) {
     <form className="grid gap-4" onSubmit={handleUpload}>
       <div className="grid gap-4 md:grid-cols-2">
         <div className="grid gap-1.5 text-xs font-semibold text-slate-300">
-          <span>Upload Solution File (Optional - PDF/Image)</span>
-          <DropzoneUploader file={file} setFile={setFile} loading={loading} progress={progress} />
+          <span>Upload Solution File(s) (Optional - PDF/Images)</span>
+          <DropzoneUploader files={files} setFiles={setFiles} uploadingState={uploadState} />
         </div>
         <label className="grid gap-1.5 text-xs font-semibold text-slate-300">
           <span>Or Type/Paste Written Answers (Enables AI Grading)</span>
           <textarea
             className="apex-input py-1.5 px-3 text-xs min-h-[140px] resize-y flex-1"
-            disabled={loading}
+            disabled={submitting}
             onChange={(e) => setStudentText(e.target.value)}
             placeholder="Type your questions answers, steps, or notes here..."
             value={studentText}
@@ -623,11 +665,11 @@ function TestUploader({ test, classId, studentId, studentName }) {
       <div className="flex justify-end">
         <button
           className="apex-button-primary py-1.5 px-4 text-xs flex items-center gap-1.5"
-          disabled={loading || (!file && !studentText.trim())}
+          disabled={submitting || (files.length === 0 && !studentText.trim())}
           type="submit"
         >
-          {loading ? `Uploading ${progress}%` : <Upload size={12} />}
-          {loading ? 'Submitting...' : 'Submit solution'}
+          {submitting ? <Loader2 className="animate-spin" size={12} /> : <Upload size={12} />}
+          {submitting ? 'Submitting...' : 'Submit solution'}
         </button>
       </div>
     </form>
@@ -935,14 +977,14 @@ export function QuestionPaperRenderer({ content }) {
         if (line.startsWith('# ')) {
           return (
             <h3 key={idx} className="font-heading text-xl font-bold text-white mt-5 mb-4 border-b border-white/10 pb-2.5 tracking-wide">
-              {line.replace('# ', '')}
+              <MathView as="span" text={line.replace('# ', '')} />
             </h3>
           );
         }
         if (line.startsWith('## ')) {
           return (
             <h4 key={idx} className="font-heading text-sm uppercase tracking-wider text-amber-400/90 mt-5 mb-3">
-              {line.replace('## ', '')}
+              <MathView as="span" text={line.replace('## ', '')} />
             </h4>
           );
         }
@@ -957,16 +999,12 @@ export function QuestionPaperRenderer({ content }) {
                   Question {qNum}
                 </span>
               </div>
-              <p className="text-sm font-semibold text-slate-200 leading-relaxed">
-                {cleanText.replace(/\*\*/g, '')}
-              </p>
+              <MathView as="p" text={cleanText} className="text-sm font-semibold text-slate-200 leading-relaxed" />
             </div>
           );
         }
         return (
-          <p key={idx} className="text-xs text-slate-300 mt-2 leading-relaxed pl-3 border-l-2 border-amber-400/20">
-            {line.replace(/^\*\s/, '').replace(/\*\*/g, '')}
-          </p>
+          <MathView as="p" key={idx} text={line.replace(/^\*\s/, '')} className="text-xs text-slate-300 mt-2 leading-relaxed pl-3 border-l-2 border-amber-400/20" />
         );
       })}
     </div>
@@ -1114,31 +1152,56 @@ function StudentAssignmentPanel({ batch, studentId, studentName, assignments, su
 }
 
 /* SUB PANEL: Assignment File/Text Solution Uploader */
+/* SUB PANEL: Assignment File/Text Solution Uploader */
 function AssignmentUploader({ assignment, classId, studentId, studentName }) {
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [studentText, setStudentText] = useState('');
-  const { upload, loading: uploading, progress } = useFileUpload();
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [uploadState, setUploadState] = useState(null); // { progress, status }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!file && !studentText.trim()) {
+    if (files.length === 0 && !studentText.trim()) {
       alert('Please upload a file or write a typed response answer.');
       return;
     }
 
     setSubmitting(true);
+    setUploadState({ progress: 0, status: 'Initializing upload...' });
     try {
-      let fileUrl = null;
-      if (file) {
-        fileUrl = await upload(file);
+      let uploadedUrls = [];
+      const draftId = `${Date.now()}`;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setUploadState({
+          progress: Math.round((i / files.length) * 100),
+          status: `Uploading file ${i + 1} of ${files.length}...`
+        });
+
+        const path = `submissions/${assignment.id}/${studentId}/${file.name}`;
+        const fileUrl = await uploadFileResumable(path, file, (progressVal) => {
+          const fileContribution = progressVal / files.length;
+          const currentBase = (i / files.length) * 100;
+          setUploadState({
+            progress: Math.round(currentBase + fileContribution),
+            status: `Uploading file ${i + 1} of ${files.length} (${progressVal}%)...`
+          });
+        });
+
+        uploadedUrls.push({
+          fileURL: fileUrl,
+          fileName: file.name
+        });
       }
+
+      setUploadState({ progress: 100, status: 'Saving submission...' });
 
       console.log('[Student Submission] Submitting assignment solution:', {
         assignmentId: assignment.id,
         studentName,
-        fileName: file ? file.name : null
+        filesCount: files.length
       });
 
       await createSubmissionDocument({
@@ -1146,8 +1209,9 @@ function AssignmentUploader({ assignment, classId, studentId, studentName }) {
         classId,
         studentId,
         studentName,
-        submittedFileURL: fileUrl,
-        submittedFileName: file ? file.name : null,
+        submittedFileURL: uploadedUrls[0]?.fileURL || null,
+        submittedFileName: uploadedUrls[0]?.fileName || null,
+        submittedFiles: uploadedUrls,
         studentText: studentText.trim(),
         status: 'submitted',
       });
@@ -1156,7 +1220,8 @@ function AssignmentUploader({ assignment, classId, studentId, studentName }) {
       setSuccess(true);
     } catch (err) {
       console.error('[Student Submission] Error:', err);
-      alert('Failed to submit assignment solution.');
+      alert('Failed to submit assignment solution: ' + err.message);
+      setUploadState(null);
     } finally {
       setSubmitting(false);
     }
@@ -1164,10 +1229,12 @@ function AssignmentUploader({ assignment, classId, studentId, studentName }) {
 
   if (success) {
     return (
-      <div className="bg-emerald-500/5 border border-emerald-500/10 p-4 rounded-xl text-center">
-        <CheckCircle className="text-emerald-400 mx-auto mb-2" size={24} />
-        <span className="text-xs font-bold text-emerald-400 block">Solution Submitted Successfully!</span>
-        <p className="text-[10px] text-slate-400 mt-1">Your teacher has been notified and will evaluate it shortly.</p>
+      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-center gap-3">
+        <CheckCircle className="text-emerald-400 shrink-0 animate-bounce" size={20} />
+        <div>
+          <p className="text-sm font-bold text-emerald-200">Assignment Submitted Successfully</p>
+          <p className="text-[10px] text-slate-400 mt-1">Your teacher has been notified and will evaluate it shortly.</p>
+        </div>
       </div>
     );
   }
@@ -1190,7 +1257,7 @@ function AssignmentUploader({ assignment, classId, studentId, studentName }) {
 
           <div className="grid gap-1.5 text-[11px] font-semibold text-slate-300">
             <span>Upload solution attachment (Optional - PDF/Image)</span>
-            <DropzoneUploader file={file} setFile={setFile} loading={uploading} progress={progress} />
+            <DropzoneUploader files={files} setFiles={setFiles} uploadingState={uploadState} />
           </div>
         </div>
       </div>
@@ -1198,7 +1265,7 @@ function AssignmentUploader({ assignment, classId, studentId, studentName }) {
       <div className="flex justify-end mt-1">
         <button
           className="apex-button-primary py-2 px-6 text-xs font-bold"
-          disabled={submitting || uploading}
+          disabled={submitting}
           type="submit"
         >
           {submitting ? <Loader2 className="animate-spin" size={14} /> : null}

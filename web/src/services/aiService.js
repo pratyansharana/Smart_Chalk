@@ -37,7 +37,7 @@ async function fetchFromGroq(systemPrompt, userPrompt) {
   return JSON.parse(content);
 }
 
-async function fetchFromGroqVision(systemPrompt, userPromptText, imageUrl) {
+async function fetchFromGroqVision(systemPrompt, userPromptText, imageUrls) {
   const apiKey = import.meta.env.VITE_GROQ_API_KEY;
   if (!apiKey) {
     throw new Error('Groq API Key not found in environment variables.');
@@ -47,13 +47,26 @@ async function fetchFromGroqVision(systemPrompt, userPromptText, imageUrl) {
     { type: 'text', text: userPromptText }
   ];
 
-  if (imageUrl) {
-    contentArray.push({
-      type: 'image_url',
-      image_url: {
-        url: imageUrl
-      }
-    });
+  if (imageUrls) {
+    if (Array.isArray(imageUrls)) {
+      imageUrls.forEach((url) => {
+        if (url) {
+          contentArray.push({
+            type: 'image_url',
+            image_url: {
+              url
+            }
+          });
+        }
+      });
+    } else if (typeof imageUrls === 'string') {
+      contentArray.push({
+        type: 'image_url',
+        image_url: {
+          url: imageUrls
+        }
+      });
+    }
   }
 
   const response = await fetch(GROQ_URL, {
@@ -133,10 +146,10 @@ Difficulty Level: ${level}`;
   return fetchFromGroq(systemPrompt, userPrompt);
 }
 
-export async function gradeSubmissionWithAI({ testTitle, testQuestions, maxScore, studentAnswers, imageUrl, studentName }) {
+export async function gradeSubmissionWithAI({ testTitle, testQuestions, maxScore, studentAnswers, imageUrls, imageUrl, studentName }) {
   const systemPrompt = `You are an expert tutor. Grade the student's answers based on the test questions, guidelines, and max score.
 Evaluate each answer logically, calculate a total score, and write highly constructive, encouraging, and concise feedback.
-If an image is attached, look at the image contents (the handwritten student paper or notebook page) to see the student's work, steps, and final answers, and grade accordingly.
+If images are attached, look at the image contents (the handwritten student paper or notebook pages) to see the student's work, steps, and final answers, and grade accordingly.
 
 CRITICAL FORMATTING RULES FOR FEEDBACK:
 - The feedback MUST be written in the first person as a warm, direct conversation from you (the teacher) to the student.
@@ -160,7 +173,8 @@ ${testQuestions}
 Student's Written Answers Text:
 ${studentAnswers || 'No text answers provided.'}`;
 
-  return fetchFromGroqVision(systemPrompt, userPrompt, imageUrl);
+  const urls = imageUrls || (imageUrl ? [imageUrl] : []);
+  return fetchFromGroqVision(systemPrompt, userPrompt, urls);
 }
 
 /**

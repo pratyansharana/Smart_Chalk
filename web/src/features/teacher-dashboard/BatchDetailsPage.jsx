@@ -25,6 +25,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { MathView } from '../../components/common/MathView';
 import { useBatchDetails } from '../../hooks/useBatchDetails';
 import { useStudents } from '../../hooks/useStudents';
 import { useBatchVault } from '../../hooks/useBatchVault';
@@ -880,8 +881,23 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, parentPhones = {}, 
     setAiGradingError(null);
     setAiGradingLoading(true);
     try {
-      let imageUrl = null;
-      if (activeSub.submittedFileURL && activeSub.submittedFileName) {
+      let imageUrls = [];
+      if (activeSub.submittedFiles && activeSub.submittedFiles.length > 0) {
+        activeSub.submittedFiles.forEach((file) => {
+          if (file.fileURL && file.fileName) {
+            const lowerName = file.fileName.toLowerCase();
+            const isImg = lowerName.endsWith('.png') || 
+                          lowerName.endsWith('.jpg') || 
+                          lowerName.endsWith('.jpeg') || 
+                          lowerName.endsWith('.webp') ||
+                          lowerName.endsWith('.gif');
+            if (isImg) {
+              imageUrls.push(file.fileURL);
+            }
+          }
+        });
+      }
+      if (imageUrls.length === 0 && activeSub.submittedFileURL && activeSub.submittedFileName) {
         const lowerName = activeSub.submittedFileName.toLowerCase();
         const isImg = lowerName.endsWith('.png') || 
                       lowerName.endsWith('.jpg') || 
@@ -889,12 +905,12 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, parentPhones = {}, 
                       lowerName.endsWith('.webp') ||
                       lowerName.endsWith('.gif');
         if (isImg) {
-          imageUrl = activeSub.submittedFileURL;
+          imageUrls.push(activeSub.submittedFileURL);
         }
       }
 
       const answersText = activeSub.studentText || pastedAnswers;
-      if ((!answersText || !answersText.trim()) && !imageUrl) {
+      if ((!answersText || !answersText.trim()) && imageUrls.length === 0) {
         throw new Error('Please type or paste the student\'s answers text in the textarea below before grading (or upload an image submission instead of PDF).');
       }
 
@@ -903,7 +919,7 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, parentPhones = {}, 
         testQuestions: test.testContent || test.description,
         maxScore: test.maxScore,
         studentAnswers: answersText ? answersText.trim() : null,
-        imageUrl: imageUrl,
+        imageUrls: imageUrls,
         studentName: activeSub.studentName,
       });
       setGradeInput(String(result.score));
@@ -1256,9 +1272,7 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, parentPhones = {}, 
                     <summary className="cursor-pointer font-bold text-amber-400 select-none">
                       View Test Questions Paper
                     </summary>
-                    <div className="mt-2.5 max-h-60 overflow-y-auto pr-1 border-t border-white/5 pt-2 text-slate-300 whitespace-pre-wrap leading-relaxed font-mono text-[11px]">
-                      {test.testContent}
-                    </div>
+                    <MathView text={test.testContent} className="mt-2.5 max-h-60 overflow-y-auto pr-1 border-t border-white/5 pt-2 text-slate-300 text-[11px]" />
                   </details>
                 )}
 
@@ -1278,13 +1292,31 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, parentPhones = {}, 
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
                             <div className="truncate flex-1 w-full">
                               <span className="font-bold text-slate-200 block truncate">{sub.studentName}</span>
-                              <span className="text-[10px] text-slate-500 block truncate">
-                                {sub.submittedFileName || 'No file uploaded'}
-                              </span>
+                              {sub.submittedFiles && sub.submittedFiles.length > 0 ? (
+                                <span className="text-[10px] text-slate-500 block truncate">
+                                  {sub.submittedFiles.length} file(s) uploaded
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-slate-500 block truncate">
+                                  {sub.submittedFileName || 'No file uploaded'}
+                                </span>
+                              )}
                             </div>
 
                             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end flex-shrink-0">
-                              {sub.submittedFileURL && (
+                              {sub.submittedFiles && sub.submittedFiles.length > 0 ? (
+                                sub.submittedFiles.map((file, idx) => (
+                                  <a
+                                    key={idx}
+                                    className="apex-button-secondary py-0.5 px-2 text-[10px] hover:bg-white/10"
+                                    href={file.fileURL}
+                                    rel="noreferrer"
+                                    target="_blank"
+                                  >
+                                    File {idx + 1}
+                                  </a>
+                                ))
+                              ) : sub.submittedFileURL && (
                                 <a
                                   className="apex-button-secondary py-0.5 px-2 text-[10px] hover:bg-white/10"
                                   href={sub.submittedFileURL}
@@ -1740,11 +1772,39 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones 
     setAiGradingLoading(true);
     setAiGradingError(null);
     try {
+      let imageUrls = [];
+      if (submission.submittedFiles && submission.submittedFiles.length > 0) {
+        submission.submittedFiles.forEach((file) => {
+          if (file.fileURL && file.fileName) {
+            const lowerName = file.fileName.toLowerCase();
+            const isImg = lowerName.endsWith('.png') || 
+                          lowerName.endsWith('.jpg') || 
+                          lowerName.endsWith('.jpeg') || 
+                          lowerName.endsWith('.webp') ||
+                          lowerName.endsWith('.gif');
+            if (isImg) {
+              imageUrls.push(file.fileURL);
+            }
+          }
+        });
+      }
+      if (imageUrls.length === 0 && submission.submittedFileURL && submission.submittedFileName) {
+        const lowerName = submission.submittedFileName.toLowerCase();
+        const isImg = lowerName.endsWith('.png') || 
+                      lowerName.endsWith('.jpg') || 
+                      lowerName.endsWith('.jpeg') || 
+                      lowerName.endsWith('.webp') ||
+                      lowerName.endsWith('.gif');
+        if (isImg) {
+          imageUrls.push(submission.submittedFileURL);
+        }
+      }
+
       const studentAnswers = submission.studentText || pastedAnswers.trim();
       console.log('[AI Grading] Requesting AI grading for submission:', {
         submissionId: submission.id,
         studentName: submission.studentName,
-        hasImage: !!submission.submittedFileURL
+        imagesCount: imageUrls.length
       });
 
       const result = await gradeSubmissionWithAI({
@@ -1752,7 +1812,7 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones 
         testQuestions: assignment.assignmentContent || assignment.description,
         maxScore: assignment.maxScore,
         studentAnswers,
-        imageUrl: submission.submittedFileURL || null,
+        imageUrls: imageUrls,
         studentName: submission.studentName,
       });
 
@@ -2085,7 +2145,7 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones 
                     <summary className="text-[10px] font-bold text-amber-300 uppercase tracking-widest p-2.5 cursor-pointer hover:bg-white/[0.02]">
                       View Assignment Tasks Paper
                     </summary>
-                    <pre className="p-3 text-xs text-slate-300 font-mono whitespace-pre-wrap bg-black/20 border-t border-white/5">{assignment.assignmentContent}</pre>
+                    <MathView text={assignment.assignmentContent} className="p-3 text-xs text-slate-300 bg-black/20 border-t border-white/5 max-h-80 overflow-y-auto" />
                   </details>
                 )}
 
@@ -2108,16 +2168,33 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones 
                               <div className="truncate flex-1 w-full">
                                 <span className="font-bold text-slate-200 block truncate">{sub.studentName}</span>
                                 <span className="text-[10px] text-slate-400 mt-0.5 block">
-                                  File:{' '}
-                                  {sub.submittedFileName ? (
-                                    <a
-                                      className="text-amber-300 underline"
-                                      href={sub.submittedFileURL}
-                                      rel="noreferrer"
-                                      target="_blank"
-                                    >
-                                      {sub.submittedFileName}
-                                    </a>
+                                  {sub.submittedFiles && sub.submittedFiles.length > 0 ? (
+                                    <span className="flex flex-col gap-1 mt-1">
+                                      <span>Files:</span>
+                                      {sub.submittedFiles.map((file, idx) => (
+                                        <a
+                                          key={idx}
+                                          className="text-amber-300 underline block"
+                                          href={file.fileURL}
+                                          rel="noreferrer"
+                                          target="_blank"
+                                        >
+                                          {file.fileName || `File ${idx + 1}`}
+                                        </a>
+                                      ))}
+                                    </span>
+                                  ) : sub.submittedFileName ? (
+                                    <span>
+                                      File:{' '}
+                                      <a
+                                        className="text-amber-300 underline"
+                                        href={sub.submittedFileURL}
+                                        rel="noreferrer"
+                                        target="_blank"
+                                      >
+                                        {sub.submittedFileName}
+                                      </a>
+                                    </span>
                                   ) : (
                                     'No file uploaded'
                                   )}
