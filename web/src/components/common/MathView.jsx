@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import renderMathInElement from 'katex/dist/contrib/auto-render';
 
 /**
  * Renders text containing Markdown formatting and mathematical LaTeX formulas
@@ -8,9 +9,9 @@ export function MathView({ text, className = '', as = 'div' }) {
   const containerRef = useRef(null);
 
   useEffect(() => {
-    if (containerRef.current && window.renderMathInElement) {
+    if (containerRef.current) {
       try {
-        window.renderMathInElement(containerRef.current, {
+        renderMathInElement(containerRef.current, {
           delimiters: [
             { left: "$$", right: "$$", display: true },
             { left: "$", right: "$", display: false },
