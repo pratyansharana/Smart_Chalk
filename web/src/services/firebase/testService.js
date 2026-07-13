@@ -54,6 +54,17 @@ export async function submitTestSolution(payload) {
 }
 
 /**
+ * Updates an existing test solution submission.
+ */
+export async function updateTestSolution(submissionId, payload) {
+  if (!db) return null;
+  return updateDoc(doc(db, SUBMISSIONS_COLLECTION, submissionId), {
+    ...payload,
+    submittedAt: serverTimestamp(),
+  });
+}
+
+/**
  * Grades a test solution.
  */
 export async function gradeTestSubmission(submissionId, gradeData) {

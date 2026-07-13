@@ -31,7 +31,7 @@ import { useFileUpload } from '../../hooks/useFileUpload';
 import { useBatchAssignments } from '../../hooks/useBatchAssignments';
 import { useSubmissions } from '../../hooks/useSubmissions';
 import { createSubmissionDocument } from '../../services/firebase/submissionsService';
-import { submitTestSolution } from '../../services/firebase/testService';
+import { submitTestSolution, updateTestSolution } from '../../services/firebase/testService';
 import { submitQuizScorecard } from '../../services/firebase/quizService';
 import { handlePrintReport } from '../../utils/printReport';
 import { uploadFileResumable } from '../../services/firebase/storageService';
@@ -343,7 +343,7 @@ export function StudentBatchDetailsPage() {
 
                     {/* Solutions Submission / Grading section */}
                     <div className="mt-5 border-t border-white/5 pt-4">
-                      {submission ? (
+                      {submission && submission.status !== 'resubmit_requested' ? (
                         <div className="grid gap-3 bg-white/[0.01] border border-white/5 p-4 rounded-xl">
                           <div className="flex flex-wrap items-center justify-between gap-4">
                             <div>
@@ -409,19 +409,27 @@ export function StudentBatchDetailsPage() {
                                   <summary className="cursor-pointer font-semibold text-slate-400 select-none text-[11px]">
                                     Show Your Submitted Answers Text
                                   </summary>
-                                  <pre className="mt-2 p-3 bg-black/20 border border-white/5 rounded-lg text-[10px] text-slate-300 whitespace-pre-wrap font-mono">
-                                    {submission.studentText}
-                                  </pre>
+                                  <pre className="mt-2 bg-black/30 border border-white/5 p-3 rounded-lg font-mono text-slate-300 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">{submission.studentText}</pre>
                                 </details>
                               )}
                             </div>
                           )}
                         </div>
                       ) : !parentMode ? (
-                        <TestUploader test={test} classId={batch.id} studentId={studentId} studentName={studentName} />
+                        <div>
+                          {submission?.status === 'resubmit_requested' && (
+                            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-4 text-xs font-sans">
+                              <span className="font-bold text-amber-300 block mb-1">⚠️ Resubmission Requested by Teacher</span>
+                              <p className="text-slate-300 leading-relaxed font-sans">{submission.feedback || 'Please review your answers and resubmit.'}</p>
+                            </div>
+                          )}
+                          <TestUploader test={test} classId={batch.id} studentId={studentId} studentName={studentName} submission={submission} />
+                        </div>
                       ) : (
                         <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl text-center flex items-center justify-center min-h-[90px]">
-                          <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">Pending Student Test Submission</span>
+                          <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">
+                            {submission?.status === 'resubmit_requested' ? 'Resubmission Requested from Student' : 'Pending Student Test Submission'}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -574,7 +582,7 @@ function DropzoneUploader({ files, setFiles, uploadingState }) {
 }
 
 /* Sub-component: File uploader for test submissions */
-function TestUploader({ test, classId, studentId, studentName }) {
+function TestUploader({ test, classId, studentId, studentName, submission }) {
   const [files, setFiles] = useState([]);
   const [studentText, setStudentText] = useState('');
   const [success, setSuccess] = useState(false);
@@ -616,16 +624,30 @@ function TestUploader({ test, classId, studentId, studentName }) {
 
       setUploadState({ progress: 100, status: 'Saving submission...' });
 
-      await submitTestSolution({
-        testId: test.id,
-        classId,
-        studentId,
-        studentName,
-        submittedFileURL: uploadedUrls[0]?.fileURL || null,
-        submittedFileName: uploadedUrls[0]?.fileName || null,
-        submittedFiles: uploadedUrls,
-        studentText: studentText.trim() || null,
-      });
+      if (submission) {
+        await updateTestSolution(submission.id, {
+          submittedFileURL: uploadedUrls[0]?.fileURL || null,
+          submittedFileName: uploadedUrls[0]?.fileName || null,
+          submittedFiles: uploadedUrls,
+          studentText: studentText.trim() || null,
+          status: 'submitted',
+          grade: null,
+          feedback: null,
+          gradedBy: null,
+          gradedAt: null,
+        });
+      } else {
+        await submitTestSolution({
+          testId: test.id,
+          classId,
+          studentId,
+          studentName,
+          submittedFileURL: uploadedUrls[0]?.fileURL || null,
+          submittedFileName: uploadedUrls[0]?.fileName || null,
+          submittedFiles: uploadedUrls,
+          studentText: studentText.trim() || null,
+        });
+      }
       setSuccess(true);
     } catch (err) {
       console.error(err);
@@ -1081,7 +1103,7 @@ function StudentAssignmentPanel({ batch, studentId, studentName, assignments, su
 
               {/* Student Interaction Space */}
               <div className="mt-5 pt-5 border-t border-white/5">
-                {isSubmitted ? (
+                {isSubmitted && submission.status !== 'resubmit_requested' ? (
                   <div className="grid gap-3">
                     <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl">
                       <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
@@ -1132,10 +1154,20 @@ function StudentAssignmentPanel({ batch, studentId, studentName, assignments, su
                     )}
                   </div>
                 ) : !parentMode ? (
-                  <AssignmentUploader assignment={assignment} classId={batch.id} studentId={studentId} studentName={studentName} />
+                  <div>
+                    {submission?.status === 'resubmit_requested' && (
+                      <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-4 text-xs font-sans">
+                        <span className="font-bold text-amber-300 block mb-1">⚠️ Resubmission Requested by Teacher</span>
+                        <p className="text-slate-300 leading-relaxed font-sans">{submission.feedback || 'Please review your answers and resubmit.'}</p>
+                      </div>
+                    )}
+                    <AssignmentUploader assignment={assignment} classId={batch.id} studentId={studentId} studentName={studentName} submission={submission} />
+                  </div>
                 ) : (
                   <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl text-center flex items-center justify-center min-h-[90px]">
-                    <span className="text-xs font-bold text-amber-500 uppercase tracking-widest block">Pending Student Submission</span>
+                    <span className="text-xs font-bold text-amber-500 uppercase tracking-widest block">
+                      {submission?.status === 'resubmit_requested' ? 'Resubmission Requested from Student' : 'Pending Student Submission'}
+                    </span>
                   </div>
                 )}
               </div>
@@ -1153,7 +1185,7 @@ function StudentAssignmentPanel({ batch, studentId, studentName, assignments, su
 
 /* SUB PANEL: Assignment File/Text Solution Uploader */
 /* SUB PANEL: Assignment File/Text Solution Uploader */
-function AssignmentUploader({ assignment, classId, studentId, studentName }) {
+function AssignmentUploader({ assignment, classId, studentId, studentName, submission }) {
   const [files, setFiles] = useState([]);
   const [studentText, setStudentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -1214,6 +1246,10 @@ function AssignmentUploader({ assignment, classId, studentId, studentName }) {
         submittedFiles: uploadedUrls,
         studentText: studentText.trim(),
         status: 'submitted',
+        grade: null,
+        feedback: null,
+        gradedBy: null,
+        gradedAt: null,
       });
 
       console.log('[Student Submission] Assignment submitted successfully!');

@@ -53,3 +53,8 @@ export async function gradeSubmissionDocument(submissionId, { grade, feedback, g
     gradedAt: serverTimestamp(),
   });
 }
+
+export async function updateSubmissionDocument(submissionId, payload) {
+  if (!db) return null;
+  return updateDoc(doc(db, COLLECTIONS.SUBMISSIONS, submissionId), payload);
+}

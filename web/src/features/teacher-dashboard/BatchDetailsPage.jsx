@@ -37,7 +37,7 @@ import { useFileUpload } from '../../hooks/useFileUpload';
 import { useBatchAssignments } from '../../hooks/useBatchAssignments';
 import { useTeacherSubmissions } from '../../hooks/useTeacherSubmissions';
 import { createAssignmentDocument } from '../../services/firebase/assignmentsService';
-import { gradeSubmissionDocument } from '../../services/firebase/submissionsService';
+import { gradeSubmissionDocument, updateSubmissionDocument } from '../../services/firebase/submissionsService';
 import {
   approveStudentRequest,
   rejectStudentRequest,
@@ -47,7 +47,7 @@ import {
   updateClassDocument,
 } from '../../services/firebase/classesService';
 import { addVaultItem, deleteVaultItem } from '../../services/firebase/vaultService';
-import { createTestDocument, gradeTestSubmission } from '../../services/firebase/testService';
+import { createTestDocument, gradeTestSubmission, updateTestSolution } from '../../services/firebase/testService';
 import { createQuizDocument } from '../../services/firebase/quizService';
 import { generateAITest, generateAIQuiz, generateAIAssignment, gradeSubmissionWithAI } from '../../services/aiService';
 import { handlePrintReport } from '../../utils/printReport';
@@ -1065,6 +1065,26 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, parentPhones = {}, 
     return gradeTestSubmission(submissionId, data);
   }
 
+  async function handleRequestResubmission(submissionId) {
+    setGradingSubmitLoading(true);
+    try {
+      const fbComment = feedbackInput.trim() || 'Please review your answers and resubmit.';
+      await updateTestSolution(submissionId, {
+        status: 'resubmit_requested',
+        feedback: fbComment,
+        gradedBy: teacherId,
+      });
+      console.log('[Grading] Resubmission request saved successfully!');
+      setGradingSubmissionId(null);
+      setGradeInput('');
+      setFeedbackInput('');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setGradingSubmitLoading(false);
+    }
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr] lg:items-start">
       {/* Test Publisher form */}
@@ -1411,6 +1431,21 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, parentPhones = {}, 
                                       (No Parent Email)
                                     </span>
                                   )}
+
+                                  <button
+                                    className="apex-button-secondary py-0.5 px-1.5 text-[10px] hover:bg-white/10 text-indigo-300 border-indigo-400/20"
+                                    onClick={() => {
+                                      setGradingSubmissionId(sub.id);
+                                      setGradeInput(String(sub.grade));
+                                      setFeedbackInput(sub.feedback || '');
+                                      setPastedAnswers(sub.studentText || '');
+                                      setAiGradingError(null);
+                                    }}
+                                    type="button"
+                                    title="Regrade this submission"
+                                  >
+                                    Regrade
+                                  </button>
                                 </div>
                               ) : (
                                 <button
@@ -1518,6 +1553,14 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, parentPhones = {}, 
                           type="button"
                         >
                           Cancel
+                        </button>
+                        <button
+                          className="apex-button-secondary border-amber-500/20 text-amber-300 hover:bg-amber-500/10 py-1 px-3 text-[10px]"
+                          disabled={gradingSubmitLoading}
+                          onClick={() => handleRequestResubmission(activeSub.id)}
+                          type="button"
+                        >
+                          Request Resubmission
                         </button>
                         <button
                           className="apex-button-primary py-1 px-3 text-[10px]"
@@ -1885,6 +1928,28 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones 
     } catch (err) {
       console.error('[Grading] Failed to save grade:', err);
       alert('Error saving grade.');
+    } finally {
+      setGradingSubmitLoading(false);
+    }
+  }
+
+  async function handleRequestResubmission(submissionId) {
+    setGradingSubmitLoading(true);
+    try {
+      const fbComment = feedbackInput.trim() || 'Please review your answers and resubmit.';
+      await updateSubmissionDocument(submissionId, {
+        status: 'resubmit_requested',
+        feedback: fbComment,
+        gradedBy: teacherId,
+        gradedAt: serverTimestamp(),
+      });
+      console.log('[Grading] Resubmission request saved successfully!');
+      setGradingSubmissionId(null);
+      setGradeInput('');
+      setFeedbackInput('');
+      setPastedAnswers('');
+    } catch (err) {
+      console.error(err);
     } finally {
       setGradingSubmitLoading(false);
     }
@@ -2286,6 +2351,21 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones 
                                       (No Parent Email)
                                     </span>
                                   )}
+
+                                  <button
+                                    className="apex-button-secondary py-0.5 px-1.5 text-[10px] hover:bg-white/10 text-indigo-300 border-indigo-400/20"
+                                    onClick={() => {
+                                      setGradingSubmissionId(sub.id);
+                                      setGradeInput(String(sub.grade));
+                                      setFeedbackInput(sub.feedback || '');
+                                      setPastedAnswers(sub.studentText || '');
+                                      setAiGradingError(null);
+                                    }}
+                                    type="button"
+                                    title="Regrade this submission"
+                                  >
+                                    Regrade
+                                  </button>
                                 </div>
                               ) : (
                                 <button
@@ -2374,7 +2454,6 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones 
                                         className="apex-input py-1 px-2 text-xs"
                                         onChange={(e) => setFeedbackInput(e.target.value)}
                                         placeholder="Well done..."
-                                        type="text"
                                         value={feedbackInput}
                                       />
                                     </label>
@@ -2386,6 +2465,14 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones 
                                       type="button"
                                     >
                                       Cancel
+                                    </button>
+                                    <button
+                                      className="apex-button-secondary border-amber-500/20 text-amber-300 hover:bg-amber-500/10 py-1 px-3 text-[10px]"
+                                      disabled={gradingSubmitLoading}
+                                      onClick={() => handleRequestResubmission(sub.id)}
+                                      type="button"
+                                    >
+                                      Request Resubmission
                                     </button>
                                     <button
                                       className="apex-button-primary py-1 px-3 text-[10px]"
