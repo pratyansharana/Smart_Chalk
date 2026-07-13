@@ -1,12 +1,20 @@
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+const GEMINI_MODELS = [
+  'gemini-flash-latest',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-8b',
+  'gemini-2.5-pro'
+];
 
-async function fetchFromGroq(systemPrompt, userPrompt) {
+async function callGeminiApi(modelName, systemPrompt, userPrompt, partsOverride = null, temp = 0.7) {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('Gemini API Key not found in environment variables.');
   }
 
-  const response = await fetch(GEMINI_URL, {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
+  const parts = partsOverride || [{ text: userPrompt }];
+
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -16,9 +24,7 @@ async function fetchFromGroq(systemPrompt, userPrompt) {
       contents: [
         {
           role: 'user',
-          parts: [
-            { text: userPrompt }
-          ]
+          parts: parts
         }
       ],
       systemInstruction: {
@@ -28,14 +34,18 @@ async function fetchFromGroq(systemPrompt, userPrompt) {
       },
       generationConfig: {
         responseMimeType: 'application/json',
-        temperature: 0.7,
+        temperature: temp,
       }
     }),
   });
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Gemini API Error: ${response.status} - ${errText}`);
+    const errorObj = {
+      status: response.status,
+      message: errText
+    };
+    throw errorObj;
   }
 
   const resData = await response.json();
@@ -45,6 +55,27 @@ async function fetchFromGroq(systemPrompt, userPrompt) {
   }
 
   return JSON.parse(content);
+}
+
+async function fetchWithFallback(systemPrompt, userPrompt, partsOverride = null, temp = 0.7) {
+  let lastError = null;
+  for (const model of GEMINI_MODELS) {
+    try {
+      console.log(`[Gemini Request] Attempting call with model: ${model}`);
+      const result = await callGeminiApi(model, systemPrompt, userPrompt, partsOverride, temp);
+      return result;
+    } catch (err) {
+      console.warn(`[Gemini Warning] Model ${model} failed (Status: ${err.status || 'unknown'}):`, err);
+      lastError = err;
+      // Continue to next model on transient errors (503 Service Unavailable, 429 Rate Limit, etc.)
+      continue;
+    }
+  }
+  throw new Error(`All Gemini models failed. Last Error: ${JSON.stringify(lastError)}`);
+}
+
+async function fetchFromGroq(systemPrompt, userPrompt) {
+  return fetchWithFallback(systemPrompt, userPrompt, null, 0.7);
 }
 
 async function urlToBase64Part(url) {
@@ -74,11 +105,6 @@ async function urlToBase64Part(url) {
 }
 
 async function fetchFromGroqVision(systemPrompt, userPromptText, imageUrls) {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('Gemini API Key not found in environment variables.');
-  }
-
   const parts = [
     { text: userPromptText }
   ];
@@ -95,43 +121,7 @@ async function fetchFromGroqVision(systemPrompt, userPromptText, imageUrls) {
     }
   }
 
-  const response = await fetch(GEMINI_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-goog-api-key': apiKey,
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          role: 'user',
-          parts: parts
-        }
-      ],
-      systemInstruction: {
-        parts: [
-          { text: systemPrompt }
-        ]
-      },
-      generationConfig: {
-        responseMimeType: 'application/json',
-        temperature: 0.1, // Lower temperature for more deterministic, strictly factual grading
-      }
-    }),
-  });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Gemini API Error: ${response.status} - ${errText}`);
-  }
-
-  const resData = await response.json();
-  const content = resData.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!content) {
-    throw new Error('No content returned from Gemini API.');
-  }
-
-  return JSON.parse(content);
+  return fetchWithFallback(systemPrompt, userPromptText, parts, 0.1);
 }
 
 /**
