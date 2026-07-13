@@ -71,11 +71,111 @@ async function fetchWithFallback(systemPrompt, userPrompt, partsOverride = null,
       continue;
     }
   }
-  throw new Error(`All Gemini models failed. Last Error: ${JSON.stringify(lastError)}`);
+  const errorObj = new Error(lastError?.message || 'All Gemini models failed');
+  errorObj.status = lastError?.status;
+  throw errorObj;
+}
+
+async function callGroqTextApi(systemPrompt, userPrompt, temp = 0.7) {
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+  if (!apiKey) {
+    throw new Error('Groq API Key not found in environment variables.');
+  }
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: temp,
+      response_format: { type: 'json_object' }
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Groq Text API Error: ${response.status} - ${errText}`);
+  }
+
+  const resData = await response.json();
+  const content = resData.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error('No content returned from Groq API.');
+  }
+  return JSON.parse(content);
+}
+
+async function callGroqVisionApi(systemPrompt, userPromptText, imageUrls, temp = 0.1) {
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+  if (!apiKey) {
+    throw new Error('Groq API Key not found in environment variables.');
+  }
+
+  const contentArray = [
+    { type: 'text', text: userPromptText }
+  ];
+
+  if (imageUrls) {
+    const urls = Array.isArray(imageUrls) ? imageUrls : [imageUrls];
+    urls.forEach((url) => {
+      if (url) {
+        contentArray.push({
+          type: 'image_url',
+          image_url: { url }
+        });
+      }
+    });
+  }
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: contentArray }
+      ],
+      temperature: temp,
+      response_format: { type: 'json_object' }
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Groq Vision API Error: ${response.status} - ${errText}`);
+  }
+
+  const resData = await response.json();
+  const content = resData.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error('No content returned from Groq Vision API.');
+  }
+  return JSON.parse(content);
 }
 
 async function fetchFromGroq(systemPrompt, userPrompt) {
-  return fetchWithFallback(systemPrompt, userPrompt, null, 0.7);
+  try {
+    return await fetchWithFallback(systemPrompt, userPrompt, null, 0.7);
+  } catch (geminiErr) {
+    console.warn('[AI Fallback] Gemini failed. Trying Groq...', geminiErr);
+    try {
+      return await callGroqTextApi(systemPrompt, userPrompt, 0.7);
+    } catch (groqErr) {
+      console.error('[AI Fallback] Both Gemini and Groq failed:', groqErr);
+      throw new Error(`AI Service Unavailable. Gemini status: ${geminiErr.status}. Groq error: ${groqErr.message}`);
+    }
+  }
 }
 
 async function urlToBase64Part(url) {
@@ -105,23 +205,33 @@ async function urlToBase64Part(url) {
 }
 
 async function fetchFromGroqVision(systemPrompt, userPromptText, imageUrls) {
-  const parts = [
-    { text: userPromptText }
-  ];
+  try {
+    const parts = [
+      { text: userPromptText }
+    ];
 
-  if (imageUrls) {
-    const urls = Array.isArray(imageUrls) ? imageUrls : [imageUrls];
-    for (const url of urls) {
-      if (url) {
-        const imagePart = await urlToBase64Part(url);
-        if (imagePart) {
-          parts.push(imagePart);
+    if (imageUrls) {
+      const urls = Array.isArray(imageUrls) ? imageUrls : [imageUrls];
+      for (const url of urls) {
+        if (url) {
+          const imagePart = await urlToBase64Part(url);
+          if (imagePart) {
+            parts.push(imagePart);
+          }
         }
       }
     }
-  }
 
-  return fetchWithFallback(systemPrompt, userPromptText, parts, 0.1);
+    return await fetchWithFallback(systemPrompt, userPromptText, parts, 0.1);
+  } catch (geminiErr) {
+    console.warn('[AI Fallback] Gemini vision failed. Trying Groq vision...', geminiErr);
+    try {
+      return await callGroqVisionApi(systemPrompt, userPromptText, imageUrls, 0.1);
+    } catch (groqErr) {
+      console.error('[AI Fallback] Both Gemini vision and Groq vision failed:', groqErr);
+      throw new Error(`AI Vision Service Unavailable. Gemini status: ${geminiErr.status}. Groq error: ${groqErr.message}`);
+    }
+  }
 }
 
 /**
