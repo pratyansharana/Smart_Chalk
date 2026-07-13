@@ -1,100 +1,134 @@
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
 async function fetchFromGroq(systemPrompt, userPrompt) {
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error('Groq API Key not found in environment variables.');
+    throw new Error('Gemini API Key not found in environment variables.');
   }
 
-  const response = await fetch(GROQ_URL, {
+  const response = await fetch(GEMINI_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      'X-goog-api-key': apiKey,
     },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: userPrompt }
+          ]
+        }
       ],
-      temperature: 0.7,
-      response_format: { type: 'json_object' },
+      systemInstruction: {
+        parts: [
+          { text: systemPrompt }
+        ]
+      },
+      generationConfig: {
+        responseMimeType: 'application/json',
+        temperature: 0.7,
+      }
     }),
   });
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Groq API Error: ${response.status} - ${errText}`);
+    throw new Error(`Gemini API Error: ${response.status} - ${errText}`);
   }
 
   const resData = await response.json();
-  const content = resData.choices?.[0]?.message?.content;
+  const content = resData.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!content) {
-    throw new Error('No content returned from Groq API.');
+    throw new Error('No content returned from Gemini API.');
   }
 
   return JSON.parse(content);
 }
 
+async function urlToBase64Part(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const blob = await res.blob();
+    
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64data = reader.result.split(',')[1];
+        resolve({
+          inlineData: {
+            mimeType: blob.type || 'image/jpeg',
+            data: base64data
+          }
+        });
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (err) {
+    console.error('Failed to convert image URL to base64:', url, err);
+    return null;
+  }
+}
+
 async function fetchFromGroqVision(systemPrompt, userPromptText, imageUrls) {
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error('Groq API Key not found in environment variables.');
+    throw new Error('Gemini API Key not found in environment variables.');
   }
 
-  const contentArray = [
-    { type: 'text', text: userPromptText }
+  const parts = [
+    { text: userPromptText }
   ];
 
   if (imageUrls) {
-    if (Array.isArray(imageUrls)) {
-      imageUrls.forEach((url) => {
-        if (url) {
-          contentArray.push({
-            type: 'image_url',
-            image_url: {
-              url
-            }
-          });
+    const urls = Array.isArray(imageUrls) ? imageUrls : [imageUrls];
+    for (const url of urls) {
+      if (url) {
+        const imagePart = await urlToBase64Part(url);
+        if (imagePart) {
+          parts.push(imagePart);
         }
-      });
-    } else if (typeof imageUrls === 'string') {
-      contentArray.push({
-        type: 'image_url',
-        image_url: {
-          url: imageUrls
-        }
-      });
+      }
     }
   }
 
-  const response = await fetch(GROQ_URL, {
+  const response = await fetch(GEMINI_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      'X-goog-api-key': apiKey,
     },
     body: JSON.stringify({
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: contentArray },
+      contents: [
+        {
+          role: 'user',
+          parts: parts
+        }
       ],
-      temperature: 0.1, // Lower temperature for more deterministic, strictly factual grading
-      response_format: { type: 'json_object' },
+      systemInstruction: {
+        parts: [
+          { text: systemPrompt }
+        ]
+      },
+      generationConfig: {
+        responseMimeType: 'application/json',
+        temperature: 0.1, // Lower temperature for more deterministic, strictly factual grading
+      }
     }),
   });
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Groq API Error: ${response.status} - ${errText}`);
+    throw new Error(`Gemini API Error: ${response.status} - ${errText}`);
   }
 
   const resData = await response.json();
-  const content = resData.choices?.[0]?.message?.content;
+  const content = resData.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!content) {
-    throw new Error('No content returned from Groq API.');
+    throw new Error('No content returned from Gemini API.');
   }
 
   return JSON.parse(content);
