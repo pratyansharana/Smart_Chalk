@@ -19,6 +19,7 @@ import {
   Sparkles,
   Paperclip,
   UploadCloud,
+  Brain,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useBatchDetails } from '../../hooks/useBatchDetails';
@@ -36,6 +37,13 @@ import { submitQuizScorecard } from '../../services/firebase/quizService';
 import { handlePrintReport } from '../../utils/printReport';
 import { uploadFileResumable } from '../../services/firebase/storageService';
 import { MathView } from '../../components/common/MathView';
+import { addVaultItem } from '../../services/firebase/vaultService';
+import { generateAIWorksheet, gradeSubmissionWithAI } from '../../services/aiService';
+import {
+  createSelfStudyWorksheet,
+  updateSelfStudyWorksheet,
+  subscribeToStudentWorksheets
+} from '../../services/firebase/selfStudyService';
 
 export function StudentBatchDetailsPage() {
   const { batchId } = useParams();
@@ -56,8 +64,193 @@ export function StudentBatchDetailsPage() {
   const [activeTab, setActiveTab] = useState('announcements'); // 'announcements' | 'vault' | 'assignments' | 'tests' | 'quizzes'
   const [activeQuizId, setActiveQuizId] = useState(null);
 
+  // Self-study worksheets states
+  const [worksheets, setWorksheets] = useState([]);
+  const [activeWorksheet, setActiveWorksheet] = useState(null);
+  
+  // Worksheet generation form states
+  const [wsTopic, setWsTopic] = useState('');
+  const [wsLevel, setWsLevel] = useState('medium');
+  const [wsCount, setWsCount] = useState(5);
+  const [generatingWs, setGeneratingWs] = useState(false);
 
+  // Student upload to Vault states
+  const [showUploadForm, setShowUploadForm] = useState(false);
+  const [vaultTitle, setVaultTitle] = useState('');
+  const [vaultDesc, setVaultDesc] = useState('');
+  const [vaultFile, setVaultFile] = useState(null);
+  const [submittingResource, setSubmittingResource] = useState(false);
+  const { upload: uploadResource, progress: resourceProgress } = useFileUpload();
 
+  // Worksheet submission states
+  const [wsTextAnswer, setWsTextAnswer] = useState('');
+  const [wsFiles, setWsFiles] = useState([]);
+  const [wsSubmitting, setWsSubmitting] = useState(false);
+  const [wsUploadState, setWsUploadState] = useState(null);
+
+  // Subscribe to self-study worksheets
+  useEffect(() => {
+    if (!studentId || !batchId) return;
+    const unsubscribe = subscribeToStudentWorksheets(studentId, batchId, (list) => {
+      setWorksheets(list);
+    }, (err) => {
+      console.error('Worksheets subscription error:', err);
+    });
+    return () => unsubscribe();
+  }, [studentId, batchId]);
+
+  // 1. Vault resource upload handler
+  async function handleUploadResource(e) {
+    e.preventDefault();
+    if (!vaultTitle.trim()) return;
+
+    setSubmittingResource(true);
+    try {
+      let fileURL = '';
+      let fileName = '';
+      if (vaultFile) {
+        const draftId = `${Date.now()}`;
+        fileURL = await uploadResource(`vault/${draftId}/${vaultFile.name}`, vaultFile);
+        fileName = vaultFile.name;
+      }
+
+      await addVaultItem({
+        classId: batchId,
+        title: vaultTitle.trim(),
+        description: vaultDesc.trim(),
+        fileURL,
+        fileName,
+        uploadedBy: studentId,
+        uploadedByName: studentName,
+        isStudentUpload: true,
+      });
+
+      setVaultTitle('');
+      setVaultDesc('');
+      setVaultFile(null);
+      setShowUploadForm(false);
+      alert('Resource uploaded to batch vault successfully!');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to upload resource: ' + err.message);
+    } finally {
+      setSubmittingResource(false);
+    }
+  }
+
+  // 2. Worksheet generation handler
+  async function handleCreateWorksheet(e) {
+    e.preventDefault();
+    if (!wsTopic.trim()) {
+      alert('Please enter a topic.');
+      return;
+    }
+
+    setGeneratingWs(true);
+    try {
+      console.log('[Self Study] Generating worksheet for topic:', wsTopic);
+      const generated = await generateAIWorksheet({
+        grade: batch?.grade || 'General Study',
+        topic: wsTopic.trim(),
+        level: wsLevel,
+        count: wsCount,
+      });
+
+      console.log('[Self Study] Worksheet generated successfully. Saving to Firestore...');
+      await createSelfStudyWorksheet({
+        classId: batchId,
+        studentId,
+        studentName,
+        topic: wsTopic.trim(),
+        level: wsLevel,
+        count: wsCount,
+        title: generated.title || `Worksheet: ${wsTopic}`,
+        description: generated.description || `AI Generated Worksheet covering ${wsTopic}`,
+        questionsContent: generated.questionsContent,
+      });
+
+      setWsTopic('');
+      alert('Worksheet generated successfully! Start practicing under the Self-Study panel.');
+    } catch (err) {
+      console.error('[Self Study] Error generating worksheet:', err);
+      alert('Failed to generate worksheet: ' + err.message);
+    } finally {
+      setGeneratingWs(false);
+    }
+  }
+
+  // 3. Worksheet solution submission and immediate AI grading
+  async function handleSubmitWorksheet(e, worksheet) {
+    e.preventDefault();
+    if (wsFiles.length === 0 && !wsTextAnswer.trim()) {
+      alert('Please upload a file or write a typed answer response.');
+      return;
+    }
+
+    setWsSubmitting(true);
+    setWsUploadState({ progress: 0, status: 'Uploading files...' });
+    try {
+      let uploadedUrls = [];
+      for (let i = 0; i < wsFiles.length; i++) {
+        const file = wsFiles[i];
+        setWsUploadState({
+          progress: Math.round((i / wsFiles.length) * 100),
+          status: `Uploading file ${i + 1} of ${wsFiles.length}...`
+        });
+
+        const path = `self_study/${worksheet.id}/${studentId}/${file.name}`;
+        const fileUrl = await uploadFileResumable(path, file, (progressVal) => {
+          const fileContribution = progressVal / wsFiles.length;
+          const currentBase = (i / wsFiles.length) * 100;
+          setWsUploadState({
+            progress: Math.round(currentBase + fileContribution),
+            status: `Uploading file ${i + 1} of ${wsFiles.length} (${progressVal}%)...`
+          });
+        });
+
+        uploadedUrls.push({
+          fileURL: fileUrl,
+          fileName: file.name
+        });
+      }
+
+      setWsUploadState({ progress: 100, status: 'AI is grading your answers now. Please wait...' });
+
+      // Run AI Grading immediately!
+      const urls = uploadedUrls.map(f => f.fileURL);
+      const gradeResult = await gradeSubmissionWithAI({
+        testTitle: worksheet.title,
+        testQuestions: worksheet.questionsContent,
+        maxScore: 100, // Self-study defaults to max score 100
+        studentAnswers: wsTextAnswer.trim(),
+        imageUrls: urls,
+        imageUrl: urls[0] || null,
+        studentName,
+      });
+
+      console.log('[Self Study] AI grading result:', gradeResult);
+
+      await updateSelfStudyWorksheet(worksheet.id, {
+        submittedFiles: uploadedUrls,
+        studentAnswersText: wsTextAnswer.trim(),
+        grade: gradeResult.score,
+        feedback: gradeResult.feedback,
+        status: 'graded',
+        gradedAt: new Date().toISOString(),
+      });
+
+      setWsTextAnswer('');
+      setWsFiles([]);
+      setActiveWorksheet(null);
+      setWsUploadState(null);
+      alert(`Worksheet submitted and graded! You scored ${gradeResult.score}/100.`);
+    } catch (err) {
+      console.error('[Self Study] Error submitting worksheet:', err);
+      alert('Failed to submit and grade worksheet: ' + err.message);
+    } finally {
+      setWsSubmitting(false);
+    }
+  }
   if (batchLoading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -227,6 +420,31 @@ export function StudentBatchDetailsPage() {
             </button>
           ))}
         </div>
+
+        {/* Category: Practice */}
+        <div className="flex items-center gap-1 bg-white/[0.02] border border-white/5 p-1 rounded-2xl">
+          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest pl-2 pr-1">Practice</span>
+          {[
+            ['self-study', 'Self Study', Brain],
+          ].map(([tab, label, Icon]) => (
+            <button
+              className={`py-2 px-3 text-xs font-bold flex items-center gap-1.5 rounded-xl border transition-all ${
+                activeTab === tab
+                  ? 'bg-amber-400 border-amber-300 text-slate-900 shadow-md'
+                  : 'border-transparent text-slate-300 hover:text-white hover:bg-white/[0.04]'
+              }`}
+              key={tab}
+              onClick={() => {
+                setActiveTab(tab);
+                setActiveQuizId(null);
+              }}
+              type="button"
+            >
+              <Icon size={14} />
+              {label}
+            </button>
+          ))}
+        </div>
       </nav>
 
       {/* Content pane */}
@@ -263,10 +481,79 @@ export function StudentBatchDetailsPage() {
         {/* Tab 2: Vault */}
         {activeTab === 'vault' && (
           <section className="glass-card p-5">
-            <h2 className="font-heading text-2xl font-bold text-white mb-5 flex items-center gap-2">
-              <BookOpen size={20} className="text-amber-400" />
-              Batch Vault
-            </h2>
+            <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+              <h2 className="font-heading text-2xl font-bold text-white flex items-center gap-2">
+                <BookOpen size={20} className="text-amber-400" />
+                Batch Vault
+              </h2>
+              {!parentMode && (
+                <button
+                  onClick={() => setShowUploadForm(!showUploadForm)}
+                  className="apex-button-primary py-1.5 px-3 text-xs flex items-center gap-1 animate-pulse"
+                >
+                  <UploadCloud size={14} />
+                  {showUploadForm ? 'Close Upload Form' : 'Upload Resource'}
+                </button>
+              )}
+            </div>
+
+            {/* Toggleable resource upload form */}
+            {showUploadForm && (
+              <form onSubmit={handleUploadResource} className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 mb-6 grid gap-4 max-w-xl">
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">Share Resource with Batch</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="grid gap-1.5 text-xs font-semibold text-slate-300">
+                    Title *
+                    <input 
+                      type="text" 
+                      value={vaultTitle} 
+                      onChange={(e) => setVaultTitle(e.target.value)} 
+                      required 
+                      className="apex-input py-2 px-3 text-xs" 
+                      placeholder="e.g. Revision Notes, Formula Sheet..."
+                    />
+                  </label>
+                  <label className="grid gap-1.5 text-xs font-semibold text-slate-300">
+                    Description
+                    <input 
+                      type="text" 
+                      value={vaultDesc} 
+                      onChange={(e) => setVaultDesc(e.target.value)} 
+                      className="apex-input py-2 px-3 text-xs" 
+                      placeholder="Brief note about the file..."
+                    />
+                  </label>
+                </div>
+                <div className="grid gap-1.5 text-xs font-semibold text-slate-300">
+                  File Attachment
+                  <input 
+                    type="file" 
+                    onChange={(e) => setVaultFile(e.target.files[0])} 
+                    className="text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-white/10 file:text-white hover:file:bg-white/20 transition-all cursor-pointer"
+                  />
+                  {resourceProgress > 0 && resourceProgress < 100 && (
+                    <span className="text-[10px] text-amber-300">Uploading attachment: {resourceProgress}%</span>
+                  )}
+                </div>
+                <div className="flex justify-end gap-2 text-xs">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowUploadForm(false)} 
+                    className="apex-button-secondary py-1 px-3 text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={submittingResource} 
+                    className="apex-button-primary py-1 px-4 text-xs"
+                  >
+                    {submittingResource ? 'Uploading...' : 'Publish to Vault'}
+                  </button>
+                </div>
+              </form>
+            )}
+
             {vault.loading && <p className="text-sm text-slate-300">Loading vault items...</p>}
             {!vault.loading && vault.data.length === 0 && (
               <p className="text-sm text-slate-400 text-center py-8">No syllabus or files have been uploaded to the vault yet.</p>
@@ -275,7 +562,12 @@ export function StudentBatchDetailsPage() {
               {vault.data.map((item) => (
                 <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 flex flex-col justify-between" key={item.id}>
                   <div>
-                    <h3 className="font-bold text-white text-lg">{item.title}</h3>
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="font-bold text-white text-lg">{item.title}</h3>
+                      <span className="text-[9px] font-bold py-0.5 px-2 rounded-full uppercase tracking-wider bg-white/5 border border-white/10 text-slate-400">
+                        {item.isStudentUpload ? `Student: ${item.uploadedByName || 'Anonymous'}` : 'Teacher'}
+                      </span>
+                    </div>
                     <p className="text-sm text-slate-400 mt-2">{item.description}</p>
                   </div>
                   {item.fileURL && (
@@ -469,6 +761,316 @@ export function StudentBatchDetailsPage() {
                 batchId={batchId}
                 onClose={() => setActiveQuizId(null)}
               />
+            )}
+          </section>
+        )}
+
+        {/* Tab 5: Self Study Zone */}
+        {activeTab === 'self-study' && (
+          <section className="grid gap-6">
+            <div className="glass-card p-5">
+              <div className="flex items-center justify-between gap-4 flex-wrap border-b border-white/5 pb-4 mb-5">
+                <div>
+                  <h2 className="font-heading text-2xl font-bold text-white flex items-center gap-2">
+                    <Brain size={24} className="text-amber-400 animate-pulse" />
+                    Self-Study Practice Zone
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1">Generate personalized practice worksheets, solve them, and get instant detailed grading and feedback from the AI.</p>
+                </div>
+              </div>
+
+              {/* Worksheet Generation Card */}
+              {!parentMode && !activeWorksheet && (
+                <form onSubmit={handleCreateWorksheet} className="bg-white/[0.02] border border-white/10 rounded-2xl p-4 grid gap-4 max-w-2xl">
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-amber-400" />
+                    Generate Practice Worksheet with AI
+                  </h3>
+                  
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <label className="grid gap-1.5 text-xs font-semibold text-slate-300 sm:col-span-2">
+                      Topic
+                      <input 
+                        type="text" 
+                        value={wsTopic} 
+                        onChange={(e) => setWsTopic(e.target.value)} 
+                        required 
+                        disabled={generatingWs}
+                        className="apex-input py-2 px-3 text-xs" 
+                        placeholder="e.g., Trigonometric Identities, Newton's Laws..."
+                      />
+                    </label>
+                    <label className="grid gap-1.5 text-xs font-semibold text-slate-300">
+                      Difficulty
+                      <select 
+                        value={wsLevel} 
+                        onChange={(e) => setWsLevel(e.target.value)} 
+                        disabled={generatingWs}
+                        className="apex-input py-2 px-3 text-xs bg-slate-900 border-white/10 text-white cursor-pointer"
+                      >
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4 mt-2">
+                    <label className="flex items-center gap-2 text-xs text-slate-300 font-semibold cursor-pointer">
+                      Questions Count:
+                      <select 
+                        value={wsCount} 
+                        onChange={(e) => setWsCount(Number(e.target.value))} 
+                        disabled={generatingWs}
+                        className="apex-input py-1 px-2 text-xs bg-slate-900 border-white/10 text-white cursor-pointer"
+                      >
+                        <option value="3">3 Questions</option>
+                        <option value="5">5 Questions</option>
+                        <option value="10">10 Questions</option>
+                      </select>
+                    </label>
+
+                    <button 
+                      type="submit" 
+                      disabled={generatingWs}
+                      className="apex-button-primary py-1.5 px-4 text-xs flex items-center gap-1.5"
+                    >
+                      {generatingWs ? (
+                        <>
+                          <Loader2 className="animate-spin" size={14} />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={14} />
+                          Generate Worksheet
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+
+            {/* Active Worksheet Panel */}
+            {activeWorksheet ? (
+              <div className="glass-card p-5 animate-fadeIn">
+                <div className="flex items-center justify-between gap-4 border-b border-white/5 pb-4 mb-4">
+                  <div>
+                    <span className="text-[10px] font-bold py-0.5 px-2.5 rounded-full uppercase bg-amber-400/10 border border-amber-300/20 text-amber-300 tracking-wider">
+                      {activeWorksheet.level}
+                    </span>
+                    <h3 className="font-heading text-xl font-bold text-white mt-1.5">{activeWorksheet.title}</h3>
+                    <p className="text-xs text-slate-400 mt-1">{activeWorksheet.description}</p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setActiveWorksheet(null);
+                      setWsTextAnswer('');
+                      setWsFiles([]);
+                    }}
+                    className="apex-button-secondary py-1 px-3 text-xs"
+                  >
+                    Go Back
+                  </button>
+                </div>
+
+                {/* Display Questions */}
+                <div className="grid gap-3 mb-6 bg-white/[0.01] border border-white/5 p-4 rounded-xl">
+                  {activeWorksheet.questionsContent ? (
+                    activeWorksheet.questionsContent.split('\n').map((line, idx) => {
+                      if (line.trim().startsWith('### ') || line.trim().startsWith('## ') || line.trim().startsWith('# ')) {
+                        return (
+                          <h4 key={idx} className="font-heading text-sm uppercase tracking-wider text-amber-400 mt-4 mb-2">
+                            <MathView as="span" text={line.replace(/^#+\s/, '')} />
+                          </h4>
+                        );
+                      }
+                      if (/^\d+[\.\)]\s/.test(line.trim())) {
+                        const cleanText = line.replace(/^\d+[\.\)]\s/, '');
+                        const matchNum = line.match(/^(\d+)[\.\)]/);
+                        const qNum = matchNum ? matchNum[1] : idx + 1;
+                        return (
+                          <div key={idx} className="bg-white/[0.01] border border-white/5 p-4 rounded-xl grid gap-2">
+                            <span className="bg-amber-400/10 text-amber-300 font-bold px-2 py-0.5 rounded text-[9px] tracking-wide uppercase max-w-fit">
+                              Question {qNum}
+                            </span>
+                            <MathView as="p" text={cleanText} className="text-sm font-semibold text-slate-200" />
+                          </div>
+                        );
+                      }
+                      if (!line.trim()) return null;
+                      return (
+                        <MathView as="p" key={idx} text={line} className="text-xs text-slate-400 leading-relaxed" />
+                      );
+                    })
+                  ) : (
+                    <p className="text-xs text-slate-400">No questions content.</p>
+                  )}
+                </div>
+
+                {/* If worksheet is created and student is working on it */}
+                {activeWorksheet.status === 'created' && !parentMode && (
+                  <form onSubmit={(e) => handleSubmitWorksheet(e, activeWorksheet)} className="border-t border-white/10 pt-5 grid gap-5">
+                    <div>
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-2">Submit Your Solution</h4>
+                      
+                      {/* Typed Answer Option */}
+                      <label className="grid gap-1.5 text-xs font-semibold text-slate-300">
+                        Typed Response / Solution Steps
+                        <textarea 
+                          value={wsTextAnswer}
+                          onChange={(e) => setWsTextAnswer(e.target.value)}
+                          rows={6}
+                          className="apex-input py-2 px-3 text-xs resize-y min-h-[120px]"
+                          placeholder="Type your steps, final answers, or explanations here..."
+                        />
+                      </label>
+                    </div>
+
+                    {/* Image Attachments */}
+                    <div className="grid gap-1.5 text-xs font-semibold text-slate-300">
+                      Upload Handwritten Solution Sheets (Images/Photos)
+                      <DropzoneUploader files={wsFiles} setFiles={setWsFiles} uploadingState={wsUploadState} />
+                    </div>
+
+                    <div className="flex justify-end gap-2 text-xs mt-3">
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setActiveWorksheet(null);
+                          setWsTextAnswer('');
+                          setWsFiles([]);
+                        }}
+                        className="apex-button-secondary py-1.5 px-4 text-xs"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="submit" 
+                        disabled={wsSubmitting}
+                        className="apex-button-primary py-1.5 px-5 text-xs flex items-center gap-1.5"
+                      >
+                        {wsSubmitting ? (
+                          <>
+                            <Loader2 className="animate-spin" size={14} />
+                            Grading Answers...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle size={14} />
+                            Submit & Grade with AI
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* If worksheet has been graded */}
+                {activeWorksheet.status === 'graded' && (
+                  <div className="border-t border-white/10 pt-5 grid gap-6">
+                    {/* Score Card */}
+                    <div className="glass-card bg-amber-400/[0.03] border-amber-400/20 p-5 flex flex-col items-center justify-center text-center max-w-sm mx-auto">
+                      <Star size={36} className="text-amber-400 mb-2 animate-bounce" />
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Your Grade</h4>
+                      <span className="text-4xl font-black text-amber-300 mt-1">{activeWorksheet.grade} / 100</span>
+                      <span className="text-[10px] text-slate-500 mt-2 uppercase tracking-wide">
+                        Graded instantly on {new Date(activeWorksheet.gradedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    {/* AI Feedback Report */}
+                    <div>
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <Sparkles size={14} className="text-amber-400" />
+                        AI Feedback & Marks Breakdown
+                      </h4>
+                      <div className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed bg-white/[0.01] border border-white/5 p-4 rounded-xl font-sans">
+                        {activeWorksheet.feedback}
+                      </div>
+                    </div>
+
+                    {/* Student Answers */}
+                    <div className="border-t border-white/5 pt-4">
+                      <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Your Submitted Solution</h4>
+                      {activeWorksheet.studentAnswersText && (
+                        <div className="bg-white/[0.01] border border-white/5 p-3 rounded-lg text-xs text-slate-400 whitespace-pre-wrap font-sans">
+                          {activeWorksheet.studentAnswersText}
+                        </div>
+                      )}
+                      
+                      {activeWorksheet.submittedFiles && activeWorksheet.submittedFiles.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {activeWorksheet.submittedFiles.map((file, idx) => (
+                            <a
+                              key={idx}
+                              href={file.fileURL}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs text-amber-300 hover:underline flex items-center gap-1.5 bg-white/[0.02] border border-white/5 py-1 px-2.5 rounded-lg"
+                            >
+                              <Paperclip size={12} />
+                              {file.fileName || `Attachment ${idx + 1}`}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Worksheets List */
+              <div className="glass-card p-5 animate-fadeIn">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Your Worksheets History</h3>
+                
+                {worksheets.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-8">
+                    You haven't generated any practice worksheets yet. Use the form above to generate your first worksheet!
+                  </p>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {worksheets.map((ws) => (
+                      <article className="border border-white/5 bg-white/[0.01] hover:border-white/10 transition-all rounded-2xl p-4 flex flex-col justify-between" key={ws.id}>
+                        <div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`text-[9px] font-bold py-0.5 px-2 rounded-full uppercase tracking-wider ${
+                              ws.level === 'easy' ? 'bg-green-500/10 text-green-300' :
+                              ws.level === 'medium' ? 'bg-amber-400/10 text-amber-300' :
+                              'bg-red-500/10 text-red-300'
+                            }`}>
+                              {ws.level}
+                            </span>
+                            
+                            <span className={`text-[9px] font-bold py-0.5 px-2 rounded-full uppercase tracking-wider ${
+                              ws.status === 'graded' ? 'bg-green-500/20 text-green-300 border border-green-500/10' : 'bg-white/5 text-slate-400'
+                            }`}>
+                              {ws.status === 'graded' ? `Score: ${ws.grade}/100` : 'Not Submitted'}
+                            </span>
+                          </div>
+
+                          <h4 className="font-heading text-base font-bold text-white mt-2">{ws.title}</h4>
+                          <p className="text-xs text-slate-400 mt-1 line-clamp-2">{ws.description}</p>
+                          
+                          <span className="text-[10px] text-slate-500 block mt-2.5">
+                            Created on {ws.createdAt?.toDate ? ws.createdAt.toDate().toLocaleDateString() : 'recently'}
+                          </span>
+                        </div>
+
+                        <div className="mt-4 pt-3 border-t border-white/5 flex justify-end">
+                          <button
+                            onClick={() => setActiveWorksheet(ws)}
+                            className="apex-button-primary py-1 px-3 text-xs flex items-center gap-1"
+                          >
+                            {ws.status === 'graded' ? '📊 View Evaluation' : '📝 Start Worksheet'}
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </section>
         )}

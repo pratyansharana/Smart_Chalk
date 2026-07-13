@@ -298,3 +298,45 @@ Additional Instructions: ${instructions || 'None'}`;
   return fetchFromGroq(systemPrompt, userPrompt);
 }
 
+/**
+ * Generates an AI worksheet for student self-study.
+ */
+export async function generateAIWorksheet({ grade, topic, level, count = 5 }) {
+  const systemPrompt = `You are an elite academic tutor. Create a personalized practice worksheet based on the requested topic, grade, and difficulty level.
+The worksheet must contain exactly ${count} practice questions.
+
+STRICT TOPIC & SYLLABUS ALIGNMENT DIRECTIVE:
+1. STRICT TOPIC ADHERENCE: Focus exclusively on the requested topic: "${topic}". Do not introduce questions, terms, or mathematical concepts from unrelated topics. Keep every single question directly relevant to the topic.
+2. GRADE-LEVEL COMPLIANCE: Target the educational complexity level of Grade: "${grade}". Avoid questions that are too advanced or too simple.
+3. DIFFICULTY SPECIFICATION: Calibrate questions according to the difficulty: "${level}".
+   - Easy: Direct questions, basic recall, simple exercises.
+   - Medium: Conceptual application, standard multi-step problems.
+   - Hard: Advanced problem solving, complex calculations, deep reasoning.
+
+LaTeX MATH FORMATTING RULES:
+1. Wrap all mathematical equations, variables, symbols, and expressions inside standard delimiters:
+   - Use "$" for inline equations (e.g., "$a^2 + b^2 = c^2$").
+   - Use "$$" for display/block equations (e.g., "$$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$").
+2. CRITICAL: Never split a single math formula or its "$" delimiters across multiple newlines/line breaks. A formula and its delimiters must reside entirely on a single line.
+3. CRITICAL: You MUST double-escape all backslashes inside JSON strings. Write "\\frac" instead of "\frac", "\\cdot" instead of "\cdot", "\\times" instead of "\times", etc.
+
+MARKDOWN FORMATTING RULES:
+- Use "# [Section Title]" for main headers.
+- Use "## [Sub-Header]" for sub-sections.
+- Questions must start with a number followed by a period (e.g., "1. Solve the following...").
+
+Return a JSON object in this EXACT format:
+{
+  "title": "Practice Worksheet: Topic Name",
+  "description": "Short description of the worksheet topics covered",
+  "questionsContent": "Detailed practice questions in markdown format. Do not include answers."
+}`;
+
+  const userPrompt = `Grade: ${grade}
+Topic: ${topic}
+Difficulty Level: ${level}`;
+
+  return fetchFromGroq(systemPrompt, userPrompt);
+}
+
+
