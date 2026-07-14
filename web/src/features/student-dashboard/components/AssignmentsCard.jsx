@@ -3,6 +3,7 @@ import { ClipboardList } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Skeleton } from '../../../components/common/Skeleton';
 import { WorksheetUploader } from './WorksheetUploader';
+import { MathView } from '../../../components/common/MathView';
 
 function toDate(value) {
   if (!value) return null;
@@ -71,13 +72,19 @@ export function AssignmentsCard({ assignments, submissions, studentId, loading, 
                 ) : (
                   <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl text-center self-stretch flex flex-col justify-center min-h-[90px]">
                     {sub ? (
-                      <div>
+                      <div className="text-left">
                         <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider block">Graded Score:</span>
-                        <span className="text-base font-black text-slate-200 mt-1 block">
+                        <span className="text-base font-black text-slate-200 mt-0.5 block">
                           {sub.grade !== undefined && sub.grade !== null
                             ? `${sub.grade} / ${assignment.maxScore || 100} marks (${Math.round((sub.grade / (assignment.maxScore || 100)) * 100)}%)`
                             : 'Pending teacher review...'}
                         </span>
+                        {sub.feedback && (
+                          <div className="mt-2 bg-white/[0.02] border border-white/5 p-2 rounded-lg text-xs">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Teacher Remarks:</span>
+                            <MathView text={sub.feedback} />
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <span className="text-xs font-bold text-amber-500 uppercase tracking-widest block">

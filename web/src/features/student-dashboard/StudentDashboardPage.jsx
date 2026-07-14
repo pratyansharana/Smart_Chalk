@@ -13,6 +13,7 @@ import { AssignmentsCard } from './components/AssignmentsCard';
 import { GradeVisualizerCard } from './components/GradeVisualizerCard';
 import { UpcomingClassesCard } from './components/UpcomingClassesCard';
 import { handlePrintReport } from '../../utils/printReport';
+import { MathView } from '../../components/common/MathView';
 
 export function StudentDashboardPage() {
   const { currentUser, profile } = useAuth();
@@ -200,7 +201,7 @@ export function StudentDashboardPage() {
                   {activeTest.feedback && (
                     <div className="mt-4 bg-white/[0.01] border border-white/5 p-3.5 rounded-xl">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Teacher Point-wise Comments</span>
-                      <p className="text-xs text-slate-300 font-sans leading-relaxed whitespace-pre-wrap">{activeTest.feedback}</p>
+                      <MathView text={activeTest.feedback} className="text-xs text-slate-300 font-sans leading-relaxed" />
                     </div>
                   )}
                 </div>
