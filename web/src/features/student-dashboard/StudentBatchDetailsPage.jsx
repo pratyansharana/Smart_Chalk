@@ -690,8 +690,8 @@ export function StudentBatchDetailsPage() {
                               {submission.feedback && (
                                 <div className="grid gap-1">
                                   <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Teacher's Direct Feedback</span>
-                                  <div className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed bg-white/[0.01] border border-white/5 p-3 rounded-lg font-sans">
-                                    {submission.feedback}
+                                  <div className="text-xs text-slate-200 leading-relaxed bg-white/[0.01] border border-white/5 p-3 rounded-lg font-sans">
+                                    <MathView text={submission.feedback} />
                                   </div>
                                 </div>
                               )}
@@ -712,7 +712,7 @@ export function StudentBatchDetailsPage() {
                           {submission?.status === 'resubmit_requested' && (
                             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-4 text-xs font-sans">
                               <span className="font-bold text-amber-300 block mb-1">⚠️ Resubmission Requested by Teacher</span>
-                              <p className="text-slate-300 leading-relaxed font-sans">{submission.feedback || 'Please review your answers and resubmit.'}</p>
+                              <MathView text={submission.feedback || 'Please review your answers and resubmit.'} className="text-slate-300 leading-relaxed font-sans" />
                             </div>
                           )}
                           <TestUploader test={test} classId={batch.id} studentId={studentId} studentName={studentName} submission={submission} />
@@ -986,8 +986,8 @@ export function StudentBatchDetailsPage() {
                         <Sparkles size={14} className="text-amber-400" />
                         AI Feedback & Marks Breakdown
                       </h4>
-                      <div className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed bg-white/[0.01] border border-white/5 p-4 rounded-xl font-sans">
-                        {activeWorksheet.feedback}
+                      <div className="text-xs text-slate-200 leading-relaxed bg-white/[0.01] border border-white/5 p-4 rounded-xl font-sans">
+                        <MathView text={activeWorksheet.feedback} />
                       </div>
                     </div>
 
@@ -1751,7 +1751,7 @@ function StudentAssignmentPanel({ batch, studentId, studentName, assignments, su
                     {isGraded && submission.feedback && (
                       <div className="border border-emerald-500/10 bg-emerald-500/[0.02] p-4 rounded-xl grid gap-1.5">
                         <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block">Teacher Evaluation Conversation</span>
-                        <p className="text-xs text-slate-300 font-sans leading-relaxed whitespace-pre-wrap">{submission.feedback}</p>
+                        <MathView text={submission.feedback} className="text-xs text-slate-300 font-sans leading-relaxed" />
                       </div>
                     )}
                   </div>
@@ -1760,7 +1760,7 @@ function StudentAssignmentPanel({ batch, studentId, studentName, assignments, su
                     {submission?.status === 'resubmit_requested' && (
                       <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-4 text-xs font-sans">
                         <span className="font-bold text-amber-300 block mb-1">⚠️ Resubmission Requested by Teacher</span>
-                        <p className="text-slate-300 leading-relaxed font-sans">{submission.feedback || 'Please review your answers and resubmit.'}</p>
+                        <MathView text={submission.feedback || 'Please review your answers and resubmit.'} className="text-slate-300 leading-relaxed font-sans" />
                       </div>
                     )}
                     <AssignmentUploader assignment={assignment} classId={batch.id} studentId={studentId} studentName={studentName} submission={submission} />
