@@ -2919,9 +2919,16 @@ function QuizPanel({ batchId, teacherId, quizzes }) {
                      <span className="font-semibold">{idx + 1}.</span>
                      <div className="flex-1">
                        <MathView text={q.questionText} />
-                       <div className="mt-1 text-[10px] text-amber-300">
-                         Answer: Option {q.correctOptionIndex + 1}
-                       </div>
+                       <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] text-slate-500">
+                          {q.options.map((opt, oIdx) => (
+                            <div className={oIdx === q.correctOptionIndex ? "text-emerald-400 font-semibold" : ""} key={oIdx}>
+                              Opt {oIdx + 1}: <MathView text={opt} as="span" />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-1 text-[10px] text-amber-300 font-medium">
+                          Answer: Option {q.correctOptionIndex + 1}
+                        </div>
                      </div>
                    </div>
                  </div>
@@ -2940,7 +2947,7 @@ function QuizPanel({ batchId, teacherId, quizzes }) {
         <div className="grid gap-4 max-h-[500px] overflow-y-auto pr-1">
           {quizzes.map((quiz) => (
             <article className="border border-white/10 bg-white/[0.02] p-4 rounded-2xl" key={quiz.id}>
-              <h3 className="font-bold text-white text-lg">{quiz.title}</h3>
+              <MathView text={quiz.title} as="h3" className="font-bold text-white text-lg" />
               <p className="text-xs text-slate-400 mt-1">Total Questions: {quiz.questions?.length || 0}</p>
               
               {/* Leaderboard sub-component */}

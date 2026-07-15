@@ -1050,8 +1050,8 @@ export function StudentBatchDetailsPage() {
                             </span>
                           </div>
 
-                          <h4 className="font-heading text-base font-bold text-white mt-2">{ws.title}</h4>
-                          <p className="text-xs text-slate-400 mt-1 line-clamp-2">{ws.description}</p>
+                          <MathView text={ws.title} as="h4" className="font-heading text-base font-bold text-white mt-2" />
+                          <MathView text={ws.description} as="p" className="text-xs text-slate-400 mt-1 line-clamp-2" />
                           
                           <span className="text-[10px] text-slate-500 block mt-2.5">
                             Created on {ws.createdAt?.toDate ? ws.createdAt.toDate().toLocaleDateString() : 'recently'}
@@ -1308,7 +1308,7 @@ function QuizCard({ quiz, batchId, studentId, onStartQuiz, parentMode }) {
   return (
     <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 flex flex-col justify-between">
       <div>
-        <h3 className="font-heading text-lg font-bold text-white mb-2">{quiz.title}</h3>
+        <MathView text={quiz.title} as="h3" className="font-heading text-lg font-bold text-white mb-2" />
         <p className="text-xs text-slate-500 mb-4">Total Questions: {quiz.questions?.length || 0}</p>
         
         {myScore ? (
@@ -1536,7 +1536,7 @@ function QuizRunner({ quiz, studentId, studentName, batchId, onClose }) {
               onClick={() => setSelectedOpt(index)}
               type="button"
             >
-              <MathView text={option} />
+              <MathView text={option} as="span" />
             </button>
           );
         })}
