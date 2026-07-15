@@ -1506,7 +1506,7 @@ function QuizRunner({ quiz, studentId, studentName, batchId, onClose }) {
       </div>
 
       <h3 className="text-lg font-bold text-white mb-6 leading-relaxed">
-        {currentQuestion?.questionText}
+        <MathView text={currentQuestion?.questionText} />
       </h3>
 
       <div className="grid gap-3">
@@ -1536,7 +1536,7 @@ function QuizRunner({ quiz, studentId, studentName, batchId, onClose }) {
               onClick={() => setSelectedOpt(index)}
               type="button"
             >
-              {option}
+              <MathView text={option} />
             </button>
           );
         })}

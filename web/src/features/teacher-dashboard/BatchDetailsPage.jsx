@@ -2912,13 +2912,21 @@ function QuizPanel({ batchId, teacherId, quizzes }) {
         {questions.length > 0 && (
           <div className="mt-4 bg-white/[0.01] border border-white/5 p-3 rounded-xl max-h-48 overflow-y-auto">
             <p className="text-xs font-bold text-white mb-2">Quiz Questions Preview:</p>
-            <div className="grid gap-2">
-              {questions.map((q, idx) => (
-                <div className="text-[11px] text-slate-400" key={q.id}>
-                  {idx + 1}. {q.questionText} (Answer: Opt {q.correctOptionIndex + 1})
-                </div>
-              ))}
-            </div>
+             <div className="grid gap-2">
+               {questions.map((q, idx) => (
+                 <div className="text-[11px] text-slate-400 border-b border-white/5 pb-2 mb-2 last:border-0" key={q.id}>
+                   <div className="flex gap-1.5 items-start">
+                     <span className="font-semibold">{idx + 1}.</span>
+                     <div className="flex-1">
+                       <MathView text={q.questionText} />
+                       <div className="mt-1 text-[10px] text-amber-300">
+                         Answer: Option {q.correctOptionIndex + 1}
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+               ))}
+             </div>
           </div>
         )}
       </section>
