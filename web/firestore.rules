@@ -58,7 +58,15 @@ service cloud.firestore {
 
     match /vault_items/{itemId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isTeacher() || isAdmin();
+      allow create: if isTeacher() || isAdmin() || (isStudent() && request.resource.data.uploadedBy == request.auth.uid);
+      allow update, delete: if isTeacher() || isAdmin() || (isStudent() && resource.data.uploadedBy == request.auth.uid);
+    }
+
+    match /self_study_worksheets/{worksheetId} {
+      allow create: if isStudent() && request.resource.data.studentId == request.auth.uid;
+      allow read: if isTeacher() || isAdmin() || (isStudent() && resource.data.studentId == request.auth.uid);
+      allow update: if isTeacher() || isAdmin() || (isStudent() && resource.data.studentId == request.auth.uid);
+      allow delete: if isAdmin() || (isStudent() && resource.data.studentId == request.auth.uid);
     }
 
     match /tests/{testId} {
