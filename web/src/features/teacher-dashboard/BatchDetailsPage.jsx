@@ -899,19 +899,20 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, parentPhones = {}, 
       }
       if (imageUrls.length === 0 && activeSub.submittedFileURL && activeSub.submittedFileName) {
         const lowerName = activeSub.submittedFileName.toLowerCase();
-        const isImg = lowerName.endsWith('.png') || 
-                      lowerName.endsWith('.jpg') || 
-                      lowerName.endsWith('.jpeg') || 
-                      lowerName.endsWith('.webp') ||
-                      lowerName.endsWith('.gif');
-        if (isImg) {
+        const isImgOrPdf = lowerName.endsWith('.png') || 
+                           lowerName.endsWith('.jpg') || 
+                           lowerName.endsWith('.jpeg') || 
+                           lowerName.endsWith('.webp') ||
+                           lowerName.endsWith('.gif') ||
+                           lowerName.endsWith('.pdf');
+        if (isImgOrPdf) {
           imageUrls.push(activeSub.submittedFileURL);
         }
       }
 
       const answersText = activeSub.studentText || pastedAnswers;
       if ((!answersText || !answersText.trim()) && imageUrls.length === 0) {
-        throw new Error('Please type or paste the student\'s answers text in the textarea below before grading (or upload an image submission instead of PDF).');
+        throw new Error('Please type or paste the student\'s answers text, or upload an image/PDF submission before grading.');
       }
 
       const result = await gradeSubmissionWithAI({
@@ -921,6 +922,7 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, parentPhones = {}, 
         studentAnswers: answersText ? answersText.trim() : null,
         imageUrls: imageUrls,
         studentName: activeSub.studentName,
+        questionFileURL: test.testFileURL || null,
       });
       setGradeInput(String(result.score));
       setFeedbackInput(result.feedback);
@@ -1833,12 +1835,13 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones 
       }
       if (imageUrls.length === 0 && submission.submittedFileURL && submission.submittedFileName) {
         const lowerName = submission.submittedFileName.toLowerCase();
-        const isImg = lowerName.endsWith('.png') || 
-                      lowerName.endsWith('.jpg') || 
-                      lowerName.endsWith('.jpeg') || 
-                      lowerName.endsWith('.webp') ||
-                      lowerName.endsWith('.gif');
-        if (isImg) {
+        const isImgOrPdf = lowerName.endsWith('.png') || 
+                           lowerName.endsWith('.jpg') || 
+                           lowerName.endsWith('.jpeg') || 
+                           lowerName.endsWith('.webp') ||
+                           lowerName.endsWith('.gif') ||
+                           lowerName.endsWith('.pdf');
+        if (isImgOrPdf) {
           imageUrls.push(submission.submittedFileURL);
         }
       }
@@ -1857,6 +1860,7 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones 
         studentAnswers,
         imageUrls: imageUrls,
         studentName: submission.studentName,
+        questionFileURL: assignment.submittedFileUrl || null,
       });
 
       console.log('[AI Grading] Assignment grading successful!', result);

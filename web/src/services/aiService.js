@@ -318,13 +318,22 @@ Difficulty Level: ${level}`;
   return fetchFromGroq(systemPrompt, userPrompt);
 }
 
-export async function gradeSubmissionWithAI({ testTitle, testQuestions, maxScore, studentAnswers, imageUrls, imageUrl, studentName }) {
+export async function gradeSubmissionWithAI({
+  testTitle,
+  testQuestions,
+  maxScore,
+  studentAnswers,
+  imageUrls,
+  imageUrl,
+  studentName,
+  questionFileURL
+}) {
   const systemPrompt = `You are an elite academic tutor. Your task is to grade the student's submission with extreme precision, accuracy, and fairness.
 
 GRADING RUBRIC & STRATEGY:
 1. STEP-BY-STEP EVALUATION:
-   - For each question in the test paper, analyze the correct answer/method.
-   - Look at the student's written text answers AND scan all attached submission images carefully to check their work, derivations, formulas, and final answers.
+   - For each question in the test paper (provided as text and/or as a question paper file), analyze the correct answer/method.
+   - Look at the student's written text answers AND scan all attached submission files (images or PDFs containing handwritten/typed solution sheets) carefully to check their work, derivations, formulas, and final answers.
    - Do not guess or assume. Grade strictly based on visible correct work.
 2. STRICT SCORE CALCULATION:
    - Assign partial points for correct steps and full points for correct final solutions.
@@ -353,17 +362,67 @@ Return a JSON object in this EXACT format:
   "feedback": "Hello ${studentName || 'Student'},\n\n📋 **Marks Breakdown:**\n• **Question 1**: X/Y marks — [Reason]\n• **Question 2**: X/Y marks — [Reason]\n\n[Brief encouraging summary]\n• [Point-wise strength]\n• [Point-wise recommendation]"
 }`;
 
-  const userPrompt = `Test Title: ${testTitle}
+  const userPromptText = `Test Title: ${testTitle}
 Maximum Score: ${maxScore}
 Student's Name: ${studentName || 'Student'}
-Test Questions (Markdown):
-${testQuestions}
 
-Student's Written Answers Text:
+Test Questions Text / Description (if any):
+${testQuestions || 'Not provided in text format.'}
+
+Student's Written Answers Text (if any):
 ${studentAnswers || 'No text answers provided.'}`;
 
+  // Construct parts array dynamically to hold both text descriptions and file base64 data parts
+  const parts = [];
+
+  // 1. Add question paper file if provided
+  if (questionFileURL) {
+    parts.push({ text: "### TEST QUESTION PAPER FILE (Refer to this for the questions to grade):" });
+    const questionFilePart = await urlToBase64Part(questionFileURL);
+    if (questionFilePart) {
+      parts.push(questionFilePart);
+    }
+  }
+
+  // 2. Add student solution files
   const urls = imageUrls || (imageUrl ? [imageUrl] : []);
-  return fetchFromGroqVision(systemPrompt, userPrompt, urls);
+  if (urls.length > 0) {
+    parts.push({ text: "### STUDENT'S SUBMITTED SOLUTION FILES (Check these for the student's handwritten work/answers):" });
+    for (const url of urls) {
+      if (url) {
+        const solutionFilePart = await urlToBase64Part(url);
+        if (solutionFilePart) {
+          parts.push(solutionFilePart);
+        }
+      }
+    }
+  }
+
+  // 3. Add text instructions and answers
+  parts.push({ text: `### INSTRUCTIONS AND SUBMISSION DETAILS:\n${userPromptText}` });
+
+  // Call standard Gemini fallback pipeline
+  try {
+    return await fetchWithFallback(systemPrompt, null, parts, 0.1);
+  } catch (geminiErr) {
+    console.warn('[AI Fallback] Gemini Vision/File grading failed. Trying Groq...', geminiErr);
+    try {
+      // Groq does not support PDF files natively. Filter only images for Groq fallback.
+      const imageOnlyUrls = urls.filter(url => {
+        if (!url) return false;
+        const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
+        return cleanUrl.endsWith('.png') || 
+               cleanUrl.endsWith('.jpg') || 
+               cleanUrl.endsWith('.jpeg') || 
+               cleanUrl.endsWith('.webp') || 
+               cleanUrl.endsWith('.gif');
+      });
+      return await callGroqVisionApi(systemPrompt, userPromptText, imageOnlyUrls, 0.1);
+    } catch (groqErr) {
+      console.error('[AI Fallback] Both Gemini and Groq failed:', groqErr);
+      throw new Error(`AI Service Unavailable. Gemini status: ${geminiErr.status || 'unknown'}. Groq error: ${groqErr.message}`);
+    }
+  }
 }
 
 /**
