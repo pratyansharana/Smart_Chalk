@@ -1,3 +1,7 @@
+// Max images to include in a single vision API call during chunk analysis.
+// Keeping this low (3) prevents context-window overflow on large submissions.
+const GRADING_CHUNK_SIZE = 3;
+
 const GEMINI_MODELS = [
   'gemini-flash-latest',
   'gemini-2.5-flash',
@@ -49,9 +53,23 @@ async function callGeminiApi(modelName, systemPrompt, userPrompt, partsOverride 
   }
 
   const resData = await response.json();
-  const content = resData.candidates?.[0]?.content?.parts?.[0]?.text;
+
+  // Check for blocked / filtered / empty candidates before accessing content
+  const candidate = resData.candidates?.[0];
+  if (!candidate) {
+    // promptFeedback may carry a blockReason when all candidates are suppressed
+    const blockReason = resData.promptFeedback?.blockReason || 'UNKNOWN';
+    throw { status: 200, message: `Gemini blocked the request (${blockReason}). No candidates returned.` };
+  }
+
+  const finishReason = candidate.finishReason;
+  if (finishReason && finishReason !== 'STOP' && finishReason !== 'MAX_TOKENS') {
+    throw { status: 200, message: `Gemini candidate finished with reason: ${finishReason}. No usable output.` };
+  }
+
+  const content = candidate.content?.parts?.[0]?.text;
   if (!content) {
-    throw new Error('No content returned from Gemini API.');
+    throw { status: 200, message: 'Gemini returned an empty content string.' };
   }
 
   return JSON.parse(content);
@@ -180,17 +198,30 @@ async function fetchFromGroq(systemPrompt, userPrompt) {
 
 async function urlToBase64Part(url) {
   try {
+    // Use no-cors mode is NOT suitable for reading body — we need cors with credentials via the signed URL.
     const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status} fetching file URL`);
     const blob = await res.blob();
-    
+
+    // Derive MIME type: prefer blob.type, fall back to extension from URL path
+    let mimeType = blob.type;
+    if (!mimeType || mimeType === 'application/octet-stream' || mimeType === '') {
+      const cleanPath = url.split('?')[0].split('#')[0].toLowerCase();
+      if (cleanPath.endsWith('.pdf'))  mimeType = 'application/pdf';
+      else if (cleanPath.endsWith('.png'))  mimeType = 'image/png';
+      else if (cleanPath.endsWith('.jpg') || cleanPath.endsWith('.jpeg')) mimeType = 'image/jpeg';
+      else if (cleanPath.endsWith('.webp')) mimeType = 'image/webp';
+      else if (cleanPath.endsWith('.gif'))  mimeType = 'image/gif';
+      else mimeType = 'image/jpeg'; // safe default for photos
+    }
+
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64data = reader.result.split(',')[1];
         resolve({
           inlineData: {
-            mimeType: blob.type || 'image/jpeg',
+            mimeType,
             data: base64data
           }
         });
@@ -199,7 +230,7 @@ async function urlToBase64Part(url) {
       reader.readAsDataURL(blob);
     });
   } catch (err) {
-    console.error('Failed to convert image URL to base64:', url, err);
+    console.error('[urlToBase64Part] Failed to fetch/convert URL:', url, err);
     return null;
   }
 }
@@ -318,6 +349,126 @@ Difficulty Level: ${level}`;
   return fetchFromGroq(systemPrompt, userPrompt);
 }
 
+/**
+ * Phase 1 helper: Analyses one small chunk of solution images and returns
+ * a text description of all visible student work in those pages.
+ * Falls back from Gemini vision → Groq vision on failure.
+ */
+async function analyzeImageChunkWithAI(questionContext, chunkImages, chunkIndex, totalChunks) {
+  const chunkLabel = `Pages ${chunkIndex * GRADING_CHUNK_SIZE + 1}–${Math.min((chunkIndex + 1) * GRADING_CHUNK_SIZE, totalChunks * GRADING_CHUNK_SIZE)}`;
+
+  const extractionSystemPrompt = `You are a careful academic reader. Your ONLY job is to read and transcribe what you see in the submitted solution pages — do NOT grade or score anything yet.
+
+For every question you can identify in the pages:
+- State the question number.
+- Describe the student's approach, steps, working, and final answer in detail.
+- If a question's solution spans multiple steps or pages, capture all of them.
+- If a question is skipped or blank, explicitly note it as blank.
+- Preserve any mathematical expressions or equations you see.
+
+Return ONLY a plain text extract. Do NOT return JSON. Be exhaustive — missing work here means marks will be wrongly deducted in the final grade.`;
+
+  const extractionUserPrompt = `These are solution pages ${chunkLabel} of the student's submission (chunk ${chunkIndex + 1} of ${totalChunks}).
+
+For reference, the question paper is:
+${questionContext}
+
+Please transcribe ALL visible student work from these pages in detail.`;
+
+  // Build base64 parts for this chunk (text label + image data parts)
+  const textPart = { text: extractionUserPrompt };
+  const imageParts = [];
+  for (const url of chunkImages) {
+    if (url) {
+      const part = await urlToBase64Part(url);
+      if (part) imageParts.push(part);
+    }
+  }
+
+  // Guard: if no images loaded successfully, skip vision API call entirely
+  if (imageParts.length === 0) {
+    console.warn(`[Grading Chunk ${chunkIndex + 1}] No images could be loaded from URLs. Returning placeholder.`);
+    return `[CHUNK ${chunkIndex + 1} — Files could not be loaded (possible auth/CORS issue). All questions from these pages are treated as visually unverifiable — grade only from typed answers for those questions.]`;
+  }
+
+  const parts = [textPart, ...imageParts];
+  console.log(`[Grading Chunk ${chunkIndex + 1}] Loaded ${imageParts.length}/${chunkImages.length} image parts. Calling vision API...`);
+
+  // Try each Gemini vision model directly (raw text response — no JSON parse)
+  for (const model of GEMINI_MODELS) {
+    try {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) break; // No key → skip to Groq immediately
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-goog-api-key': apiKey },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts }],
+          systemInstruction: { parts: [{ text: extractionSystemPrompt }] },
+          generationConfig: { temperature: 0.05 }
+          // No responseMimeType: 'application/json' — we want raw text
+        })
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.warn(`[Grading Chunk ${chunkIndex + 1}] Gemini model ${model} rejected (${res.status}):`, errText);
+        continue;
+      }
+
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) {
+        console.log(`[Grading Chunk ${chunkIndex + 1}] Extracted via Gemini (${model}).`);
+        return text;
+      }
+      console.warn(`[Grading Chunk ${chunkIndex + 1}] Gemini model ${model} returned empty content.`);
+    } catch (err) {
+      console.warn(`[Grading Chunk ${chunkIndex + 1}] Gemini model ${model} threw:`, err);
+    }
+  }
+  console.warn(`[Grading Chunk ${chunkIndex + 1}] All Gemini models failed. Falling back to Groq vision...`);
+
+
+  // Fallback: Groq vision (images only, plain text response)
+  try {
+    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+    if (!apiKey) throw new Error('Groq API Key not found.');
+
+    const contentArray = [{ type: 'text', text: extractionUserPrompt }];
+    chunkImages.forEach(url => {
+      if (url) contentArray.push({ type: 'image_url', image_url: { url } });
+    });
+
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+        messages: [
+          { role: 'system', content: extractionSystemPrompt },
+          { role: 'user', content: contentArray }
+        ],
+        temperature: 0.05
+        // No response_format constraint — we want plain text here
+      })
+    });
+
+    if (!groqRes.ok) {
+      const errText = await groqRes.text();
+      throw new Error(`Groq Vision Error: ${groqRes.status} - ${errText}`);
+    }
+    const groqData = await groqRes.json();
+    return groqData.choices?.[0]?.message?.content || `[Chunk ${chunkIndex + 1}: No text extracted]`;
+  } catch (groqErr) {
+    console.error(`[Grading Chunk ${chunkIndex + 1}] Both Gemini and Groq vision failed:`, groqErr);
+    // Return a placeholder so synthesis still happens — just with a note about missing pages
+    return `[CHUNK ${chunkIndex + 1} UNREADABLE — Vision API failed for pages ${chunkLabel}. Treat any questions in this range as unanswered and deduct marks accordingly.]`;
+  }
+}
+
 export async function gradeSubmissionWithAI({
   testTitle,
   testQuestions,
@@ -362,66 +513,108 @@ Return a JSON object in this EXACT format:
   "feedback": "Hello ${studentName || 'Student'},\n\n📋 **Marks Breakdown:**\n• **Question 1**: X/Y marks — [Reason]\n• **Question 2**: X/Y marks — [Reason]\n\n[Brief encouraging summary]\n• [Point-wise strength]\n• [Point-wise recommendation]"
 }`;
 
-  const userPromptText = `Test Title: ${testTitle}
+  // ─── PHASE 1: Chunk-based vision analysis ────────────────────────────────
+  // Split solution files into batches to avoid context-window overflow.
+  // Each chunk is analysed independently; the AI extracts visible work as text.
+  const urls = (imageUrls || (imageUrl ? [imageUrl] : [])).filter(Boolean);
+
+  // Question context string passed to each extraction chunk
+  const questionContext = `${testTitle}\n\n${testQuestions || 'No question text provided.'}`;
+
+  // Max chars we pass into the synthesis prompt from Phase 1 extracts.
+  // ~40k chars ≈ ~10k tokens, well within Gemini/Groq context limits for JSON output.
+  const MAX_EXTRACT_CHARS = 40000;
+
+  let compiledExtract = '';
+
+  if (urls.length > 0) {
+    const totalChunks = Math.ceil(urls.length / GRADING_CHUNK_SIZE);
+    console.log(`[AI Grading] Starting Phase 1 — ${urls.length} files across ${totalChunks} chunk(s).`);
+
+    const chunkExtracts = [];
+    for (let i = 0; i < totalChunks; i++) {
+      const chunkImages = urls.slice(i * GRADING_CHUNK_SIZE, (i + 1) * GRADING_CHUNK_SIZE);
+      console.log(`[AI Grading] Analysing chunk ${i + 1}/${totalChunks} — ${chunkImages.length} file(s).`);
+      const extract = await analyzeImageChunkWithAI(questionContext, chunkImages, i, totalChunks);
+
+      // Truncate each chunk's extract to keep total within limits
+      const chunkCharBudget = Math.floor(MAX_EXTRACT_CHARS / totalChunks);
+      const safeExtract = extract.length > chunkCharBudget
+        ? extract.slice(0, chunkCharBudget) + `\n[...truncated to ${chunkCharBudget} chars to stay within API limits]`
+        : extract;
+
+      chunkExtracts.push(`--- SOLUTION PAGES (CHUNK ${i + 1} of ${totalChunks}) ---\n${safeExtract}`);
+    }
+
+    compiledExtract = chunkExtracts.join('\n\n');
+    console.log(`[AI Grading] Phase 1 complete. Compiled ${compiledExtract.length} chars of extracted work.`);
+  } else {
+    console.log('[AI Grading] No image files — skipping Phase 1, grading from text only.');
+  }
+
+  // ─── PHASE 2: Final grading synthesis (PURE TEXT — no images) ───────────
+  // Phase 2 is intentionally text-only. Sending images alongside
+  // responseMimeType=application/json causes Gemini to throw
+  // 'model output must contain either output text or tool calls'.
+  // All visual content was already transcribed to text in Phase 1.
+  const synthesisUserPrompt = `Test Title: ${testTitle}
 Maximum Score: ${maxScore}
 Student's Name: ${studentName || 'Student'}
 
-Test Questions Text / Description (if any):
-${testQuestions || 'Not provided in text format.'}
+TEST QUESTIONS:
+${testQuestions || 'Question text not provided in text form (was attached as a file).'}
 
-Student's Written Answers Text (if any):
-${studentAnswers || 'No text answers provided.'}`;
+STUDENT'S TYPED ANSWERS (if any):
+${studentAnswers || 'No typed answers provided.'}
 
-  // Construct parts array dynamically to hold both text descriptions and file base64 data parts
-  const parts = [];
+STUDENT'S HANDWRITTEN / UPLOADED WORK (extracted from ${urls.length} submitted file(s) across ${Math.ceil(urls.length / GRADING_CHUNK_SIZE) || 0} chunk(s)):
+${compiledExtract || 'No file submissions detected. Grade based on typed answers only.'}
 
-  // 1. Add question paper file if provided
-  if (questionFileURL) {
-    parts.push({ text: "### TEST QUESTION PAPER FILE (Refer to this for the questions to grade):" });
-    const questionFilePart = await urlToBase64Part(questionFileURL);
-    if (questionFilePart) {
-      parts.push(questionFilePart);
-    }
-  }
+IMPORTANT GRADING NOTES:
+- The extracted work above captures ALL submitted pages read sequentially. Do NOT assume any question was skipped just because it has no typed response — the extracted work section is the primary source of the student's answers.
+- If a chunk is marked UNREADABLE, treat those pages as missing and deduct marks accordingly.
+- Your score MUST be a number reflecting exactly what is visible in the extracted work — no inflation, no deflation.`;
 
-  // 2. Add student solution files
-  const urls = imageUrls || (imageUrl ? [imageUrl] : []);
-  if (urls.length > 0) {
-    parts.push({ text: "### STUDENT'S SUBMITTED SOLUTION FILES (Check these for the student's handwritten work/answers):" });
-    for (const url of urls) {
-      if (url) {
-        const solutionFilePart = await urlToBase64Part(url);
-        if (solutionFilePart) {
-          parts.push(solutionFilePart);
-        }
-      }
-    }
-  }
+  console.log(`[AI Grading] Starting Phase 2 — text-only synthesis (${synthesisUserPrompt.length} chars).`);
 
-  // 3. Add text instructions and answers
-  parts.push({ text: `### INSTRUCTIONS AND SUBMISSION DETAILS:\n${userPromptText}` });
+  // Phase 2 is a plain text-only call — just one text part, no images
+  const synthesisParts = [{ text: synthesisUserPrompt }];
 
-  // Call standard Gemini fallback pipeline
+  // Fallback Ladder:
+  // Level 1: Gemini (all models) with question file part if available
   try {
-    return await fetchWithFallback(systemPrompt, null, parts, 0.1);
+    const result = await fetchWithFallback(systemPrompt, null, synthesisParts, 0.1);
+    console.log('[AI Grading] Phase 2 complete via Gemini.');
+    return result;
   } catch (geminiErr) {
-    console.warn('[AI Fallback] Gemini Vision/File grading failed. Trying Groq...', geminiErr);
-    try {
-      // Groq does not support PDF files natively. Filter only images for Groq fallback.
-      const imageOnlyUrls = urls.filter(url => {
-        if (!url) return false;
-        const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
-        return cleanUrl.endsWith('.png') || 
-               cleanUrl.endsWith('.jpg') || 
-               cleanUrl.endsWith('.jpeg') || 
-               cleanUrl.endsWith('.webp') || 
-               cleanUrl.endsWith('.gif');
-      });
-      return await callGroqVisionApi(systemPrompt, userPromptText, imageOnlyUrls, 0.1);
-    } catch (groqErr) {
-      console.error('[AI Fallback] Both Gemini and Groq failed:', groqErr);
-      throw new Error(`AI Service Unavailable. Gemini status: ${geminiErr.status || 'unknown'}. Groq error: ${groqErr.message}`);
-    }
+    console.warn('[AI Grading] Level 1 (Gemini) synthesis failed. Trying Level 2 (Groq text)...', geminiErr);
+  }
+
+  // Level 2: Groq text (no images — all data is already compiled in synthesisUserPrompt)
+  try {
+    const result = await callGroqTextApi(systemPrompt, synthesisUserPrompt, 0.1);
+    console.log('[AI Grading] Phase 2 complete via Groq text fallback.');
+    return result;
+  } catch (groqTextErr) {
+    console.warn('[AI Grading] Level 2 (Groq text) synthesis failed. Trying Level 3 (Groq vision)...', groqTextErr);
+  }
+
+  // Level 3: Groq vision with image-only URLs as last resort
+  try {
+    const imageOnlyUrls = urls.filter(url => {
+      const clean = url.split('?')[0].split('#')[0].toLowerCase();
+      return clean.endsWith('.png') || clean.endsWith('.jpg') || clean.endsWith('.jpeg') ||
+             clean.endsWith('.webp') || clean.endsWith('.gif');
+    });
+    const result = await callGroqVisionApi(systemPrompt, synthesisUserPrompt, imageOnlyUrls, 0.1);
+    console.log('[AI Grading] Phase 2 complete via Groq vision fallback.');
+    return result;
+  } catch (groqVisionErr) {
+    console.error('[AI Grading] All fallback levels exhausted:', groqVisionErr);
+    throw new Error(
+      'AI Grading Service Unavailable. All API fallbacks (Gemini + Groq text + Groq vision) failed. ' +
+      'Please try again in a few moments or enter the grade manually.'
+    );
   }
 }
 
