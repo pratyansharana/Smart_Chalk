@@ -17,13 +17,28 @@ export function AssignmentsCard({ assignments, submissions, studentId, loading, 
     [submissions],
   );
 
-  const filteredAssignments = assignments.filter((assignment) => {
-    const submission = submissionByAssignment.get(assignment.id);
-    const dueDate = toDate(assignment.dueDate);
-    if (tab === 'completed') return Boolean(submission);
-    if (tab === 'overdue') return !submission && dueDate && isBefore(dueDate, new Date());
-    return !submission;
-  });
+  const pendingAssignments = useMemo(
+    () => assignments.filter((a) => !submissionByAssignment.has(a.id)),
+    [assignments, submissionByAssignment]
+  );
+  const completedAssignments = useMemo(
+    () => assignments.filter((a) => submissionByAssignment.has(a.id)),
+    [assignments, submissionByAssignment]
+  );
+  const overdueAssignments = useMemo(
+    () => assignments.filter((a) => {
+      const sub = submissionByAssignment.get(a.id);
+      const dueDate = toDate(a.dueDate);
+      return !sub && dueDate && isBefore(dueDate, new Date());
+    }),
+    [assignments, submissionByAssignment]
+  );
+
+  const filteredAssignments = useMemo(() => {
+    if (tab === 'completed') return completedAssignments;
+    if (tab === 'overdue') return overdueAssignments;
+    return pendingAssignments;
+  }, [tab, pendingAssignments, completedAssignments, overdueAssignments]);
 
   if (loading) return <Skeleton className="h-96" />;
 
@@ -32,16 +47,33 @@ export function AssignmentsCard({ assignments, submissions, studentId, loading, 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Assignments</p>
-          <h2 className="mt-2 font-heading text-3xl font-bold text-white">Worksheet queue</h2>
+          <h2 className="mt-2 font-heading text-3xl font-bold text-white">Worksheet Queue</h2>
         </div>
         <ClipboardList className="text-amber-400" size={28} />
       </div>
+
       <div className="mt-5 flex flex-wrap gap-2">
-        {['pending', 'overdue', 'completed'].map((item) => (
-          <button className={tab === item ? 'apex-button-primary' : 'apex-button-secondary'} key={item} onClick={() => setTab(item)} type="button">
-            {item}
-          </button>
-        ))}
+        <button
+          className={tab === 'pending' ? 'apex-button-primary' : 'apex-button-secondary'}
+          onClick={() => setTab('pending')}
+          type="button"
+        >
+          Pending ({pendingAssignments.length})
+        </button>
+        <button
+          className={tab === 'overdue' ? 'apex-button-primary' : 'apex-button-secondary'}
+          onClick={() => setTab('overdue')}
+          type="button"
+        >
+          Overdue ({overdueAssignments.length})
+        </button>
+        <button
+          className={tab === 'completed' ? 'apex-button-primary' : 'apex-button-secondary'}
+          onClick={() => setTab('completed')}
+          type="button"
+        >
+          Given & Submitted ({completedAssignments.length})
+        </button>
       </div>
       {error && <p className="mt-4 rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-200">{error.message}</p>}
       {!error && filteredAssignments.length === 0 && (

@@ -280,12 +280,21 @@ STRICT TOPIC & SYLLABUS ALIGNMENT DIRECTIVE:
    - Hard: Advanced problem solving, complex calculations, deep reasoning.
 4. CUSTOM INSTRUCTIONS: Incorporate these instructions strictly: "${instructions || 'None'}".
 
-LaTeX MATH FORMATTING RULES:
-1. Wrap all mathematical equations, variables, symbols, and expressions inside standard delimiters:
-   - Use "$" for inline equations (e.g., "$a^2 + b^2 = c^2$").
-   - Use "$$" for display/block equations (e.g., "$$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$").
-2. CRITICAL: Never split a single math formula or its "$" delimiters across multiple newlines/line breaks. A formula and its delimiters must reside entirely on a single line.
-3. CRITICAL: You MUST double-escape all backslashes inside JSON strings. Write "\\frac" instead of "\frac", "\\cdot" instead of "\cdot", "\\times" instead of "\times", etc.
+STRICT LATEX FORMATTING RULES:
+1. Always format mathematical expressions, symbols, variables, and equations using standard LaTeX syntax.
+2. For INLINE math (math within a sentence or line), wrap the expression in single dollar signs ($...$).
+   - CORRECT: "Find the zeroes of $p(x) = x^2 - 7x + 12$."
+   - INCORRECT: "Find the zeroes of \\(p(x) = x^2 - 7x + 12\\)."
+   - INCORRECT: "Find the zeroes of p(x) = x^2 - 7x + 12."
+3. For DISPLAY/BLOCK math (standalone equations or multi-step work), wrap the expression in double dollar signs ($$...$$) on their own lines.
+   - CORRECT:
+     $$x^2 - 7x + 12 = 0$$
+   - INCORRECT:
+     \\[x^2 - 7x + 12 = 0\\]
+4. Do NOT use code blocks (\`\`\`) or backticks around mathematical expressions unless explicitly asked for source code.
+5. Do NOT use alternative delimiters like \\( \\), \\[ \\], or raw HTML tags.
+6. Never split a single math formula or its "$" delimiters across multiple newlines/line breaks. A formula and its delimiters must reside entirely on a single line.
+7. You MUST double-escape all backslashes inside JSON strings. Write "\\\\frac" instead of "\\frac", "\\\\sqrt" instead of "\\sqrt", etc.
 
 MARKDOWN FORMATTING RULES:
 - Use "# [Section Title]" for main headers.
@@ -322,12 +331,21 @@ STRICT TOPIC & SYLLABUS ALIGNMENT DIRECTIVE:
    - Medium: Conceptual application, standard multi-step problems.
    - Hard: Advanced problem solving, complex calculations, deep reasoning.
 
-LaTeX MATH FORMATTING RULES:
-1. Wrap all mathematical equations, variables, symbols, and expressions inside standard delimiters:
-   - Use "$" for inline equations (e.g., "$a^2 + b^2 = c^2$").
-   - Use "$$" for display/block equations (e.g., "$$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$").
-2. CRITICAL: Never split a single math formula or its "$" delimiters across multiple newlines/line breaks. A formula and its delimiters must reside entirely on a single line.
-3. CRITICAL: You MUST double-escape all backslashes inside JSON strings. Write "\\frac" instead of "\frac", "\\cdot" instead of "\cdot", "\\times" instead of "\times", etc.
+STRICT LATEX FORMATTING RULES:
+1. Always format mathematical expressions, symbols, variables, and equations using standard LaTeX syntax.
+2. For INLINE math (math within a sentence or line), wrap the expression in single dollar signs ($...$).
+   - CORRECT: "Find the zeroes of $p(x) = x^2 - 7x + 12$."
+   - INCORRECT: "Find the zeroes of \\(p(x) = x^2 - 7x + 12\\)."
+   - INCORRECT: "Find the zeroes of p(x) = x^2 - 7x + 12."
+3. For DISPLAY/BLOCK math (standalone equations or multi-step work), wrap the expression in double dollar signs ($$...$$) on their own lines.
+   - CORRECT:
+     $$x^2 - 7x + 12 = 0$$
+   - INCORRECT:
+     \\[x^2 - 7x + 12 = 0\\]
+4. Do NOT use code blocks (\`\`\`) or backticks around mathematical expressions unless explicitly asked for source code.
+5. Do NOT use alternative delimiters like \\( \\), \\[ \\], or raw HTML tags.
+6. Never split a single math formula or its "$" delimiters across multiple newlines/line breaks. A formula and its delimiters must reside entirely on a single line.
+7. You MUST double-escape all backslashes inside JSON strings. Write "\\\\frac" instead of "\\frac", "\\\\sqrt" instead of "\\sqrt", etc.
 
 Return a JSON object in this EXACT format:
 {
@@ -632,12 +650,21 @@ STRICT TOPIC & SYLLABUS ALIGNMENT DIRECTIVE:
    - Medium: Conceptual application, standard multi-step problems.
    - Hard: Advanced problem solving, complex calculations, deep reasoning.
 
-LaTeX MATH FORMATTING RULES:
-1. Wrap all mathematical equations, variables, symbols, and expressions inside standard delimiters:
-   - Use "$" for inline equations (e.g., "$a^2 + b^2 = c^2$").
-   - Use "$$" for display/block equations (e.g., "$$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$").
-2. CRITICAL: Never split a single math formula or its "$" delimiters across multiple newlines/line breaks. A formula and its delimiters must reside entirely on a single line.
-3. CRITICAL: You MUST double-escape all backslashes inside JSON strings. Write "\\frac" instead of "\frac", "\\cdot" instead of "\cdot", "\\times" instead of "\times", etc.
+STRICT LATEX FORMATTING RULES:
+1. Always format mathematical expressions, symbols, variables, and equations using standard LaTeX syntax.
+2. For INLINE math (math within a sentence or line), wrap the expression in single dollar signs ($...$).
+   - CORRECT: "Find the zeroes of $p(x) = x^2 - 7x + 12$."
+   - INCORRECT: "Find the zeroes of \\(p(x) = x^2 - 7x + 12\\)."
+   - INCORRECT: "Find the zeroes of p(x) = x^2 - 7x + 12."
+3. For DISPLAY/BLOCK math (standalone equations or multi-step work), wrap the expression in double dollar signs ($$...$$) on their own lines.
+   - CORRECT:
+     $$x^2 - 7x + 12 = 0$$
+   - INCORRECT:
+     \\[x^2 - 7x + 12 = 0\\]
+4. Do NOT use code blocks (\`\`\`) or backticks around mathematical expressions unless explicitly asked for source code.
+5. Do NOT use alternative delimiters like \\( \\), \\[ \\], or raw HTML tags.
+6. Never split a single math formula or its "$" delimiters across multiple newlines/line breaks. A formula and its delimiters must reside entirely on a single line.
+7. You MUST double-escape all backslashes inside JSON strings. Write "\\\\frac" instead of "\\frac", "\\\\sqrt" instead of "\\sqrt", etc.
 
 MARKDOWN FORMATTING RULES:
 - Use "# [Section Title]" for main headers.
@@ -675,12 +702,21 @@ STRICT TOPIC & SYLLABUS ALIGNMENT DIRECTIVE:
    - Medium: Conceptual application, standard multi-step problems.
    - Hard: Advanced problem solving, complex calculations, deep reasoning.
 
-LaTeX MATH FORMATTING RULES:
-1. Wrap all mathematical equations, variables, symbols, and expressions inside standard delimiters:
-   - Use "$" for inline equations (e.g., "$a^2 + b^2 = c^2$").
-   - Use "$$" for display/block equations (e.g., "$$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$").
-2. CRITICAL: Never split a single math formula or its "$" delimiters across multiple newlines/line breaks. A formula and its delimiters must reside entirely on a single line.
-3. CRITICAL: You MUST double-escape all backslashes inside JSON strings. Write "\\frac" instead of "\frac", "\\cdot" instead of "\cdot", "\\times" instead of "\times", etc.
+STRICT LATEX FORMATTING RULES:
+1. Always format mathematical expressions, symbols, variables, and equations using standard LaTeX syntax.
+2. For INLINE math (math within a sentence or line), wrap the expression in single dollar signs ($...$).
+   - CORRECT: "Find the zeroes of $p(x) = x^2 - 7x + 12$."
+   - INCORRECT: "Find the zeroes of \\(p(x) = x^2 - 7x + 12\\)."
+   - INCORRECT: "Find the zeroes of p(x) = x^2 - 7x + 12."
+3. For DISPLAY/BLOCK math (standalone equations or multi-step work), wrap the expression in double dollar signs ($$...$$) on their own lines.
+   - CORRECT:
+     $$x^2 - 7x + 12 = 0$$
+   - INCORRECT:
+     \\[x^2 - 7x + 12 = 0\\]
+4. Do NOT use code blocks (\`\`\`) or backticks around mathematical expressions unless explicitly asked for source code.
+5. Do NOT use alternative delimiters like \\( \\), \\[ \\], or raw HTML tags.
+6. Never split a single math formula or its "$" delimiters across multiple newlines/line breaks. A formula and its delimiters must reside entirely on a single line.
+7. You MUST double-escape all backslashes inside JSON strings. Write "\\\\frac" instead of "\\frac", "\\\\sqrt" instead of "\\sqrt", etc.
 
 MARKDOWN FORMATTING RULES:
 - Use "# [Section Title]" for main headers.

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import renderMathInElement from 'katex/dist/contrib/auto-render';
+import { sanitizeLaTeX } from '../../utils/sanitizeLaTeX';
 
 /**
  * Renders text containing Markdown formatting and mathematical LaTeX formulas
@@ -7,6 +8,9 @@ import renderMathInElement from 'katex/dist/contrib/auto-render';
  */
 export function MathView({ text, className = '', as = 'div' }) {
   const containerRef = useRef(null);
+
+  // Sanitize rogue delimiters \( \) and \[ \] into $ and $$
+  const sanitized = sanitizeLaTeX(text);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -24,10 +28,10 @@ export function MathView({ text, className = '', as = 'div' }) {
         console.error('KaTeX rendering error:', err);
       }
     }
-  }, [text]);
+  }, [sanitized]);
 
   // Sanitize and restore JSON-escaped control characters inside LaTeX back into backslash commands
-  let cleanedText = text || '';
+  let cleanedText = sanitized || '';
   if (typeof cleanedText === 'string') {
     cleanedText = cleanedText
       .replace(/\x0c/g, '\\f') // Restore Form Feed (\x0c) to \f (e.g. \frac)

@@ -1,6 +1,11 @@
-import { addDoc, collection, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, deleteDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { COLLECTIONS } from '../../constants/firestoreCollections';
 import { db } from '../../lib/firebase';
+
+export async function deleteAssignmentDocument(assignmentId) {
+  if (!db || !assignmentId) return null;
+  return deleteDoc(doc(db, COLLECTIONS.ASSIGNMENTS, assignmentId));
+}
 
 export async function listAssignments() {
   if (!db) return [];

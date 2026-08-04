@@ -62,6 +62,7 @@ export function StudentBatchDetailsPage() {
   const { parentMode } = useOutletContext() || {};
 
   const [activeTab, setActiveTab] = useState('announcements'); // 'announcements' | 'vault' | 'assignments' | 'tests' | 'quizzes'
+  const [testFilter, setTestFilter] = useState('all'); // 'all' | 'pending' | 'completed'
   const [activeQuizId, setActiveQuizId] = useState(null);
 
   // Self-study worksheets states
@@ -591,18 +592,78 @@ export function StudentBatchDetailsPage() {
         )}
 
         {/* Tab 3: Test Centre */}
-        {activeTab === 'tests' && (
-          <section className="glass-card p-5">
-            <h2 className="font-heading text-2xl font-bold text-white mb-5 flex items-center gap-2">
-              <ClipboardList size={20} className="text-amber-400" />
-              Test Centre
-            </h2>
-            {tests.loading && <p className="text-sm text-slate-300">Loading tests...</p>}
-            {!tests.loading && tests.data.length === 0 && (
-              <p className="text-sm text-slate-400 text-center py-8">No formal tests scheduled for this batch.</p>
-            )}
-            <div className="grid gap-5">
-              {tests.data.map((test) => {
+        {activeTab === 'tests' && (() => {
+          const pendingTests = tests.data.filter((t) => {
+            const sub = testSubmissions.data.find((s) => s.testId === t.id);
+            return !sub || sub.status === 'resubmit_requested';
+          });
+          const completedTests = tests.data.filter((t) => {
+            const sub = testSubmissions.data.find((s) => s.testId === t.id);
+            return sub && sub.status !== 'resubmit_requested';
+          });
+          const filteredTests = tests.data.filter((t) => {
+            const sub = testSubmissions.data.find((s) => s.testId === t.id);
+            const isPending = !sub || sub.status === 'resubmit_requested';
+            if (testFilter === 'pending') return isPending;
+            if (testFilter === 'completed') return !isPending;
+            return true;
+          });
+
+          return (
+            <section className="glass-card p-5">
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
+                <h2 className="font-heading text-2xl font-bold text-white flex items-center gap-2">
+                  <ClipboardList size={20} className="text-amber-400" />
+                  Test Centre
+                </h2>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all border ${
+                      testFilter === 'all'
+                        ? 'bg-amber-400 text-slate-900 border-amber-300 shadow-md'
+                        : 'bg-white/[0.03] border-white/10 text-slate-300 hover:bg-white/[0.08]'
+                    }`}
+                    onClick={() => setTestFilter('all')}
+                    type="button"
+                  >
+                    All Tests ({tests.data.length})
+                  </button>
+                  <button
+                    className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all border ${
+                      testFilter === 'pending'
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-400/40 shadow-md'
+                        : 'bg-white/[0.03] border-white/10 text-slate-300 hover:bg-white/[0.08]'
+                    }`}
+                    onClick={() => setTestFilter('pending')}
+                    type="button"
+                  >
+                    Pending ({pendingTests.length})
+                  </button>
+                  <button
+                    className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all border ${
+                      testFilter === 'completed'
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 shadow-md'
+                        : 'bg-white/[0.03] border-white/10 text-slate-300 hover:bg-white/[0.08]'
+                    }`}
+                    onClick={() => setTestFilter('completed')}
+                    type="button"
+                  >
+                    Given & Submitted ({completedTests.length})
+                  </button>
+                </div>
+              </div>
+
+              {tests.loading && <p className="text-sm text-slate-300">Loading tests...</p>}
+              {!tests.loading && tests.data.length === 0 && (
+                <p className="text-sm text-slate-400 text-center py-8">No formal tests scheduled for this batch.</p>
+              )}
+              {!tests.loading && tests.data.length > 0 && filteredTests.length === 0 && (
+                <p className="text-sm text-slate-400 text-center py-8">No tests in "{testFilter}" category.</p>
+              )}
+
+              <div className="grid gap-5">
+                {filteredTests.map((test) => {
                 const submission = testSubmissions.data.find((s) => s.testId === test.id);
                 return (
                   <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5" key={test.id}>
@@ -730,7 +791,8 @@ export function StudentBatchDetailsPage() {
               })}
             </div>
           </section>
-        )}
+          );
+        })()}
 
         {/* Tab: Assignments */}
         {activeTab === 'assignments' && (
@@ -1637,15 +1699,82 @@ export function QuestionPaperRenderer({ content }) {
 
 /* SUB PANEL: Student Assignments Hub */
 function StudentAssignmentPanel({ batch, studentId, studentName, assignments, submissions, parentMode }) {
+  const [filter, setFilter] = useState('all');
+
+  const pendingAssignments = useMemo(() => {
+    return assignments.filter((a) => {
+      const sub = submissions.find((s) => s.assignmentId === a.id);
+      return !sub || sub.status === 'resubmit_requested';
+    });
+  }, [assignments, submissions]);
+
+  const completedAssignments = useMemo(() => {
+    return assignments.filter((a) => {
+      const sub = submissions.find((s) => s.assignmentId === a.id);
+      return sub && sub.status !== 'resubmit_requested';
+    });
+  }, [assignments, submissions]);
+
+  const filteredAssignments = useMemo(() => {
+    if (filter === 'pending') return pendingAssignments;
+    if (filter === 'completed') return completedAssignments;
+    return assignments;
+  }, [filter, assignments, pendingAssignments, completedAssignments]);
+
   return (
     <section className="glass-card p-5 animate-fadeIn">
-      <h2 className="font-heading text-2xl font-bold text-white mb-5 flex items-center gap-2">
-        <Award size={20} className="text-amber-400" />
-        Assignments
-      </h2>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
+        <h2 className="font-heading text-2xl font-bold text-white flex items-center gap-2">
+          <Award size={20} className="text-amber-400" />
+          Assignments
+        </h2>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all border ${
+              filter === 'all'
+                ? 'bg-amber-400 text-slate-900 border-amber-300 shadow-md'
+                : 'bg-white/[0.03] border-white/10 text-slate-300 hover:bg-white/[0.08]'
+            }`}
+            onClick={() => setFilter('all')}
+            type="button"
+          >
+            All Assignments ({assignments.length})
+          </button>
+          <button
+            className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all border ${
+              filter === 'pending'
+                ? 'bg-amber-500/20 text-amber-300 border-amber-400/40 shadow-md'
+                : 'bg-white/[0.03] border-white/10 text-slate-300 hover:bg-white/[0.08]'
+            }`}
+            onClick={() => setFilter('pending')}
+            type="button"
+          >
+            Pending ({pendingAssignments.length})
+          </button>
+          <button
+            className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all border ${
+              filter === 'completed'
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 shadow-md'
+                : 'bg-white/[0.03] border-white/10 text-slate-300 hover:bg-white/[0.08]'
+            }`}
+            onClick={() => setFilter('completed')}
+            type="button"
+          >
+            Given & Submitted ({completedAssignments.length})
+          </button>
+        </div>
+      </div>
+
+      {assignments.length === 0 && (
+        <p className="text-sm text-slate-400 text-center py-8">No assignments published for this batch yet.</p>
+      )}
+      {assignments.length > 0 && filteredAssignments.length === 0 && (
+        <p className="text-sm text-slate-400 text-center py-8">No assignments in "{filter}" category.</p>
+      )}
 
       <div className="grid gap-6">
-        {assignments.map((assignment) => {
+        {filteredAssignments.map((assignment) => {
           // Check if this student has submitted a solution for this assignment
           const submission = submissions.find((s) => s.assignmentId === assignment.id);
           const isSubmitted = !!submission;

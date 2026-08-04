@@ -36,7 +36,7 @@ import { useQuizScores } from '../../hooks/useQuizScores';
 import { useFileUpload } from '../../hooks/useFileUpload';
 import { useBatchAssignments } from '../../hooks/useBatchAssignments';
 import { useTeacherSubmissions } from '../../hooks/useTeacherSubmissions';
-import { createAssignmentDocument } from '../../services/firebase/assignmentsService';
+import { createAssignmentDocument, deleteAssignmentDocument } from '../../services/firebase/assignmentsService';
 import { gradeSubmissionDocument, updateSubmissionDocument } from '../../services/firebase/submissionsService';
 import {
   approveStudentRequest,
@@ -47,7 +47,7 @@ import {
   updateClassDocument,
 } from '../../services/firebase/classesService';
 import { addVaultItem, deleteVaultItem } from '../../services/firebase/vaultService';
-import { createTestDocument, gradeTestSubmission, updateTestSolution } from '../../services/firebase/testService';
+import { createTestDocument, deleteTestDocument, gradeTestSubmission, updateTestSolution } from '../../services/firebase/testService';
 import { createQuizDocument } from '../../services/firebase/quizService';
 import { generateAITest, generateAIQuiz, generateAIAssignment, gradeSubmissionWithAI } from '../../services/aiService';
 import { handlePrintReport } from '../../utils/printReport';
@@ -1277,16 +1277,36 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, parentPhones = {}, 
                       <span>Due: <strong>{new Date(test.dueDate).toLocaleString()}</strong></span>
                     </div>
                   </div>
-                  {test.testFileURL && (
-                    <a
-                      className="apex-button-secondary py-1 px-2.5 text-xs flex-shrink-0"
-                      href={test.testFileURL}
-                      rel="noreferrer"
-                      target="_blank"
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {test.testFileURL && (
+                      <a
+                        className="apex-button-secondary py-1 px-2.5 text-xs flex-shrink-0"
+                        href={test.testFileURL}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        Paper
+                      </a>
+                    )}
+                    <button
+                      className="apex-button-secondary py-1 px-2.5 text-xs text-red-400 border-red-500/20 hover:bg-red-500/10 flex items-center gap-1"
+                      onClick={async () => {
+                        if (window.confirm(`Are you sure you want to delete the test "${test.title}"?`)) {
+                          try {
+                            await deleteTestDocument(test.id);
+                          } catch (err) {
+                            console.error('Failed to delete test:', err);
+                            alert('Failed to delete test: ' + err.message);
+                          }
+                        }
+                      }}
+                      title="Delete Test"
+                      type="button"
                     >
-                      Paper
-                    </a>
-                  )}
+                      <Trash2 size={13} />
+                      Delete
+                    </button>
+                  </div>
                 </div>
 
                 {test.testContent && (
@@ -2193,7 +2213,7 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones 
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <span className="text-xs bg-slate-800 text-slate-300 px-3 py-1.5 rounded-xl border border-white/5">
                       Submissions: <strong>{gradedCount} / {testSubs.length} graded</strong>
                     </span>
@@ -2204,6 +2224,25 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones 
                       type="button"
                     >
                       {isExpanded ? 'Collapse' : 'View Submissions'}
+                    </button>
+
+                    <button
+                      className="apex-button-secondary py-1 px-2.5 text-xs text-red-400 border-red-500/20 hover:bg-red-500/10 flex items-center gap-1"
+                      onClick={async () => {
+                        if (window.confirm(`Are you sure you want to delete the assignment "${assignment.title}"?`)) {
+                          try {
+                            await deleteAssignmentDocument(assignment.id);
+                          } catch (err) {
+                            console.error('Failed to delete assignment:', err);
+                            alert('Failed to delete assignment: ' + err.message);
+                          }
+                        }
+                      }}
+                      title="Delete Assignment"
+                      type="button"
+                    >
+                      <Trash2 size={13} />
+                      Delete
                     </button>
                   </div>
                 </div>

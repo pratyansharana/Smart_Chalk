@@ -1,8 +1,16 @@
-import { addDoc, collection, doc, onSnapshot, query, where, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, doc, deleteDoc, onSnapshot, query, where, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 
 const TESTS_COLLECTION = 'tests';
 const SUBMISSIONS_COLLECTION = 'test_submissions';
+
+/**
+ * Deletes a test document.
+ */
+export async function deleteTestDocument(testId) {
+  if (!db || !testId) return null;
+  return deleteDoc(doc(db, TESTS_COLLECTION, testId));
+}
 
 /**
  * Creates a new test.
