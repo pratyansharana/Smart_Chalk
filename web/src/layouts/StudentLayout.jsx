@@ -61,17 +61,15 @@ export function StudentLayout() {
         }`}>
           <Users size={14} className={parentMode ? 'text-indigo-400' : 'text-slate-500'} />
           <button
+            aria-label="Toggle parent view"
+            aria-pressed={parentMode}
             onClick={toggleParentMode}
             type="button"
-            className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              parentMode ? 'bg-indigo-400' : 'bg-navy-800'
-            }`}
+            className="relative inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-indigo-400"
           >
-            <span
-              className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-navy-950 shadow ring-0 transition duration-200 ease-in-out ${
-                parentMode ? 'translate-x-3' : 'translate-x-0'
-              }`}
-            />
+            <span aria-hidden="true" className={`relative inline-flex h-4 w-7 rounded-full transition-colors ${parentMode ? 'bg-indigo-400' : 'bg-navy-800'}`}>
+              <span className={`absolute left-0.5 top-0.5 size-3 rounded-full bg-navy-950 shadow transition-transform ${parentMode ? 'translate-x-3' : 'translate-x-0'}`} />
+            </span>
           </button>
         </div>
       </header>
@@ -155,16 +153,15 @@ export function StudentLayout() {
       </aside>
 
       {/* Main Content Viewport */}
-      <div className={`transition-all ${!parentMode ? 'pb-20 lg:pb-0' : 'pb-6 lg:pb-0'}`}>
+      <div className="transition-all pb-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:pb-0">
         <Outlet context={{ parentMode }} />
       </div>
 
-      {/* Mobile Sticky Bottom Tab Bar (Only when parentMode is false) */}
-      {!parentMode && (
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-navy-900/90 p-2 backdrop-blur-xl flex items-center justify-around shadow-2xl">
+      {/* Mobile Sticky Bottom Tab Bar */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-navy-900/90 p-2 mobile-tab-safe-area backdrop-blur-xl flex items-center justify-around shadow-2xl">
           {studentLinks.map(([label, to, Icon]) => (
             <NavLink 
-              className={({ isActive }) => `flex flex-col items-center justify-center p-2 rounded-xl text-[10px] font-bold transition-all min-h-12 w-16 ${
+              className={({ isActive }) => `flex min-w-0 flex-1 flex-col items-center justify-center px-1 py-2 rounded-xl text-[10px] text-center font-bold transition-all min-h-12 ${
                 isActive ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
               }`} 
               end 
@@ -178,13 +175,12 @@ export function StudentLayout() {
           <button
             onClick={logout}
             type="button"
-            className="flex flex-col items-center justify-center p-2 rounded-xl text-[10px] font-bold text-slate-400 hover:text-red-400 transition-all min-h-12 w-16"
+            className="flex min-w-0 flex-1 flex-col items-center justify-center px-1 py-2 rounded-xl text-[10px] text-center font-bold text-slate-400 hover:text-red-400 transition-all min-h-12"
           >
             <LogOut size={20} className="mb-1" />
             Exit
           </button>
-        </nav>
-      )}
+      </nav>
     </div>
   );
 }

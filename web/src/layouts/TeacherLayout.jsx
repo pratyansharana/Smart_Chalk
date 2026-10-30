@@ -55,15 +55,15 @@ export function TeacherLayout() {
       </aside>
 
       {/* Main Content Viewport */}
-      <div className="pb-20 lg:pb-0">
+      <div className="pb-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:pb-0">
         <Outlet />
       </div>
 
       {/* Mobile Sticky Bottom Tab Bar */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-navy-900/90 p-2 backdrop-blur-xl flex items-center justify-around shadow-2xl">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-navy-900/90 p-2 mobile-tab-safe-area backdrop-blur-xl flex items-center justify-around shadow-2xl">
         {teacherLinks.map(([label, to, Icon]) => (
           <NavLink 
-            className={({ isActive }) => `flex flex-col items-center justify-center p-2 rounded-xl text-[10px] font-bold transition-all min-h-12 w-16 ${
+            className={({ isActive }) => `flex min-w-0 flex-1 flex-col items-center justify-center px-1 py-2 rounded-xl text-[10px] text-center font-bold transition-all min-h-12 ${
               isActive ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
             }`} 
             end 
@@ -77,7 +77,7 @@ export function TeacherLayout() {
         <button
           onClick={logout}
           type="button"
-          className="flex flex-col items-center justify-center p-2 rounded-xl text-[10px] font-bold text-slate-400 hover:text-red-400 transition-all min-h-12 w-16"
+          className="flex min-w-0 flex-1 flex-col items-center justify-center px-1 py-2 rounded-xl text-[10px] text-center font-bold text-slate-400 hover:text-red-400 transition-all min-h-12"
         >
           <LogOut size={20} className="mb-1" />
           Exit

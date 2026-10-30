@@ -23,6 +23,7 @@ import {
   Printer,
   Mail,
   Sparkles,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { MathView } from '../../components/common/MathView';
@@ -1601,12 +1602,17 @@ function TestPanel({ batchId, batchTitle, parentEmails = {}, parentPhones = {}, 
 
       {/* Email Modal Overlay */}
       {emailModalData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-lg w-full shadow-2xl relative">
-            <h3 className="font-heading text-lg font-bold text-sky-400 flex items-center gap-2 mb-2">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-3 backdrop-blur-sm sm:items-center sm:p-4">
+          <div aria-labelledby="test-email-modal-title" aria-modal="true" className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-slate-900 p-4 shadow-2xl relative sm:max-h-[calc(100dvh-2rem)] sm:p-6" role="dialog">
+            <div className="flex items-start justify-between gap-3">
+            <h3 id="test-email-modal-title" className="font-heading text-lg font-bold text-sky-400 flex items-center gap-2 mb-2">
               <Mail size={20} />
               Share Academic Report via Email
             </h3>
+              <button aria-label="Close email dialog" className="grid size-11 shrink-0 place-items-center rounded-lg text-slate-300 hover:bg-white/10 hover:text-white" onClick={() => setEmailModalData(null)} type="button">
+                <X size={18} />
+              </button>
+            </div>
             
             <div className="grid gap-3 text-xs mt-3">
               <div>
@@ -2543,12 +2549,17 @@ function AssignmentPanel({ batchId, batchTitle, parentEmails = {}, parentPhones 
 
       {/* Email Modal Overlay */}
       {emailModalData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-lg w-full shadow-2xl relative">
-            <h3 className="font-heading text-lg font-bold text-sky-400 flex items-center gap-2 mb-2">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-3 backdrop-blur-sm sm:items-center sm:p-4">
+          <div aria-labelledby="assignment-email-modal-title" aria-modal="true" className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-slate-900 p-4 shadow-2xl relative sm:max-h-[calc(100dvh-2rem)] sm:p-6" role="dialog">
+            <div className="flex items-start justify-between gap-3">
+            <h3 id="assignment-email-modal-title" className="font-heading text-lg font-bold text-sky-400 flex items-center gap-2 mb-2">
               <Mail size={20} />
               Share Academic Report via Email
             </h3>
+              <button aria-label="Close email dialog" className="grid size-11 shrink-0 place-items-center rounded-lg text-slate-300 hover:bg-white/10 hover:text-white" onClick={() => setEmailModalData(null)} type="button">
+                <X size={18} />
+              </button>
+            </div>
             
             <div className="grid gap-3 text-xs mt-3">
               <div>

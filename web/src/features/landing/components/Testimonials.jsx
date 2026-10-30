@@ -49,7 +49,7 @@ export function Testimonials() {
         <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Student feedback</p>
         <h2 className="mt-2 font-heading text-4xl font-bold text-white">What students say.</h2>
       </div>
-      <div className="grid gap-6 md:grid-cols-3 max-w-6xl mx-auto">
+      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-3">
         {shuffledTestimonials.map((test, index) => (
           <motion.article
             className="glass-card p-6 flex flex-col justify-between"

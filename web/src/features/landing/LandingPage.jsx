@@ -130,7 +130,7 @@ export function LandingPage() {
       <Testimonials />
 
       {/* Contact & Enquiry */}
-      <section id="enquiry" className="mx-auto grid max-w-7xl gap-8 px-5 py-16 lg:grid-cols-[0.8fr_1fr] lg:items-start border-t border-white/5">
+      <section id="enquiry" className="mx-auto grid max-w-7xl scroll-mt-24 gap-8 px-5 py-16 lg:grid-cols-[0.8fr_1fr] lg:items-start border-t border-white/5">
         <div className="lg:sticky lg:top-28">
           <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Parent enquiry</p>
           <h2 className="mt-2 font-heading text-4xl font-bold text-white">Start with a Clear Trial Conversation.</h2>
