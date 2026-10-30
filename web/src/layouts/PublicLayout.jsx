@@ -15,7 +15,7 @@ export function PublicLayout() {
             </span>
             <span>
               <span className="block font-heading text-lg font-bold text-white">SmartChalk</span>
-              <span className="block text-xs text-slate-400">Premium online tutoring</span>
+              <span className="block text-xs text-slate-400">Math &amp; Science tutoring</span>
             </span>
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">

@@ -34,10 +34,9 @@ export function Hero() {
         </div>
         <div className="mt-8 grid gap-4 lg:mt-0">
           <div className="glass-card ml-auto max-w-md p-5">
-            <span className="live-dot mr-2" />
-            <span className="text-sm font-bold text-emerald-300">Live Now</span>
-            <h2 className="mt-3 font-heading text-2xl font-bold text-white">Algebra mastery session</h2>
-            <p className="mt-2 text-sm text-slate-300">Teacher-led lesson, live doubt support, post-class worksheet.</p>
+            <span className="text-sm font-bold text-emerald-300">Lesson format</span>
+            <h2 className="mt-3 font-heading text-2xl font-bold text-white">Live, teacher-led lessons</h2>
+            <p className="mt-2 text-sm text-slate-300">Ask questions during class and practise with a follow-up worksheet.</p>
           </div>
         </div>
       </div>

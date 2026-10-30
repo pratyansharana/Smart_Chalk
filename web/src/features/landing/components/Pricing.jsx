@@ -3,18 +3,18 @@ import { motion } from 'framer-motion';
 const plans = [
   {
     name: 'Foundation (3 Days/Week)',
-    bestFor: 'Building strong concept foundations.',
-    detail: '3 live classes weekly, customized homework sheets, and automated parent grade reports.',
+    bestFor: 'Regular lessons and practice.',
+    detail: '3 live classes per week, tailored homework, and parent progress reports.',
   },
   {
     name: 'Standard (5 Days/Week)',
-    bestFor: 'Daily study tracking and grade acceleration.',
-    detail: '5 live classes weekly, real-time doubt support, and monthly mock test cycles.',
+    bestFor: 'More frequent lessons and practice.',
+    detail: '5 live classes per week, question support, and monthly practice tests.',
   },
   {
     name: 'Board Prep (Class 9 & 10)',
-    bestFor: 'Targeted syllabus mastery and exam excellence.',
-    detail: 'Complete 9th & 10th grade prep, previous years papers mock-drills, and focus revision sessions.',
+    bestFor: 'Focused Class 9 and 10 preparation.',
+    detail: 'Class 9 and 10 lessons, past-paper practice, and revision sessions.',
   },
 ];
 
@@ -23,7 +23,7 @@ export function Pricing() {
     <section className="mx-auto max-w-7xl px-5 py-16">
       <div className="mb-8">
         <p className="text-sm font-bold uppercase tracking-wide text-amber-400">International monthly packages</p>
-        <h2 className="mt-2 font-heading text-4xl font-bold text-white">Choose the learning intensity.</h2>
+        <h2 className="mt-2 font-heading text-4xl font-bold text-white">Choose a weekly schedule.</h2>
         <p className="mt-2 text-sm text-slate-300">Monthly tuition quoted in AED or USD.</p>
       </div>
       <div className="grid gap-4 md:grid-cols-3">

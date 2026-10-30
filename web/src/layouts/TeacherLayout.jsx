@@ -22,7 +22,7 @@ export function TeacherLayout() {
           </span>
           <div>
             <p className="font-heading font-bold text-white leading-tight">Command Center</p>
-            <p className="text-[10px] text-slate-400">{profile?.displayName || 'Apex educator'}</p>
+            <p className="text-[10px] text-slate-400">{profile?.displayName || 'Educator'}</p>
           </div>
         </div>
       </header>
@@ -36,7 +36,7 @@ export function TeacherLayout() {
             </span>
             <div>
               <p className="font-heading font-bold text-white">Command Center</p>
-              <p className="text-xs text-slate-400">{profile?.displayName || 'Apex educator'}</p>
+              <p className="text-xs text-slate-400">{profile?.displayName || 'Educator'}</p>
             </div>
           </div>
           <nav className="grid gap-2 sm:grid-cols-4 lg:grid-cols-1">

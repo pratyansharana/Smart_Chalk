@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 
 const testimonials = [
@@ -28,15 +29,28 @@ const testimonials = [
   },
 ];
 
+function shuffleTestimonials() {
+  const shuffled = [...testimonials];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
+  }
+
+  return shuffled;
+}
+
 export function Testimonials() {
+  const [shuffledTestimonials] = useState(shuffleTestimonials);
+
   return (
     <section className="mx-auto max-w-7xl px-5 py-16">
       <div className="mb-8">
-        <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Social proof</p>
+        <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Student feedback</p>
         <h2 className="mt-2 font-heading text-4xl font-bold text-white">What students say.</h2>
       </div>
       <div className="grid gap-6 md:grid-cols-3 max-w-6xl mx-auto">
-        {testimonials.map((test, index) => (
+        {shuffledTestimonials.map((test, index) => (
           <motion.article
             className="glass-card p-6 flex flex-col justify-between"
             initial={{ opacity: 0, y: 18 }}

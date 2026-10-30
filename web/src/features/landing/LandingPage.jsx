@@ -17,46 +17,46 @@ import { Testimonials } from './components/Testimonials';
 
 const valueProps = [
   {
-    title: 'Indian Rigor, UAE Timezones',
-    detail: 'Get India’s globally respected foundation in Mathematics and Sciences delivered live during convenient evening hours in UAE time zones—without the high local tutoring rates.',
+    title: 'Live lessons for UAE time zones',
+    detail: 'Schedule online Mathematics and Science lessons around convenient UAE evening hours.',
     icon: TrendingUp,
   },
   {
     title: 'Custom Curriculum Alignment',
-    detail: 'No generic, off-the-shelf PDFs. Every assignment, mock test, and lesson plan is customized to align perfectly with your child’s specific school syllabus (CBSE, ICSE, or British/IB).',
+    detail: 'Lessons, assignments, and practice tests are aligned to the student’s school syllabus, including CBSE, ICSE, British, and IB curricula.',
     icon: FileCheck,
   },
   {
-    title: 'Zero-Chase Parent Updates',
-    detail: 'Never spend time chasing tutors for feedback. You get automated, point-wise progress report emails sent to you the moment homework or tests are graded.',
+    title: 'Progress reports for parents',
+    detail: 'Parents receive point-wise email updates when homework or tests are graded.',
     icon: Eye,
   },
   {
     title: 'STEM & Tech Bootcamps',
-    detail: 'We teach coding along with schoolwork. Enhance your child’s logical reasoning skills with introductory bootcamps in Python programming and modern AI tools.',
+    detail: 'Introductory Python and AI workshops are available alongside school subjects.',
     icon: Cpu,
   },
 ];
 
 const coreCurriculum = [
   {
-    title: 'Mathematics & Algebra Mastery',
-    detail: 'Building absolute confidence in core topics like algebra and geometry, focusing on exam speed and concept clarity.',
+    title: 'Mathematics & Algebra',
+    detail: 'Practise algebra, geometry, and other core skills with worked examples and clear reasoning.',
     icon: Calculator,
   },
   {
     title: 'Core Physics, Chemistry & Biology',
-    detail: 'Interactive and structured science lessons designed to build curiosity and improve school exam scores.',
+    detail: 'Study Physics, Chemistry, and Biology through structured explanations and guided practice.',
     icon: FlaskConical,
   },
   {
     title: 'English & Communication',
-    detail: 'Targeted support for critical reading, grammar structure, school essay writing, and verbal assessments.',
+    detail: 'Support with reading, grammar, school writing, and verbal assessments.',
     icon: BookOpen,
   },
   {
     title: 'Python Programming & AI Logic',
-    detail: 'Enriching core learning with logical reasoning bootcamps, programming concepts, and safe, productive AI logic.',
+    detail: 'Introductory coding and AI lessons focused on computational thinking and responsible tool use.',
     icon: Atom,
   },
 ];
@@ -70,7 +70,7 @@ export function LandingPage() {
       <section className="mx-auto max-w-7xl px-5 py-16">
         <div className="mb-8">
           <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Why Choose Us</p>
-          <h2 className="mt-2 font-heading text-4xl font-bold text-white">Bridging the academic gap for UAE parents.</h2>
+          <h2 className="mt-2 font-heading text-4xl font-bold text-white">How SmartChalk supports learning.</h2>
         </div>
         <div className="grid gap-6 md:grid-cols-2">
           {valueProps.map((prop, index) => {
@@ -100,7 +100,7 @@ export function LandingPage() {
       <section className="mx-auto max-w-7xl px-5 py-16 border-t border-white/5">
         <div className="mb-8">
           <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Our Core Curriculum</p>
-          <h2 className="mt-2 font-heading text-4xl font-bold text-white">Focused support for Classes 4 to 10.</h2>
+          <h2 className="mt-2 font-heading text-4xl font-bold text-white">Subjects and skills for Classes 4 to 10.</h2>
         </div>
         <div className="grid gap-6 md:grid-cols-2">
           {coreCurriculum.map((curr, index) => {
@@ -135,10 +135,7 @@ export function LandingPage() {
           <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Parent enquiry</p>
           <h2 className="mt-2 font-heading text-4xl font-bold text-white">Start with a Clear Trial Conversation.</h2>
           <p className="mt-4 leading-relaxed text-sm text-slate-300">
-            Finding the right tutor is a major decision. Let’s make sure we are the perfect fit for your child’s academic goals.
-          </p>
-          <p className="mt-4 leading-relaxed text-sm text-slate-300">
-            Book a trial class today to experience our live instruction, preview our custom worksheets, and see how our parent-visible progress platform works. There is no commitment—just a clear, honest conversation about how we can help your child excel.
+            Share your child’s curriculum, grade, subjects, and learning goals. We’ll discuss the schedule and arrange a free trial session.
           </p>
         </div>
         <EnquiryForm />
@@ -147,7 +144,7 @@ export function LandingPage() {
       <FAQ />
 
       <footer className="border-t border-white/10 px-5 py-8 text-center text-sm text-slate-400">
-        SmartChalk / Premium online tutoring for focused learners.
+        SmartChalk / Online Mathematics and Science tutoring.
       </footer>
     </main>
   );

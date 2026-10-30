@@ -118,11 +118,8 @@ export function BatchDetailsPage() {
     ]);
 
     sendAcademicReportWhatsApp(params)
-      .then((data) => {
-        const isMock = data && data.provider === 'mock';
-        const msg = isMock 
-          ? `Mock WhatsApp success for ${params.to} (Check Vercel logs/setup).`
-          : `WhatsApp message successfully delivered to ${params.to}!`;
+      .then(() => {
+        const msg = `WhatsApp message accepted for ${params.to}.`;
           
         setEmailLogs((prev) =>
           prev.map((log) =>
@@ -459,7 +456,6 @@ export function BatchDetailsPage() {
                                 }
                               }
                             }}
-                            placeholder="parent@example.com"
                             type="email"
                           />
                           <div className="absolute right-2.5 flex items-center justify-center pointer-events-none">
@@ -507,7 +503,6 @@ export function BatchDetailsPage() {
                                 }
                               }
                             }}
-                            placeholder="+91 9999999999"
                             type="tel"
                           />
                           <div className="absolute right-2.5 flex items-center justify-center pointer-events-none">

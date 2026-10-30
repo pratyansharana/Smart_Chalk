@@ -115,11 +115,5 @@ export default async function handler(req, res) {
     }
   }
 
-  // 3. Fallback: Mock Sandbox Log
-  console.log('[WhatsApp Serverless] Fallback executed. No provider configured. Sandbox Mock:', { to, body });
-  return res.status(200).json({
-    success: true,
-    provider: 'mock',
-    message: 'Mock dispatch success. Set ULTRAMSG_TOKEN or TWILIO_ACCOUNT_SID to send real messages.',
-  });
+  return res.status(503).json({ error: 'WhatsApp provider is not configured.' });
 }

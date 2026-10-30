@@ -297,17 +297,10 @@ STRICT LATEX FORMATTING RULES:
 7. You MUST double-escape all backslashes inside JSON strings. Write "\\\\frac" instead of "\\frac", "\\\\sqrt" instead of "\\sqrt", etc.
 
 MARKDOWN FORMATTING RULES:
-- Use "# [Section Title]" for main headers.
-- Use "## [Sub-Header]" for sub-sections.
+- Use level-one headings with descriptive titles and level-two headings with descriptive subheadings.
 - Questions must start with a number followed by a period (e.g., "1. Solve the following...").
 
-Return a JSON object in this EXACT format:
-{
-  "title": "Test Title (incorporating topic and grade)",
-  "description": "Short description of the test guidelines and duration",
-  "maxScore": 100,
-  "testContent": "Detailed question paper in markdown format. Do not include answers."
-}`;
+Return only a valid JSON object with these fields: "title" (a descriptive test title including the topic and grade), "description" (brief test guidance and duration), "maxScore" (the actual total possible marks as a number), and "testContent" (the question paper in markdown, without answers).`;
 
   const userPrompt = `Grade: ${grade}
 Topic: ${topic}
@@ -347,18 +340,7 @@ STRICT LATEX FORMATTING RULES:
 6. Never split a single math formula or its "$" delimiters across multiple newlines/line breaks. A formula and its delimiters must reside entirely on a single line.
 7. You MUST double-escape all backslashes inside JSON strings. Write "\\\\frac" instead of "\\frac", "\\\\sqrt" instead of "\\sqrt", etc.
 
-Return a JSON object in this EXACT format:
-{
-  "title": "Quiz Title (incorporating topic and grade)",
-  "questions": [
-    {
-      "questionText": "Question text here?",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correctOptionIndex": 0
-    }
-  ]
-}
-Note: "correctOptionIndex" must be a 0-indexed integer (0 for option 1, 1 for option 2, etc.) matching the correct option. Produce exactly ${count} questions.`;
+Return only a valid JSON object with a descriptive "title" and a "questions" array containing exactly ${count} questions. Each question must have a "questionText" string, an "options" array with exactly four answer strings, and a "correctOptionIndex" integer from 0 to 3 that identifies the correct option.`;
 
   const userPrompt = `Grade: ${grade}
 Topic: ${topic}
@@ -497,7 +479,7 @@ export async function gradeSubmissionWithAI({
   studentName,
   questionFileURL
 }) {
-  const systemPrompt = `You are an elite academic tutor. Your task is to grade the student's submission with extreme precision, accuracy, and fairness.
+  const systemPrompt = `You are an academic tutor. Grade the student's submission accurately and fairly.
 
 GRADING RUBRIC & STRATEGY:
 1. STEP-BY-STEP EVALUATION:
@@ -516,20 +498,10 @@ CRITICAL FORMATTING RULES FOR FEEDBACK:
 - The feedback MUST be written in the first person as a warm, direct conversation from you (the teacher) to the student.
 - Address the student by name, starting with "Hi ${studentName || 'Student'}," or "Hello ${studentName || 'Student'},".
 - Speak directly to them: use "your work", "you solved", "I recommend", etc.
-- You MUST provide a **Question-wise Score Breakdown** at the very beginning of the feedback. Format it like this:
-  📋 **Marks Breakdown:**
-  • **Question 1**: X/Y marks — [Reason for full marks OR explanation of deductions]
-  • **Question 2**: X/Y marks — [Reason for full marks OR explanation of deductions]
-  (Make sure the sum of all question marks matches the final total score returned).
-- Following the breakdown, write a brief encouraging summary and 2 to 4 crisp, actionable bullet points detailing:
-  • Specific strengths (what they did well).
-  • Precise corrections/recommendations for next time.
-
-Return a JSON object in this EXACT format:
-{
-  "score": 85, // Calculated total numerical score (out of ${maxScore}), must be a number.
-  "feedback": "Hello ${studentName || 'Student'},\n\n📋 **Marks Breakdown:**\n• **Question 1**: X/Y marks — [Reason]\n• **Question 2**: X/Y marks — [Reason]\n\n[Brief encouraging summary]\n• [Point-wise strength]\n• [Point-wise recommendation]"
-}`;
+- Begin the feedback with a question-wise marks breakdown. For each question, include the awarded marks, maximum marks, and a concise explanation based on the student's visible work.
+- Follow the breakdown with a brief summary and 2 to 4 actionable points covering specific strengths and next steps.
+- Return only a valid JSON object with exactly two fields: "score" (the numeric total) and "feedback" (the formatted feedback string).
+- Ensure the question marks sum to "score" and that "score" does not exceed ${maxScore}.`;
 
   // ─── PHASE 1: Chunk-based vision analysis ────────────────────────────────
   // Split solution files into batches to avoid context-window overflow.
@@ -667,17 +639,10 @@ STRICT LATEX FORMATTING RULES:
 7. You MUST double-escape all backslashes inside JSON strings. Write "\\\\frac" instead of "\\frac", "\\\\sqrt" instead of "\\sqrt", etc.
 
 MARKDOWN FORMATTING RULES:
-- Use "# [Section Title]" for main headers.
-- Use "## [Sub-Header]" for sub-sections.
+- Use level-one headings with descriptive titles and level-two headings with descriptive subheadings.
 - Questions must start with a number followed by a period (e.g., "1. Solve the following...").
 
-Return a JSON object in this EXACT format:
-{
-  "title": "Assignment Title (incorporating topic and grade)",
-  "description": "Short description of the assignment guidelines and goals",
-  "maxScore": 100,
-  "assignmentContent": "Detailed assignment instructions and problems in markdown format. Do not include answers."
-}`;
+Return only a valid JSON object with these fields: "title" (a descriptive assignment title including the topic and grade), "description" (brief assignment guidance and goals), "maxScore" (the actual total possible marks as a number), and "assignmentContent" (the assignment in markdown, without answers).`;
 
   const userPrompt = `Grade: ${grade}
 Topic: ${topic}
@@ -719,16 +684,10 @@ STRICT LATEX FORMATTING RULES:
 7. You MUST double-escape all backslashes inside JSON strings. Write "\\\\frac" instead of "\\frac", "\\\\sqrt" instead of "\\sqrt", etc.
 
 MARKDOWN FORMATTING RULES:
-- Use "# [Section Title]" for main headers.
-- Use "## [Sub-Header]" for sub-sections.
+- Use level-one headings with descriptive titles and level-two headings with descriptive subheadings.
 - Questions must start with a number followed by a period (e.g., "1. Solve the following...").
 
-Return a JSON object in this EXACT format:
-{
-  "title": "Practice Worksheet: Topic Name",
-  "description": "Short description of the worksheet topics covered",
-  "questionsContent": "Detailed practice questions in markdown format. Do not include answers."
-}`;
+Return only a valid JSON object with these fields: "title" (a descriptive worksheet title including the topic and grade), "description" (a concise summary of the topics covered), and "questionsContent" (the worksheet questions in markdown, without answers).`;
 
   const userPrompt = `Grade: ${grade}
 Topic: ${topic}

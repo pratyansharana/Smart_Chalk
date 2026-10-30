@@ -12,7 +12,10 @@ const leadSchema = z.object({
   studentName: z.string().min(2, 'Student name is required.'),
   email: z.string().email('Enter a valid email.'),
   phone: z.string().min(7, 'Enter a valid phone number.'),
-  gradeLevel: z.string().min(1, 'Select a grade level.'),
+  curriculum: z.string().min(1, 'Select a curriculum or board.'),
+  gradeLevel: z.string().min(1, 'Select a school year or class.'),
+  timeZone: z.string().min(1, 'Select a time zone.'),
+  preferredSchedule: z.string().max(120, 'Keep the preferred schedule under 120 characters.').optional(),
   subjectsInterested: z.string().min(2, 'Add at least one subject.'),
   message: z.string().max(500, 'Message must stay under 500 characters.').optional(),
 });
@@ -31,7 +34,10 @@ export function EnquiryForm() {
       studentName: '',
       email: '',
       phone: '',
+      curriculum: '',
       gradeLevel: '',
+      timeZone: '',
+      preferredSchedule: '',
       subjectsInterested: '',
       message: '',
     },
@@ -70,16 +76,46 @@ export function EnquiryForm() {
         <ReusableInput label="Email" type="email" error={errors.email?.message} {...register('email')} />
         <ReusableInput label="Phone" error={errors.phone?.message} {...register('phone')} />
       </div>
-      <label className="grid gap-2 text-sm font-semibold text-slate-100">
-        Grade level
-        <select className="apex-input" aria-invalid={Boolean(errors.gradeLevel)} {...register('gradeLevel')}>
-          <option value="">Select grade</option>
-          {['4th Grade', '5th Grade', '6th Grade', '7th Grade', '8th Grade', '9th Grade', '10th Grade'].map((grade) => (
-            <option key={grade} value={grade}>{grade}</option>
-          ))}
-        </select>
-        {errors.gradeLevel && <span className="text-xs text-red-300">{errors.gradeLevel.message}</span>}
-      </label>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="grid gap-2 text-sm font-semibold text-slate-100">
+          Curriculum / board
+          <select className="apex-input" aria-invalid={Boolean(errors.curriculum)} {...register('curriculum')}>
+            <option value="">Select curriculum</option>
+            {['UK National Curriculum', 'CBSE', 'ICSE', 'IB', 'Other / Not sure'].map((curriculum) => (
+              <option key={curriculum} value={curriculum}>{curriculum}</option>
+            ))}
+          </select>
+          {errors.curriculum && <span className="text-xs text-red-300">{errors.curriculum.message}</span>}
+        </label>
+        <label className="grid gap-2 text-sm font-semibold text-slate-100">
+          School year / class
+          <select className="apex-input" aria-invalid={Boolean(errors.gradeLevel)} {...register('gradeLevel')}>
+            <option value="">Select year or class</option>
+            {['Year 6 (UK)', 'Year 7 (UK)', 'Year 8 (UK)', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Other'].map((grade) => (
+              <option key={grade} value={grade}>{grade}</option>
+            ))}
+          </select>
+          {errors.gradeLevel && <span className="text-xs text-red-300">{errors.gradeLevel.message}</span>}
+        </label>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="grid gap-2 text-sm font-semibold text-slate-100">
+          Time zone
+          <select className="apex-input" aria-invalid={Boolean(errors.timeZone)} {...register('timeZone')}>
+            <option value="">Select time zone</option>
+            {['UK (GMT/BST)', 'UAE (GST)', 'India (IST)', 'Other / Not sure'].map((timeZone) => (
+              <option key={timeZone} value={timeZone}>{timeZone}</option>
+            ))}
+          </select>
+          {errors.timeZone && <span className="text-xs text-red-300">{errors.timeZone.message}</span>}
+        </label>
+        <ReusableInput
+          label="Preferred days / times"
+          placeholder="Weekday evenings, weekends..."
+          error={errors.preferredSchedule?.message}
+          {...register('preferredSchedule')}
+        />
+      </div>
       <ReusableInput
         label="Subjects interested"
         placeholder="Math, Science, English"
@@ -87,8 +123,8 @@ export function EnquiryForm() {
         {...register('subjectsInterested')}
       />
       <label className="grid gap-2 text-sm font-semibold text-slate-100">
-        Message
-        <textarea className="apex-input min-h-28 resize-y" placeholder="Goals, timings, exam concerns..." {...register('message')} />
+        Learning goals or questions
+        <textarea className="apex-input min-h-28 resize-y" placeholder="Topics the student wants help with, or questions for the tutor..." {...register('message')} />
         {errors.message && <span className="text-xs text-red-300">{errors.message.message}</span>}
       </label>
       {formStatus.message && (

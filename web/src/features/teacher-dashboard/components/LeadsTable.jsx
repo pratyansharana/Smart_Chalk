@@ -41,12 +41,14 @@ export function LeadsTable({ teacherId }) {
       {!loading && !error && leads.length === 0 && <p className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300">No leads found.</p>}
       {leads.length > 0 && (
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
+          <table className="w-full min-w-[980px] text-left text-sm">
             <thead className="text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="p-3">Student</th>
                 <th className="p-3">Parent</th>
+                <th className="p-3">Curriculum / time zone</th>
                 <th className="p-3">Subjects</th>
+                <th className="p-3">Availability</th>
                 <th className="p-3">Status</th>
               </tr>
             </thead>
@@ -55,13 +57,18 @@ export function LeadsTable({ teacherId }) {
                 <tr className="border-t border-white/10" key={lead.id}>
                   <td className="p-3">
                     <p className="font-bold text-white">{lead.studentName}</p>
-                    <p className="text-slate-400">{lead.gradeLevel}</p>
+                    <p className="text-slate-400">{lead.gradeLevel || 'Year/class not provided'}</p>
                   </td>
                   <td className="p-3">
                     <p className="font-bold text-white">{lead.parentName}</p>
                     <p className="text-slate-400">{lead.email || lead.phone}</p>
                   </td>
+                  <td className="p-3 text-slate-300">
+                    <p>{lead.curriculum || 'Not provided'}</p>
+                    <p className="text-slate-400">{lead.timeZone || 'Time zone not provided'}</p>
+                  </td>
                   <td className="p-3 text-slate-300">{lead.subjectsInterested?.join(', ')}</td>
+                  <td className="p-3 text-slate-300">{lead.preferredSchedule || 'Not provided'}</td>
                   <td className="p-3">
                     <label className="sr-only" htmlFor={`lead-${lead.id}`}>Lead status</label>
                     <select

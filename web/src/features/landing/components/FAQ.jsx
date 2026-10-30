@@ -1,7 +1,7 @@
 const faqs = [
-  ['Which classes do you cover?', 'We provide premium live tutoring for Classes 4 through 10 (CBSE, ICSE, and British/IB curriculums).'],
-  ['How do parents track progress?', 'No follow-up required. You receive automated point-wise email notifications the moment we grade any test or assignment, plus 24/7 portal access.'],
-  ['Are tech bootcamps suitable for beginners?', 'Yes. Our short-term Python coding and AI prompt engineering bootcamps require zero previous programming experience.'],
+  ['Which classes do you cover?', 'Live tutoring is available for Classes 4 through 10 across CBSE, ICSE, British, and IB curricula. UK curriculum support includes Years 6 to 8.'],
+  ['How do parents track progress?', 'Parents receive point-wise email updates when a test or assignment is graded and can view reports in the portal.'],
+  ['Are tech bootcamps suitable for beginners?', 'Python and AI workshops are designed for students who are new to programming.'],
 ];
 
 export function FAQ() {

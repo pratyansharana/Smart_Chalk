@@ -50,7 +50,7 @@ export function StudentLayout() {
               {parentMode ? 'Parent Portal' : 'Student Hub'}
             </p>
             <p className="text-[10px] text-slate-400">
-              {parentMode ? `Child: ${profile?.displayName || 'Learner'}` : (profile?.displayName || 'Apex learner')}
+              {parentMode ? `Child: ${profile?.displayName || 'Learner'}` : (profile?.displayName || 'Learner')}
             </p>
           </div>
         </div>
@@ -94,7 +94,7 @@ export function StudentLayout() {
                 {parentMode ? 'Parent Portal' : 'Student Hub'}
               </p>
               <p className="text-xs text-slate-400">
-                {parentMode ? `Child: ${profile?.displayName || 'Learner'}` : (profile?.displayName || 'Apex learner')}
+                {parentMode ? `Child: ${profile?.displayName || 'Learner'}` : (profile?.displayName || 'Learner')}
               </p>
             </div>
           </div>
