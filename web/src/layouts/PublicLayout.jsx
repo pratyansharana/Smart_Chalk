@@ -18,7 +18,10 @@ export function PublicLayout() {
               <span className="block text-xs text-slate-400">Premium online tutoring</span>
             </span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link className={`px-2 py-2 text-sm font-bold transition hover:text-amber-300 ${location.pathname === ROUTES.ABOUT ? 'text-amber-300' : 'text-slate-300'}`} to={ROUTES.ABOUT}>
+              About
+            </Link>
             <Link className={location.pathname === ROUTES.LOGIN ? 'apex-button-primary' : 'apex-button-secondary'} to={ROUTES.LOGIN}>
               <LogIn size={16} />
               Login

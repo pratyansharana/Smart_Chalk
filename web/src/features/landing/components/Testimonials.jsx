@@ -16,6 +16,16 @@ const testimonials = [
     detail: 'Student, GEMS Our Own English High School, Dubai',
     quote: 'The personalized practice tests and step-by-step score breakdowns saved me so much time. It moved me from stressful last-minute cramming to a structured, confident study routine.',
   },
+  {
+    name: 'Nabeeha',
+    detail: 'Grade 7, PACE International School, Sharjah',
+    quote: 'What I love about learning from sir is that he doesn’t just teach you to memorize formulas; he breaks things down logically using real-world examples. My problem-solving speed in mathematics has improved drastically since we started sessions.',
+  },
+  {
+    name: 'Shiza',
+    detail: 'Grade 7, PACE International School, Sharjah',
+    quote: 'Sir makes complex physics and chemistry concepts actually click. I used to struggle with Year 8 science, but his structured, step-by-step explanations and digital whiteboard notes helped me jump a full grade level. Plus, classes are genuinely engaging!',
+  },
 ];
 
 export function Testimonials() {
@@ -23,7 +33,7 @@ export function Testimonials() {
     <section className="mx-auto max-w-7xl px-5 py-16">
       <div className="mb-8">
         <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Social proof</p>
-        <h2 className="mt-2 font-heading text-4xl font-bold text-white">Trusted by families.</h2>
+        <h2 className="mt-2 font-heading text-4xl font-bold text-white">What students say.</h2>
       </div>
       <div className="grid gap-6 md:grid-cols-3 max-w-6xl mx-auto">
         {testimonials.map((test, index) => (

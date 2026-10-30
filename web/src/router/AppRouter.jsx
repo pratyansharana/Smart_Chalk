@@ -5,6 +5,7 @@ import { ROLE } from '../constants/roles';
 import { LoginPage } from '../features/auth/LoginPage';
 import { SignupPage } from '../features/auth/SignupPage';
 import { UnauthorizedPage } from '../features/auth/UnauthorizedPage';
+import { AboutPage } from '../features/landing/AboutPage';
 import { LandingPage } from '../features/landing/LandingPage';
 import { StudentDashboardPage } from '../features/student-dashboard/StudentDashboardPage';
 import { StudentBatchDetailsPage } from '../features/student-dashboard/StudentBatchDetailsPage';
@@ -30,6 +31,7 @@ export function AppRouter() {
         <Routes location={location}>
           <Route element={<PublicLayout />}>
             <Route path={ROUTES.HOME} element={<LandingPage />} />
+            <Route path={ROUTES.ABOUT} element={<AboutPage />} />
             <Route path={ROUTES.LOGIN} element={<LoginPage />} />
             <Route path={ROUTES.SIGNUP} element={<SignupPage />} />
             <Route path={ROUTES.UNAUTHORIZED} element={<UnauthorizedPage />} />

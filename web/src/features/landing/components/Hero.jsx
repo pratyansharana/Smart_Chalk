@@ -20,12 +20,12 @@ export function Hero() {
       )}
       <div className="mx-auto w-full max-w-7xl lg:col-span-2 lg:grid lg:grid-cols-[1fr_0.92fr] lg:items-center">
         <div className="glass-card max-w-3xl p-6 sm:p-8 lg:p-10">
-          <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Premium Math & Science Tutoring</p>
+          <p className="text-sm font-bold uppercase tracking-wide text-amber-400">UK, CBSE, ICSE & IB Curriculum Support</p>
           <h1 className="mt-4 font-heading text-4xl font-bold leading-none text-white sm:text-5xl lg:text-6xl">
-            Syllabus-Aligned Tutoring with Zero Parent Oversight Hassle.
+            Math & Science Tutoring That Fits Your Child’s Curriculum.
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-relaxed text-slate-300 font-sans">
-            We deliver highly rigorous live math and science classes for <strong>Classes 4 to 10</strong>. You get automated, point-wise progress reports sent straight to your email every time we grade a test—no constant follow-ups required.
+            Live online support for <strong>UK curriculum Years 6–8</strong>, alongside CBSE, ICSE, and IB. International and expat families get structured lessons aligned to their child’s syllabus, plus point-wise progress reports sent straight to their email.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a className="apex-button-primary" href="#enquiry">Book a Free Trial Session</a>
