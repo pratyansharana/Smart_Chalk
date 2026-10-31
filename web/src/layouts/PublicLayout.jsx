@@ -2,6 +2,7 @@ import { GraduationCap, LogIn, Menu, UserPlus, X } from 'lucide-react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { ROUTES } from '../constants/routes';
+import { ThemeToggle } from '../components/common/ThemeToggle';
 
 export function PublicLayout() {
   const location = useLocation();
@@ -23,7 +24,7 @@ export function PublicLayout() {
   }, [mobileMenuOpen]);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_20%_0%,rgba(245,158,11,0.14),transparent_28%),radial-gradient(circle_at_82%_10%,rgba(16,185,129,0.10),transparent_28%),#0B1120] text-slate-100">
+    <div className="theme-public-shell min-h-screen bg-[radial-gradient(circle_at_20%_0%,rgba(245,158,11,0.14),transparent_28%),radial-gradient(circle_at_82%_10%,rgba(16,185,129,0.10),transparent_28%),#0B1120] text-slate-100">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-navy-950/70 backdrop-blur-xl">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
           <Link className="flex items-center gap-3" to={ROUTES.HOME}>
@@ -36,6 +37,7 @@ export function PublicLayout() {
             </span>
           </Link>
           <div className="hidden items-center gap-2 sm:flex sm:gap-3">
+            <ThemeToggle compact />
             <Link className={`px-2 py-2 text-sm font-bold transition hover:text-amber-300 ${location.pathname === ROUTES.ABOUT ? 'text-amber-300' : 'text-slate-300'}`} to={ROUTES.ABOUT}>
               About
             </Link>
@@ -48,6 +50,7 @@ export function PublicLayout() {
               Sign up
             </Link>
           </div>
+          <ThemeToggle compact className="sm:hidden" />
           <button
             aria-controls="public-mobile-menu"
             aria-expanded={mobileMenuOpen}

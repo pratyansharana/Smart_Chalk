@@ -1,6 +1,7 @@
 import { ClipboardList, GraduationCap, LogOut, Mail, Users } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { ThemeToggle } from '../components/common/ThemeToggle';
 
 const teacherLinks = [
   ['Command', '.', GraduationCap],
@@ -13,7 +14,7 @@ export function TeacherLayout() {
   const { profile, logout } = useAuth();
 
   return (
-    <div className="min-h-screen bg-navy-950 text-slate-100 lg:grid lg:grid-cols-[270px_1fr]">
+    <div className="theme-dashboard-shell min-h-screen bg-navy-950 text-slate-100 lg:grid lg:grid-cols-[270px_1fr]">
       {/* Mobile Top Header */}
       <header className="lg:hidden flex items-center justify-between border-b border-white/10 bg-navy-900/80 p-4 sticky top-0 z-40 backdrop-blur-xl">
         <div className="flex items-center gap-3">
@@ -24,6 +25,7 @@ export function TeacherLayout() {
             <p className="font-heading font-bold text-white leading-tight">Command Center</p>
             <p className="text-[10px] text-slate-400">{profile?.displayName || 'Educator'}</p>
           </div>
+          <ThemeToggle compact />
         </div>
       </header>
 
@@ -47,6 +49,7 @@ export function TeacherLayout() {
               </NavLink>
             ))}
           </nav>
+          <ThemeToggle className="mt-4 w-full justify-start" />
         </div>
         <button className="apex-button-secondary mt-4 w-full justify-start shrink-0" onClick={logout} type="button">
           <LogOut size={17} />

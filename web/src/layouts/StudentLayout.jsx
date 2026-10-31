@@ -2,6 +2,7 @@ import { BookOpen, CalendarDays, GraduationCap, LogOut, Upload, Users } from 'lu
 import { NavLink, Outlet } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { ThemeToggle } from '../components/common/ThemeToggle';
 
 const studentLinks = [
   ['Overview', '.', GraduationCap],
@@ -32,7 +33,7 @@ export function StudentLayout() {
       ];
 
   return (
-    <div className="min-h-screen bg-navy-950 text-slate-100 lg:grid lg:grid-cols-[260px_1fr]">
+    <div className="theme-dashboard-shell min-h-screen bg-navy-950 text-slate-100 lg:grid lg:grid-cols-[260px_1fr]">
       {/* Mobile Top Header */}
       <header className={`lg:hidden flex items-center justify-between border-b bg-navy-900/80 p-4 sticky top-0 z-40 backdrop-blur-xl transition-all duration-300 ${
         parentMode ? 'border-b-indigo-500/20' : 'border-b-white/10'
@@ -56,9 +57,10 @@ export function StudentLayout() {
         </div>
 
         {/* Parent View Switch Toggle */}
-        <div className={`p-2 rounded-xl border flex items-center gap-2 shadow-inner transition-all ${
+        <div className={`flex items-center gap-1 rounded-xl border p-1 shadow-inner transition-all ${
           parentMode ? 'border-indigo-500/20 bg-indigo-500/[0.02]' : 'border-white/5 bg-white/[0.02]'
         }`}>
+          <ThemeToggle compact />
           <Users size={14} className={parentMode ? 'text-indigo-400' : 'text-slate-500'} />
           <button
             aria-label="Toggle parent view"
@@ -138,6 +140,7 @@ export function StudentLayout() {
               </NavLink>
             ))}
           </nav>
+          <ThemeToggle className="mt-4 w-full justify-start" />
         </div>
 
         <button 

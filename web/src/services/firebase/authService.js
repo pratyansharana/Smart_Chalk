@@ -1,7 +1,9 @@
 import {
+  browserLocalPersistence,
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
   onAuthStateChanged,
+  setPersistence,
   signInWithPopup,
   signInWithEmailAndPassword,
   signOut,
@@ -9,10 +11,23 @@ import {
 } from 'firebase/auth';
 import { auth, firebaseReady } from '../../lib/firebase';
 
+let localPersistencePromise;
+
 function assertFirebaseAuth() {
   if (!firebaseReady || !auth) {
     throw new Error('Firebase is not configured. Add VITE_FIREBASE_* values in .env to enable authentication.');
   }
+}
+
+async function ensureLocalPersistence() {
+  assertFirebaseAuth();
+  if (!localPersistencePromise) {
+    localPersistencePromise = setPersistence(auth, browserLocalPersistence).catch((error) => {
+      localPersistencePromise = null;
+      throw error;
+    });
+  }
+  await localPersistencePromise;
 }
 
 export function subscribeToAuthChanges(callback) {
@@ -21,19 +36,19 @@ export function subscribeToAuthChanges(callback) {
 }
 
 export async function signInWithEmail(email, password) {
-  assertFirebaseAuth();
+  await ensureLocalPersistence();
   return signInWithEmailAndPassword(auth, email, password);
 }
 
 export async function createAuthUser({ email, password, displayName }) {
-  assertFirebaseAuth();
+  await ensureLocalPersistence();
   const result = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(result.user, { displayName });
   return result.user;
 }
 
 export async function signInWithGooglePopup() {
-  assertFirebaseAuth();
+  await ensureLocalPersistence();
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
   const result = await signInWithPopup(auth, provider);

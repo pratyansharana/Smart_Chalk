@@ -22,7 +22,7 @@
 @layer base {
   html {
     scroll-behavior: smooth;
-    font-size: 16px;
+    font-size: 15px;
     max-width: 100vw;
     overflow-x: clip;
   }
@@ -206,4 +206,236 @@ button:disabled {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+html[data-theme='glass'] {
+  color-scheme: dark;
+}
+
+html[data-theme='glass'] body {
+  background-color: #030712;
+  background-image:
+    radial-gradient(circle at 12% 0%, rgba(34, 211, 238, 0.1), transparent 34%),
+    radial-gradient(circle at 88% 12%, rgba(52, 211, 153, 0.08), transparent 30%);
+}
+
+html[data-theme='glass'] .theme-public-shell {
+  background-color: #030712 !important;
+  background-image:
+    radial-gradient(circle at 12% 0%, rgba(34, 211, 238, 0.1), transparent 34%),
+    radial-gradient(circle at 88% 12%, rgba(52, 211, 153, 0.08), transparent 30%) !important;
+}
+
+html[data-theme='glass'] .theme-dashboard-shell {
+  background-color: #030712 !important;
+}
+
+html[data-theme='glass'] .theme-public-shell > header,
+html[data-theme='glass'] .theme-dashboard-shell header,
+html[data-theme='glass'] .theme-dashboard-shell aside,
+html[data-theme='glass'] .theme-dashboard-shell .mobile-tab-safe-area {
+  background-color: rgba(3, 7, 18, 0.78) !important;
+  border-color: rgba(148, 163, 184, 0.24) !important;
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+}
+
+html[data-theme='glass'] .glass-card,
+html[data-theme='glass'] .apex-surface,
+html[data-theme='glass'] [role='dialog'] {
+  background: rgba(15, 23, 42, 0.62) !important;
+  border-color: rgba(148, 163, 184, 0.3) !important;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+}
+
+@media (hover: hover) {
+  html[data-theme='glass'] .glass-card:hover {
+    border-color: rgba(34, 211, 238, 0.48) !important;
+    box-shadow: 0 22px 54px rgba(0, 0, 0, 0.48), 0 0 24px rgba(34, 211, 238, 0.08);
+  }
+}
+
+html[data-theme='glass'] .apex-input {
+  background: rgba(3, 7, 18, 0.72) !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
+}
+
+html[data-theme='glass'] .apex-button-primary {
+  color: #03111a !important;
+  background: linear-gradient(120deg, #22d3ee, #34d399) !important;
+  box-shadow: 0 8px 28px rgba(34, 211, 238, 0.18);
+}
+
+html[data-theme='glass'] .apex-button-secondary {
+  color: #e2e8f0 !important;
+  background: rgba(15, 23, 42, 0.66) !important;
+  border-color: rgba(148, 163, 184, 0.34) !important;
+  backdrop-filter: blur(16px);
+}
+
+html[data-theme='glass'] [class*='text-amber-'] {
+  color: #67e8f9 !important;
+}
+
+html[data-theme='glass'] [class*='border-amber-'] {
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+
+html[data-theme='glass'] :focus-visible {
+  outline: 2px solid #67e8f9 !important;
+  outline-offset: 3px;
+}
+
+html[data-theme='light'] {
+  color-scheme: light;
+  --light-canvas: #fff8d4;
+  --light-ink: #313647;
+  --light-muted: #435663;
+  --light-sage: #a3b087;
+}
+
+html[data-theme='light'] body {
+  background-color: var(--light-canvas);
+  background-image:
+    url('/assets/light-theme-grid.svg'),
+    radial-gradient(circle at 12% 0%, rgba(163, 176, 135, 0.18), transparent 34%),
+    radial-gradient(circle at 88% 12%, rgba(67, 86, 99, 0.1), transparent 30%);
+  background-size: 112px 112px, auto, auto;
+  background-repeat: repeat, no-repeat, no-repeat;
+  color: var(--light-ink);
+}
+
+html[data-theme='light'] .theme-public-shell {
+  background-color: var(--light-canvas) !important;
+  background-image:
+    url('/assets/light-theme-grid.svg'),
+    radial-gradient(circle at 12% 0%, rgba(163, 176, 135, 0.18), transparent 34%),
+    radial-gradient(circle at 88% 12%, rgba(67, 86, 99, 0.1), transparent 30%) !important;
+  background-size: 112px 112px, auto, auto;
+  background-repeat: repeat, no-repeat, no-repeat;
+  color: var(--light-ink);
+}
+
+html[data-theme='light'] .theme-dashboard-shell {
+  background-color: var(--light-canvas) !important;
+  color: var(--light-ink);
+}
+
+html[data-theme='light'] .theme-public-shell main > section:first-child > div:first-child {
+  background-color: rgba(255, 248, 212, 0.78) !important;
+  background-image:
+    url('/assets/light-theme-grid.svg'),
+    radial-gradient(circle at 75% 30%, rgba(163, 176, 135, 0.2), transparent 32%),
+    radial-gradient(circle at 18% 20%, rgba(67, 86, 99, 0.08), transparent 30%) !important;
+  background-size: 112px 112px, auto, auto;
+  background-repeat: repeat, no-repeat, no-repeat;
+}
+
+html[data-theme='light'] .theme-public-shell > header,
+html[data-theme='light'] .theme-dashboard-shell header,
+html[data-theme='light'] .theme-dashboard-shell aside,
+html[data-theme='light'] .theme-dashboard-shell .mobile-tab-safe-area {
+  background-color: rgba(255, 248, 212, 0.86) !important;
+  border-color: rgba(163, 176, 135, 0.55) !important;
+  color: var(--light-ink);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+}
+
+html[data-theme='light'] .glass-card,
+html[data-theme='light'] .apex-surface,
+html[data-theme='light'] [role='dialog'] {
+  background: rgba(255, 248, 212, 0.82) !important;
+  border-color: rgba(163, 176, 135, 0.55) !important;
+  color: var(--light-ink);
+  box-shadow: 0 18px 42px rgba(49, 54, 71, 0.12), 0 3px 8px rgba(67, 86, 99, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.66);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+}
+
+@media (hover: hover) {
+  html[data-theme='light'] .glass-card:hover {
+    border-color: rgba(67, 86, 99, 0.52) !important;
+    box-shadow: 0 24px 48px rgba(49, 54, 71, 0.16), 0 0 20px rgba(163, 176, 135, 0.18);
+  }
+}
+
+html[data-theme='light'] .apex-input {
+  background: rgba(255, 248, 212, 0.92) !important;
+  border-color: rgba(67, 86, 99, 0.42) !important;
+  color: var(--light-ink) !important;
+}
+
+html[data-theme='light'] .apex-input::placeholder {
+  color: var(--light-muted) !important;
+}
+
+html[data-theme='light'] .apex-button-primary {
+  color: var(--light-canvas) !important;
+  background: linear-gradient(120deg, #435663, #313647) !important;
+  box-shadow: 0 8px 24px rgba(49, 54, 71, 0.22);
+}
+
+html[data-theme='light'] .apex-button-secondary {
+  color: var(--light-ink) !important;
+  background: rgba(255, 248, 212, 0.72) !important;
+  border-color: rgba(67, 86, 99, 0.38) !important;
+  backdrop-filter: blur(16px);
+}
+
+html[data-theme='light'] [class*='bg-navy-950'],
+html[data-theme='light'] [class*='bg-navy-900'],
+html[data-theme='light'] [class*='bg-slate-950'],
+html[data-theme='light'] [class*='bg-slate-900'] {
+  background-color: rgba(255, 248, 212, 0.82) !important;
+}
+
+html[data-theme='light'] [class*='text-white'] {
+  color: var(--light-ink) !important;
+}
+
+html[data-theme='light'] [class*='text-slate-100'],
+html[data-theme='light'] [class*='text-slate-200'],
+html[data-theme='light'] [class*='text-slate-300'] {
+  color: var(--light-muted) !important;
+}
+
+html[data-theme='light'] [class*='text-slate-400'],
+html[data-theme='light'] [class*='text-slate-500'] {
+  color: var(--light-muted) !important;
+}
+
+html[data-theme='light'] [class*='text-amber-'] {
+  color: var(--light-muted) !important;
+}
+
+html[data-theme='light'] [class*='border-white/'],
+html[data-theme='light'] [class*='border-slate-800'] {
+  border-color: rgba(163, 176, 135, 0.55) !important;
+}
+
+html[data-theme='light'] [class*='border-amber-'] {
+  border-color: rgba(67, 86, 99, 0.38) !important;
+}
+
+html[data-theme='light'] [class*='text-emerald-'] {
+  color: var(--light-muted) !important;
+}
+
+html[data-theme='light'] [class*='bg-amber-']:not(.apex-button-primary),
+html[data-theme='light'] [class*='bg-emerald-'] {
+  background-color: rgba(163, 176, 135, 0.2) !important;
+}
+
+html[data-theme='light'] :focus-visible {
+  outline: 2px solid #435663 !important;
+  outline-offset: 3px;
+}
+
+html[data-theme='light'] .theme-toggle {
+  color: #313647 !important;
+  background: rgba(255, 248, 212, 0.8) !important;
+  border-color: rgba(67, 86, 99, 0.38) !important;
 }
