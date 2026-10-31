@@ -1,4 +1,6 @@
 import { motion } from 'framer-motion';
+import { ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
   Calculator,
   FlaskConical,
@@ -9,6 +11,7 @@ import {
   Eye,
   Cpu,
 } from 'lucide-react';
+import { ROUTES } from '../../constants/routes';
 import { EnquiryForm } from './components/EnquiryForm';
 import { FAQ } from './components/FAQ';
 import { Hero } from './components/Hero';
@@ -123,6 +126,35 @@ export function LandingPage() {
               </motion.article>
             );
           })}
+        </div>
+      </section>
+
+      <section className="border-t border-white/5">
+        <div className="mx-auto grid max-w-7xl items-center gap-8 px-5 py-12 sm:py-16 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-16">
+          <div className="mx-auto w-full max-w-sm">
+            <div className="aspect-[4/5] overflow-hidden rounded-lg border border-white/10 bg-navy-900">
+              <img
+                alt="Pratyansha Rana, SmartChalk Mathematics and Science tutor"
+                className="size-full object-cover object-[center_28%]"
+                decoding="async"
+                loading="lazy"
+                src="/assets/Confident%20Portrait%20in%20a%20Linen%20Shirt.png"
+              />
+            </div>
+          </div>
+          <div className="max-w-2xl">
+            <p className="text-sm font-bold uppercase tracking-wide text-amber-400">Meet your tutor</p>
+            <h2 className="mt-2 font-heading text-3xl font-bold text-white sm:text-4xl">Pratyansha Rana</h2>
+            <p className="mt-4 leading-relaxed text-slate-300">
+              I bring four years of tutoring experience and a technical foundation in Computer Science, AI, and Machine Learning to online Mathematics and Science lessons.
+            </p>
+            <p className="mt-3 leading-relaxed text-slate-400">
+              Lessons are structured around the student’s curriculum, with clear explanations, guided practice, and progress updates for parents.
+            </p>
+            <Link className="apex-button-secondary mt-6" to={ROUTES.ABOUT}>
+              About my teaching approach <ArrowRight size={18} />
+            </Link>
+          </div>
         </div>
       </section>
 
