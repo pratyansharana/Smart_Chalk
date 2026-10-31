@@ -16,7 +16,7 @@ export function TeacherDashboardPage() {
   const cards = [
     ['Students Roster', students.data.length, Users],
     ['Enquiries/Leads', leads.data.length, Mail],
-    ['Class Batches', classes.data.length, GraduationCap],
+    ['Class Batches', classes.data.filter((batch) => batch.status !== 'discontinued').length, GraduationCap],
   ];
 
   return (

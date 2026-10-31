@@ -1,10 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CalendarPlus, Loader2, GraduationCap, ChevronRight } from 'lucide-react';
+import { Archive, CalendarPlus, ChevronRight, GraduationCap, Loader2, RotateCcw } from 'lucide-react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
 import { z } from 'zod';
 import { ReusableInput } from '../../../components/forms/ReusableInput';
-import { createClassDocument } from '../../../services/firebase/classesService';
+import { createClassDocument, updateClassDocument } from '../../../services/firebase/classesService';
 
 const batchSchema = z.object({
   title: z.string().min(3, 'Batch title is required.'),
@@ -16,6 +17,9 @@ const batchSchema = z.object({
 });
 
 export function ScheduleManager({ teacherId, students, classes }) {
+  const [batchView, setBatchView] = useState('active');
+  const [updatingBatchId, setUpdatingBatchId] = useState('');
+  const [batchActionError, setBatchActionError] = useState('');
   const {
     register,
     handleSubmit,
@@ -41,6 +45,22 @@ export function ScheduleManager({ teacherId, students, classes }) {
     });
     reset();
   }
+
+  async function setBatchStatus(batch, status) {
+    setUpdatingBatchId(batch.id);
+    setBatchActionError('');
+    try {
+      await updateClassDocument(batch.id, { status });
+    } catch (error) {
+      setBatchActionError(error.message || 'Could not update the batch. Please try again.');
+    } finally {
+      setUpdatingBatchId('');
+    }
+  }
+
+  const activeBatches = classes.filter((batch) => batch.status !== 'discontinued');
+  const discontinuedBatches = classes.filter((batch) => batch.status === 'discontinued');
+  const visibleBatches = batchView === 'active' ? activeBatches : discontinuedBatches;
 
   return (
     <section className="glass-card p-5">
@@ -77,37 +97,71 @@ export function ScheduleManager({ teacherId, students, classes }) {
 
       {/* Batches Management List */}
       <div className="mt-8 border-t border-white/10 pt-6">
-        <h3 className="font-heading text-lg font-bold text-white mb-4">Your Active Batches</h3>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="font-heading text-lg font-bold text-white">Your batches</h3>
+          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Batch status filter">
+            <button
+              aria-selected={batchView === 'active'}
+              className={batchView === 'active' ? 'apex-button-primary px-4 py-2 text-sm' : 'apex-button-secondary px-4 py-2 text-sm'}
+              onClick={() => setBatchView('active')}
+              role="tab"
+              type="button"
+            >
+              Active ({activeBatches.length})
+            </button>
+            <button
+              aria-selected={batchView === 'discontinued'}
+              className={batchView === 'discontinued' ? 'apex-button-primary px-4 py-2 text-sm' : 'apex-button-secondary px-4 py-2 text-sm'}
+              onClick={() => setBatchView('discontinued')}
+              role="tab"
+              type="button"
+            >
+              Discontinued ({discontinuedBatches.length})
+            </button>
+          </div>
+        </div>
+        {batchActionError && <p className="mt-3 rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-200">{batchActionError}</p>}
         <div className="grid gap-4">
-          {classes.map((item) => {
+          {visibleBatches.map((item) => {
             const enrolledCount = item.studentIds?.length || 0;
+            const isDiscontinued = item.status === 'discontinued';
+            const isUpdating = updatingBatchId === item.id;
             return (
               <article className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 hover:border-amber-400/25 transition-all" key={item.id}>
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold uppercase text-amber-400">{item.subject}</span>
-                    {item.status === 'live' && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-400/20 px-2 py-0.5 text-xs text-emerald-300">
-                        Live
-                      </span>
-                    )}
+                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${isDiscontinued ? 'border-slate-400/20 bg-slate-500/10 text-slate-400' : item.status === 'live' ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-300' : 'border-sky-400/20 bg-sky-500/10 text-sky-300'}`}>
+                      {isDiscontinued ? 'Discontinued' : item.status === 'live' ? 'Live' : 'Scheduled'}
+                    </span>
                   </div>
                   <h4 className="mt-1 font-heading text-lg font-bold text-white">{item.title}</h4>
                   <p className="text-xs text-slate-400 mt-0.5">{item.schedule} • {enrolledCount} enrolled</p>
                 </div>
 
-                <Link
-                  className="apex-button-secondary py-2 px-3 text-xs flex items-center gap-1 bg-amber-500/5 hover:bg-amber-500/10 border-amber-500/10 hover:border-amber-500/20 text-amber-300 w-full sm:w-auto justify-center sm:justify-start"
-                  to={`batch/${item.id}`}
-                >
-                  Workspace
-                  <ChevronRight size={14} />
-                </Link>
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                  <Link
+                    className="apex-button-secondary flex-1 justify-center px-3 py-2 text-sm sm:flex-none"
+                    to={`batch/${item.id}`}
+                  >
+                    Workspace
+                    <ChevronRight size={16} />
+                  </Link>
+                  <button
+                    className="apex-button-secondary flex-1 justify-center px-3 py-2 text-sm text-slate-300 sm:flex-none"
+                    disabled={isUpdating}
+                    onClick={() => setBatchStatus(item, isDiscontinued ? 'scheduled' : 'discontinued')}
+                    type="button"
+                  >
+                    {isUpdating ? <Loader2 className="animate-spin" size={16} /> : isDiscontinued ? <RotateCcw size={16} /> : <Archive size={16} />}
+                    {isDiscontinued ? 'Restore batch' : 'Discontinue'}
+                  </button>
+                </div>
               </article>
             );
           })}
-          {classes.length === 0 && (
-            <p className="text-sm text-slate-400">No active batches created yet.</p>
+          {visibleBatches.length === 0 && (
+            <p className="text-sm text-slate-400">{batchView === 'active' ? 'No active batches.' : 'No discontinued batches.'}</p>
           )}
         </div>
       </div>

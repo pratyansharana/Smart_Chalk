@@ -46,6 +46,7 @@ export function UpcomingClassesCard({ classes, studentId, loading, error, classN
   }
 
   if (loading) return <Skeleton className="h-96" />;
+  const activeClasses = classes?.filter((item) => item.status !== 'discontinued') || [];
 
   return (
     <section className={`glass-card p-6 ${className}`}>
@@ -65,7 +66,7 @@ export function UpcomingClassesCard({ classes, studentId, loading, error, classN
 
       {/* Enrolled Batches List */}
       <div className="mt-6 grid gap-4 sm:grid-cols-1 xl:grid-cols-2">
-        {classes?.map((item) => {
+        {activeClasses.map((item) => {
           const isLive = item.status === 'live';
           return (
             <article
@@ -145,9 +146,9 @@ export function UpcomingClassesCard({ classes, studentId, loading, error, classN
         })}
       </div>
 
-      {(!classes || classes.length === 0) && (
+      {activeClasses.length === 0 && (
         <p className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-sm text-slate-300">
-          You are not enrolled in any batches yet. Enter a Batch ID below to request access.
+          No active batches right now. Enter a Batch ID below to request access.
         </p>
       )}
 

@@ -82,7 +82,7 @@ export function StudentDashboardPage() {
           <div className="glass-card p-5 border border-indigo-500/15 bg-indigo-500/[0.01] flex items-center justify-between">
             <div>
               <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Active Batches</p>
-              <h2 className="text-2xl font-black text-white mt-1.5">{classes.data.length} enrolled</h2>
+              <h2 className="text-2xl font-black text-white mt-1.5">{classes.data.filter((batch) => batch.status !== 'discontinued').length} enrolled</h2>
               <p className="text-[10px] text-slate-500 mt-1">Direct syllabus mapping active</p>
             </div>
             <Calendar className="text-indigo-400" size={28} />
