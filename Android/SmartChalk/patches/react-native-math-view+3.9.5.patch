@@ -1,0 +1,66 @@
+diff --git a/node_modules/react-native-math-view/android/build.gradle b/node_modules/react-native-math-view/android/build.gradle
+index e87b89e..c76f583 100644
+--- a/node_modules/react-native-math-view/android/build.gradle
++++ b/node_modules/react-native-math-view/android/build.gradle
+@@ -20,9 +20,8 @@ android {
+ }
+ /*
+ repositories {
+-    mavenCentral()
+-    jcenter()
+     google()
++    mavenCentral()
+     maven {
+         url "https://dl.bintray.com/kexanie/maven"
+     }
+@@ -30,9 +29,9 @@ repositories {
+ */
+ buildscript {
+     repositories {
+-        maven { url "https://maven.google.com" }
+-        jcenter()
+         google()
++        mavenCentral()
++        maven { url "https://maven.google.com" }
+         maven {
+             url 'https://maven.google.com/'
+             name 'Google'
+@@ -40,7 +39,6 @@ buildscript {
+         maven {
+             url "https://maven.fabric.io/public"
+         }
+-        mavenCentral()
+     }
+     dependencies {
+         classpath 'com.android.tools.build:gradle:3.3.2'
+@@ -50,9 +48,9 @@ buildscript {
+ allprojects {
+     repositories {
+         mavenLocal()
+-        maven { url "https://maven.google.com" }
+-        jcenter()
+         google()
++        mavenCentral()
++        maven { url "https://maven.google.com" }
+         maven {
+             // All of React Native (JS, Obj-C sources, Android binaries) is installed from npm
+             url "$rootDir/../example/node_modules/react-native/android"
+diff --git a/node_modules/react-native-math-view/android/src/main/java/io/autodidact/rnmathview/SVGShadowNode.java b/node_modules/react-native-math-view/android/src/main/java/io/autodidact/rnmathview/SVGShadowNode.java
+index 9b5796d..6233803 100644
+--- a/node_modules/react-native-math-view/android/src/main/java/io/autodidact/rnmathview/SVGShadowNode.java
++++ b/node_modules/react-native-math-view/android/src/main/java/io/autodidact/rnmathview/SVGShadowNode.java
+@@ -4,14 +4,9 @@ import android.util.Log;
+ import android.view.View;
+ import android.view.ViewGroup;
+ 
+-import com.facebook.react.bridge.JavaOnlyMap;
+ import com.facebook.react.bridge.ReadableMap;
+ import com.facebook.react.uimanager.LayoutShadowNode;
+-import com.facebook.react.uimanager.NativeViewHierarchyManager;
+-import com.facebook.react.uimanager.ReactStylesDiffMap;
+-import com.facebook.react.uimanager.UIBlock;
+ import com.facebook.react.uimanager.UIManagerModule;
+-import com.facebook.react.uimanager.UIManagerModuleListener;
+ import com.facebook.react.uimanager.annotations.ReactProp;
+ import com.facebook.yoga.YogaMeasureFunction;
+ import com.facebook.yoga.YogaMeasureMode;

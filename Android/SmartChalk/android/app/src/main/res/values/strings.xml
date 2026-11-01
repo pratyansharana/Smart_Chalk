@@ -1,0 +1,4 @@
+<resources>
+  <string name="app_name">SmartChalk</string>
+  <string name="blob_provider_authority">com.yourname.smartchalk.blobs</string>
+</resources>

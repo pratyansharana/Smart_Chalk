@@ -1,76 +1,171 @@
-import React from 'react';
-import { 
-    View, 
-    Text, 
-    StyleSheet, 
-    TouchableOpacity, 
-    ScrollView 
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { auth } from '../config/firebaseconfig';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { signOut, updateProfile } from 'firebase/auth';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { auth, db, storage } from '../config/firebaseconfig';
 import type { MainTabScreenProps } from '../navigation/types';
+
+interface ProfileForm {
+    displayName: string;
+    photoURL: string;
+    grade: string;
+    phone: string;
+    bio: string;
+    subjectsOfInterest: string;
+}
 
 export default function ProfileScreen({ navigation }: MainTabScreenProps<'ProfileTab'>) {
     const insets = useSafeAreaInsets();
-    const userEmail = auth.currentUser?.email || 'developer@example.com';
-    const displayName = userEmail.split('@')[0];
+    const user = auth.currentUser;
+    const userId = user?.uid;
+    const [profile, setProfile] = useState<ProfileForm>({
+        displayName: user?.displayName || '',
+        photoURL: user?.photoURL || '',
+        grade: '',
+        phone: '',
+        bio: '',
+        subjectsOfInterest: '',
+    });
+    const [loading, setLoading] = useState(Boolean(userId));
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        if (!userId) return undefined;
+        return onSnapshot(doc(db, 'users', userId), (snapshot) => {
+            const data = snapshot.data();
+            const userProfile = data?.profile || {};
+            setProfile({
+                displayName: data?.displayName || user?.displayName || user?.email?.split('@')[0] || '',
+                photoURL: data?.photoURL || user?.photoURL || '',
+                grade: String(userProfile.grade || ''),
+                phone: userProfile.phone || '',
+                bio: userProfile.bio || '',
+                subjectsOfInterest: (userProfile.subjectsOfInterest || []).join(', '),
+            });
+            setLoading(false);
+        }, (error) => {
+            console.error('Profile subscription failed:', error);
+            setLoading(false);
+        });
+    }, [userId]);
+
+    const updateField = (field: keyof ProfileForm, value: string) => {
+        setProfile((current) => ({ ...current, [field]: value }));
+    };
+
+    const pickPhoto = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85,
+        });
+        if (result.canceled || !userId || !user) return;
+        setSaving(true);
+        try {
+            const asset = result.assets[0];
+            const response = await fetch(asset.uri);
+            const blob = await response.blob();
+            const extension = asset.fileName?.split('.').pop() || 'jpg';
+            const storageRef = ref(storage, `profile-pictures/${userId}/${Date.now()}.${extension}`);
+            await uploadBytes(storageRef, blob, { contentType: asset.mimeType || 'image/jpeg' });
+            const photoURL = await getDownloadURL(storageRef);
+            await updateProfile(user, { photoURL });
+            await updateDoc(doc(db, 'users', userId), { photoURL });
+            setProfile((current) => ({ ...current, photoURL }));
+        } catch (error) {
+            Alert.alert('Photo upload failed', error instanceof Error ? error.message : 'Please try again.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const saveProfile = async () => {
+        if (!userId || !user) return;
+        const displayName = profile.displayName.trim();
+        if (!displayName) {
+            Alert.alert('Name required', 'Enter the name you want teachers to see.');
+            return;
+        }
+        setSaving(true);
+        try {
+            await Promise.all([
+                updateProfile(user, { displayName }),
+                updateDoc(doc(db, 'users', userId), {
+                    displayName,
+                    profile: {
+                        grade: profile.grade.trim() || null,
+                        phone: profile.phone.trim() || null,
+                        bio: profile.bio.trim() || null,
+                        subjectsOfInterest: profile.subjectsOfInterest.split(',').map((subject) => subject.trim()).filter(Boolean),
+                    },
+                }),
+            ]);
+            Alert.alert('Profile updated', 'Your student profile has been saved.');
+        } catch (error) {
+            Alert.alert('Could not save profile', error instanceof Error ? error.message : 'Please try again.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSignOut = () => {
+        Alert.alert('Sign out', 'Sign out of SmartChalk?', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Sign out', style: 'destructive', onPress: () => signOut(auth) },
+        ]);
+    };
 
     return (
         <View style={styles.mainContainer}>
             <View style={[styles.safeArea, { paddingTop: Math.max(insets.top, 16) }]}>
-                <ScrollView 
-                    contentContainerStyle={styles.container}
-                    showsVerticalScrollIndicator={false}
-                >
-                    {/* Profile Header Card */}
-                    <View style={styles.profileCard}>
-                        <View style={styles.avatar}>
-                            <Text style={styles.avatarText}>
-                                {displayName.charAt(0).toUpperCase()}
-                            </Text>
+                <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+                    <View style={styles.header}>
+                        <Text style={styles.eyebrow}>STUDENT ACCOUNT</Text>
+                        <Text style={styles.title}>Your profile</Text>
+                    </View>
+
+                    <View style={styles.profilePanel}>
+                        <Pressable onPress={pickPhoto} style={styles.avatarButton} accessibilityRole="button" accessibilityLabel="Change profile photo">
+                            {profile.photoURL ? <Image source={{ uri: profile.photoURL }} style={styles.avatarImage} /> : (
+                                <Text style={styles.avatarText}>{(profile.displayName || user?.email || 'S').charAt(0).toUpperCase()}</Text>
+                            )}
+                            <View style={styles.photoEditBadge}><MaterialCommunityIcons name="camera-outline" size={15} color="#FFFFFF" /></View>
+                        </Pressable>
+                        <View style={styles.accountCopy}>
+                            <Text style={styles.accountName} numberOfLines={1}>{profile.displayName || 'Student'}</Text>
+                            <Text style={styles.accountEmail} numberOfLines={1}>{user?.email || ''}</Text>
                         </View>
-                        <Text style={styles.nameText}>{displayName}</Text>
-                        <Text style={styles.emailText}>{userEmail}</Text>
                     </View>
 
-                    {/* Settings & Options Group */}
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Account Settings</Text>
-                        
-                        <TouchableOpacity style={styles.menuItem} onPress={() => alert('Feature coming soon!')}>
-                            <Ionicons name="person-outline" size={20} color="#4F46E5" style={styles.menuIcon} />
-                            <Text style={styles.menuText}>Edit Profile</Text>
-                            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-                        </TouchableOpacity>
+                    {loading ? <ActivityIndicator color="#2D66C8" style={styles.loader} /> : (
+                        <View style={styles.form}>
+                            <Field label="Display name" value={profile.displayName} onChangeText={(value) => updateField('displayName', value)} />
+                            <Field label="Grade or level" value={profile.grade} onChangeText={(value) => updateField('grade', value)} placeholder="e.g. Grade 10" />
+                            <Field label="Phone" value={profile.phone} onChangeText={(value) => updateField('phone', value)} keyboardType="phone-pad" />
+                            <Field label="Subjects of interest" value={profile.subjectsOfInterest} onChangeText={(value) => updateField('subjectsOfInterest', value)} placeholder="Maths, Physics, Biology" />
+                            <Field label="About you" value={profile.bio} onChangeText={(value) => updateField('bio', value)} multiline />
 
-                        <TouchableOpacity style={styles.menuItem} onPress={() => alert('Feature coming soon!')}>
-                            <Ionicons name="options-outline" size={20} color="#4F46E5" style={styles.menuIcon} />
-                            <Text style={styles.menuText}>App Preferences</Text>
-                            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-                        </TouchableOpacity>
+                            <Pressable disabled={saving} onPress={saveProfile} style={styles.primaryButton}>
+                                {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>Save profile</Text>}
+                            </Pressable>
+                        </View>
+                    )}
 
-                        <TouchableOpacity style={styles.menuItem} onPress={() => alert('Feature coming soon!')}>
-                            <Ionicons name="shield-checkmark-outline" size={20} color="#4F46E5" style={styles.menuIcon} />
-                            <Text style={styles.menuText}>Security & Passwords</Text>
-                            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Support & About</Text>
-                        
-                        <TouchableOpacity style={styles.menuItem} onPress={() => alert('Version 1.0.0')}>
-                            <Ionicons name="information-circle-outline" size={20} color="#4F46E5" style={styles.menuIcon} />
-                            <Text style={styles.menuText}>App Version</Text>
-                            <Text style={styles.versionText}>1.0.0</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.menuItem} onPress={() => alert('Contacting support...')}>
-                            <Ionicons name="mail-outline" size={20} color="#4F46E5" style={styles.menuIcon} />
-                            <Text style={styles.menuText}>Contact Support</Text>
-                            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-                        </TouchableOpacity>
+                    <View style={styles.actions}>
+                        <Pressable onPress={() => navigation.navigate('SettingsTab')} style={styles.secondaryButton}>
+                            <MaterialCommunityIcons name="cog-outline" size={19} color="#2D66C8" />
+                            <Text style={styles.secondaryButtonText}>Settings</Text>
+                            <MaterialCommunityIcons name="chevron-right" size={19} color="#91A0AE" />
+                        </Pressable>
+                        <Pressable onPress={handleSignOut} style={styles.signOutButton}>
+                            <MaterialCommunityIcons name="logout-variant" size={18} color="#A4514B" />
+                            <Text style={styles.signOutText}>Sign out</Text>
+                        </Pressable>
                     </View>
                 </ScrollView>
             </View>
@@ -78,98 +173,188 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
     );
 }
 
+function Field({
+    label,
+    value,
+    onChangeText,
+    placeholder,
+    keyboardType,
+    multiline,
+}: {
+    label: string;
+    value: string;
+    onChangeText: (value: string) => void;
+    placeholder?: string;
+    keyboardType?: 'default' | 'phone-pad';
+    multiline?: boolean;
+}) {
+    return (
+        <View style={styles.field}>
+            <Text style={styles.fieldLabel}>{label}</Text>
+            <TextInput
+                value={value}
+                onChangeText={onChangeText}
+                placeholder={placeholder || label}
+                placeholderTextColor="#97A5B2"
+                keyboardType={keyboardType || 'default'}
+                multiline={multiline}
+                textAlignVertical={multiline ? 'top' : 'center'}
+                style={[styles.input, multiline && styles.multilineInput]}
+            />
+        </View>
+    );
+}
+
 const styles = StyleSheet.create({
     mainContainer: {
         flex: 1,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: '#EDF8FD',
     },
     safeArea: {
         flex: 1,
     },
     container: {
-        padding: 24,
+        paddingHorizontal: 20,
+        paddingTop: 10,
+        paddingBottom: 36,
     },
-    profileCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        padding: 32,
-        alignItems: 'center',
-        marginBottom: 30,
-        marginTop: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.03,
-        shadowRadius: 10,
-        elevation: 2,
+    header: {
+        marginBottom: 17,
     },
-    avatar: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: '#4F46E5',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 16,
-        shadowColor: '#4F46E5',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-        elevation: 4,
-    },
-    avatarText: {
-        color: '#FFFFFF',
-        fontSize: 32,
-        fontWeight: 'bold',
-    },
-    nameText: {
-        fontSize: 24,
+    eyebrow: {
+        color: '#3971C9',
+        fontSize: 10,
         fontWeight: '800',
-        color: '#111827',
-        textTransform: 'capitalize',
-        marginBottom: 4,
+        marginBottom: 5,
     },
-    emailText: {
-        fontSize: 14,
-        color: '#6B7280',
+    title: {
+        color: '#25394D',
+        fontSize: 25,
+        fontWeight: '800',
     },
-    section: {
-        marginBottom: 24,
-    },
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#374151',
-        marginBottom: 12,
-        marginLeft: 4,
-    },
-    menuItem: {
+    profilePanel: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
-        paddingVertical: 16,
-        paddingHorizontal: 18,
+        borderRadius: 14,
+        padding: 15,
+        marginBottom: 16,
+    },
+    avatarButton: {
+        width: 66,
+        height: 66,
+        borderRadius: 33,
+        backgroundColor: '#DDEFFA',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 13,
+    },
+    avatarImage: {
+        width: 66,
+        height: 66,
+        borderRadius: 33,
+    },
+    photoEditBadge: {
+        position: 'absolute',
+        right: -1,
+        bottom: -1,
+        width: 24,
+        height: 24,
         borderRadius: 12,
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: '#F9FAFB',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.02,
-        shadowRadius: 4,
-        elevation: 1,
+        backgroundColor: '#2D66C8',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    menuIcon: {
-        marginRight: 14,
+    avatarText: {
+        color: '#2D66C8',
+        fontSize: 26,
+        fontWeight: '800',
     },
-    menuText: {
+    accountCopy: {
         flex: 1,
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#1F2937',
     },
-    versionText: {
+    accountName: {
+        color: '#26394D',
+        fontSize: 16,
+        fontWeight: '800',
+    },
+    accountEmail: {
+        color: '#8291A0',
+        fontSize: 12,
+        marginTop: 4,
+    },
+    form: {
+        gap: 12,
+    },
+    field: {
+        gap: 6,
+    },
+    fieldLabel: {
+        color: '#536A80',
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    input: {
+        minHeight: 44,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#DDE8F0',
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        color: '#26394D',
         fontSize: 13,
-        fontWeight: '600',
-        color: '#9CA3AF',
+    },
+    multilineInput: {
+        minHeight: 94,
+        paddingTop: 10,
+    },
+    primaryButton: {
+        minHeight: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 10,
+        backgroundColor: '#2D66C8',
+        marginTop: 4,
+    },
+    primaryButtonText: {
+        color: '#FFFFFF',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    actions: {
+        marginTop: 22,
+        gap: 8,
+    },
+    secondaryButton: {
+        minHeight: 48,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        paddingHorizontal: 13,
+    },
+    secondaryButtonText: {
+        flex: 1,
+        color: '#344B62',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    signOutButton: {
+        minHeight: 46,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    signOutText: {
+        color: '#A4514B',
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    loader: {
+        marginVertical: 28,
     },
 });

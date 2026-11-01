@@ -1,18 +1,17 @@
-﻿import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-
-const { width } = Dimensions.get('window');
+﻿import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Animated, StyleSheet, Text, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface SplashScreenProps {
   statusMessage?: string;
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({ statusMessage = 'Initializing application...' }) => {
-  const logoScale = useRef(new Animated.Value(0.7)).current;
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const textOpacity = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [logoScale] = useState(() => new Animated.Value(0.7));
+  const [logoOpacity] = useState(() => new Animated.Value(0));
+  const [textOpacity] = useState(() => new Animated.Value(0));
+  const [pulseAnim] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
     // Entrance sequence
@@ -54,112 +53,91 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ statusMessage = 'Ini
     pulse.start();
 
     return () => pulse.stop();
-  }, []);
+  }, [logoOpacity, logoScale, pulseAnim, textOpacity]);
 
   return (
-    <View style={styles.container}>
-      {/* Decorative Brand Circles */}
-      <View style={styles.topOrb} />
-      <View style={styles.bottomOrb} />
-
+    <SafeAreaView style={styles.container}>
       <Animated.View 
         style={[
-          styles.logoContainer, 
+          styles.logoContainer,
           { 
             opacity: logoOpacity, 
             transform: [{ scale: Animated.multiply(logoScale, pulseAnim) }] 
           }
         ]}
       >
-        <View style={styles.iconCircle}>
-          <Ionicons name="flash" size={42} color="#FFFFFF" />
+        <View style={styles.logoTile}>
+          <MaterialCommunityIcons name="book-open-page-variant" size={42} color="#2D66C8" />
         </View>
       </Animated.View>
 
       <Animated.View style={[styles.brandContainer, { opacity: textOpacity }]}>
-        <Text style={styles.brandTitle}>Expo Firebase</Text>
-        <Text style={styles.brandSubtitle}>Production Starter Foundation</Text>
+        <Text style={styles.brandTitle}>SmartChalk</Text>
+        <Text style={styles.brandSubtitle}>Your learning, all in one place.</Text>
       </Animated.View>
 
       <Animated.View style={[styles.statusContainer, { opacity: textOpacity }]}>
         <View style={styles.loadingBar}>
           <View style={styles.loadingProgress} />
         </View>
+        <ActivityIndicator size="small" color="#2D66C8" style={styles.spinner} />
         <Text style={styles.statusText}>{statusMessage}</Text>
       </Animated.View>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#EDF8FD',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  topOrb: {
-    position: 'absolute',
-    top: -100,
-    right: -100,
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    backgroundColor: '#4F46E5',
-    opacity: 0.15,
-  },
-  bottomOrb: {
-    position: 'absolute',
-    bottom: -120,
-    left: -120,
-    width: 380,
-    height: 380,
-    borderRadius: 190,
-    backgroundColor: '#818CF8',
-    opacity: 0.1,
   },
   logoContainer: {
     marginBottom: 24,
   },
-  iconCircle: {
+  logoTile: {
     width: 88,
     height: 88,
-    borderRadius: 44,
-    backgroundColor: '#4F46E5',
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#4F46E5',
+    borderWidth: 1,
+    borderColor: '#DDEBF4',
+    shadowColor: '#2D66C8',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 3,
   },
   brandContainer: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 44,
   },
   brandTitle: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#F8FAFC',
-    letterSpacing: 0.5,
+    color: '#25394D',
+    letterSpacing: 0,
     marginBottom: 6,
   },
   brandSubtitle: {
     fontSize: 14,
-    color: '#94A3B8',
+    color: '#8291A0',
     fontWeight: '500',
   },
   statusContainer: {
     position: 'absolute',
-    bottom: 50,
+    bottom: 34,
     alignItems: 'center',
-    width: width * 0.7,
+    width: '76%',
   },
   loadingBar: {
     width: '100%',
     height: 4,
-    backgroundColor: '#334155',
+    backgroundColor: '#D9E7F0',
     borderRadius: 2,
     overflow: 'hidden',
     marginBottom: 12,
@@ -167,12 +145,15 @@ const styles = StyleSheet.create({
   loadingProgress: {
     width: '60%',
     height: '100%',
-    backgroundColor: '#6366F1',
+    backgroundColor: '#2D66C8',
     borderRadius: 2,
   },
   statusText: {
     fontSize: 12,
-    color: '#64748B',
+    color: '#8291A0',
     fontWeight: '500',
+  },
+  spinner: {
+    marginBottom: 9,
   },
 });

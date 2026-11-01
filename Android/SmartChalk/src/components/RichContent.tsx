@@ -10,18 +10,30 @@ declare const require: (moduleName: string) => {
 };
 
 function getSvgMathRenderers() {
-  const runtime = globalThis as typeof globalThis & { PACKAGE_VERSION?: string };
-  runtime.PACKAGE_VERSION ||= '3.2.1';
-  return require('react-native-math-view/src/fallback');
+  try {
+    const runtime = globalThis as typeof globalThis & { PACKAGE_VERSION?: string };
+    runtime.PACKAGE_VERSION ||= '3.2.1';
+    return require('react-native-math-view/src/fallback');
+  } catch (_error) {
+    return null;
+  }
 }
 
 function InlineMath({ value }: SvgMathTextProps) {
-  const { MathText: ExpoMathText } = getSvgMathRenderers();
+  const renderers = getSvgMathRenderers();
+  if (!renderers?.MathText) {
+    return <Text style={styles.inlineMathText}>{value}</Text>;
+  }
+  const { MathText: ExpoMathText } = renderers;
   return <ExpoMathText value={value} style={styles.inlineMath} />;
 }
 
 function DisplayMath({ math }: SvgMathViewProps) {
-  const { default: ExpoMathView } = getSvgMathRenderers();
+  const renderers = getSvgMathRenderers();
+  if (!renderers?.default) {
+    return <Text style={styles.blockMathText}>{math}</Text>;
+  }
+  const { default: ExpoMathView } = renderers;
   return <ExpoMathView math={math} resizeMode="contain" style={styles.blockMath} />;
 }
 
@@ -150,4 +162,6 @@ const styles = StyleSheet.create({
   inlineFlow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
   inlineMath: { minHeight: 28, minWidth: 22, justifyContent: 'center' },
   blockMath: { minHeight: 44, maxWidth: '100%', alignSelf: 'stretch' },
+  inlineMathText: { color: '#2D66C8', fontStyle: 'italic' },
+  blockMathText: { color: '#2D66C8', fontStyle: 'italic', marginVertical: 6 },
 });

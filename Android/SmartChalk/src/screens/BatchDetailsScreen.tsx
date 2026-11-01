@@ -15,6 +15,7 @@ import {
 import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AttachmentViewer } from '../components/AttachmentViewer';
 import { RichContent } from '../components/RichContent';
 import { auth, db, storage } from '../config/firebaseconfig';
 import type { RootStackScreenProps } from '../navigation/types';
@@ -90,6 +91,7 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [quizScores, setQuizScores] = useState<FirestoreItem[]>([]);
   const [vaultItems, setVaultItems] = useState<FirestoreItem[]>([]);
+  const [activeAttachment, setActiveAttachment] = useState<{ uri: string; name: string } | null>(null);
   const [worksheets, setWorksheets] = useState<SelfStudyWorksheet[]>([]);
   const [activeTab, setActiveTab] = useState<TabKey | null>(route.params.initialTab || null);
   const [activeWorksheetId, setActiveWorksheetId] = useState('');
@@ -435,6 +437,10 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
     Linking.openURL(url).catch(() => Alert.alert('Unable to open link', 'Check the link and try again.'));
   };
 
+  const openAttachment = (url: string, name?: string) => {
+    setActiveAttachment({ uri: url, name: name || url.split('?')[0].split('/').pop() || 'Attachment' });
+  };
+
   return (
     <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -526,7 +532,7 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
                 <RichContent content={String(item.description || '')} />
                 <Text style={styles.metaText}>{item.isStudentUpload ? `Shared by ${String(item.uploadedByName || 'student')}` : 'Shared by teacher'}</Text>
                 {typeof item.fileURL === 'string' && item.fileURL ? (
-                  <Pressable onPress={() => openLink(item.fileURL as string)} style={styles.inlineAction}>
+                  <Pressable onPress={() => openAttachment(item.fileURL as string, String(item.fileName || ''))} style={styles.inlineAction}>
                     <MaterialCommunityIcons name="download-outline" size={17} color="#2D66C8" />
                     <Text style={styles.inlineActionText}>{String(item.fileName || 'Open attachment')}</Text>
                   </Pressable>
@@ -568,7 +574,7 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
                   <RichContent content={String(assignment.description || assignment.subject || '')} />
                   <Text style={styles.metaText}>Due {formatDate(assignment.dueDate)}  ·  Max score {String(assignment.maxScore || 100)}</Text>
                   {typeof assignment.worksheetFileURL === 'string' && assignment.worksheetFileURL ? (
-                    <Pressable onPress={() => openLink(assignment.worksheetFileURL as string)} style={styles.inlineAction}>
+                    <Pressable onPress={() => openAttachment(assignment.worksheetFileURL as string, `${String(assignment.title || 'Worksheet')}.pdf`)} style={styles.inlineAction}>
                       <MaterialCommunityIcons name="download-outline" size={17} color="#2D66C8" />
                       <Text style={styles.inlineActionText}>Download worksheet</Text>
                     </Pressable>
@@ -577,6 +583,12 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
                     <View style={styles.submissionState}>
                       <Text style={styles.statusText}>{submission.grade === null || submission.grade === undefined ? 'Submitted for review' : `Score: ${String(submission.grade)} / ${String(assignment.maxScore || 100)}`}</Text>
                       {typeof submission.feedback === 'string' && submission.feedback ? <RichContent content={submission.feedback} /> : null}
+                      {typeof submission.submittedFileURL === 'string' && submission.submittedFileURL ? (
+                        <Pressable onPress={() => openAttachment(submission.submittedFileURL as string, String(submission.submittedFileName || 'Solution'))} style={styles.inlineAction}>
+                          <MaterialCommunityIcons name="file-eye-outline" size={17} color="#2D66C8" />
+                          <Text style={styles.inlineActionText}>{String(submission.submittedFileName || 'View submitted solution')}</Text>
+                        </Pressable>
+                      ) : null}
                     </View>
                   ) : (
                     <View style={styles.uploadArea}>
@@ -634,7 +646,7 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
                   <Text style={styles.metaText}>Due {formatDate(test.dueDate)}  ·  Max score {String(test.maxScore || 100)}</Text>
                   {typeof test.testContent === 'string' && test.testContent ? <RichContent content={test.testContent} /> : null}
                   {typeof test.testFileURL === 'string' && test.testFileURL ? (
-                    <Pressable onPress={() => openLink(test.testFileURL as string)} style={styles.inlineAction}>
+                    <Pressable onPress={() => openAttachment(test.testFileURL as string, `${String(test.title || 'Test')}.pdf`)} style={styles.inlineAction}>
                       <MaterialCommunityIcons name="download-outline" size={17} color="#2D66C8" />
                       <Text style={styles.inlineActionText}>Open test paper</Text>
                     </Pressable>
@@ -643,6 +655,12 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
                     <View style={styles.submissionState}>
                       <Text style={styles.statusText}>{submission.status === 'graded' ? `Graded: ${String(submission.grade)} / ${String(test.maxScore || 100)}` : 'Submitted for grading'}</Text>
                       {typeof submission.feedback === 'string' && submission.feedback ? <RichContent content={submission.feedback} /> : null}
+                      {typeof submission.submittedFileURL === 'string' && submission.submittedFileURL ? (
+                        <Pressable onPress={() => openAttachment(submission.submittedFileURL as string, String(submission.submittedFileName || 'Solution'))} style={styles.inlineAction}>
+                          <MaterialCommunityIcons name="file-eye-outline" size={17} color="#2D66C8" />
+                          <Text style={styles.inlineActionText}>{String(submission.submittedFileName || 'View submitted solution')}</Text>
+                        </Pressable>
+                      ) : null}
                     </View>
                   ) : (
                     <View style={styles.uploadArea}>
@@ -798,6 +816,11 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
           </View>
         )}
       </ScrollView>
+      <AttachmentViewer
+        uri={activeAttachment?.uri || null}
+        fileName={activeAttachment?.name}
+        onClose={() => setActiveAttachment(null)}
+      />
     </View>
   );
 }

@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "777034302772",
+    "project_id": "smartchalk-bdf27",
+    "storage_bucket": "smartchalk-bdf27.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:777034302772:android:d0c7054f4dd15bc8c45161",
+        "android_client_info": {
+          "package_name": "com.yourname.smart_chalk"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "777034302772-6jih7hca7gmm87p14qcc4ab1588snjvj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.yourname.smart_chalk",
+            "certificate_hash": "86521db55e3cf4eec0e84d8467db9f9fda1159b3"
+          }
+        },
+        {
+          "client_id": "777034302772-u1t6pihjvmm3q1bcpvk680b3rsg66gv5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.yourname.smart_chalk",
+            "certificate_hash": "7b5be7ae02ed81159efc9547bd03b7d7b3b4a938"
+          }
+        },
+        {
+          "client_id": "777034302772-rnejim8l5dvbb3jbf42dm0mdetuiesvd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAWcTAh93lX4kCApbo86kjcV-ns7Gx_1Rs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "777034302772-rnejim8l5dvbb3jbf42dm0mdetuiesvd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

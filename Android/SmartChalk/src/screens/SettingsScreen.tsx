@@ -1,117 +1,150 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as LocalAuthentication from 'expo-local-authentication';
+import Constants from 'expo-constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { auth, db } from '../config/firebaseconfig';
+import { disablePushNotifications, enablePushNotifications } from '../services/notificationService';
 import type { MainTabScreenProps } from '../navigation/types';
 
-interface SettingOption {
-  id: string;
-  title: string;
-  subtitle?: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  type: 'switch' | 'link';
-  value?: boolean;
-}
+const BIOMETRIC_KEY = 'smartchalk:biometric-lock:';
 
 export default function SettingsScreen({ navigation }: MainTabScreenProps<'SettingsTab'>) {
   const insets = useSafeAreaInsets();
-  const [pushEnabled, setPushEnabled] = useState(true);
+  const userId = auth.currentUser?.uid;
+  const [pushEnabled, setPushEnabled] = useState(false);
   const [biometricsEnabled, setBiometricsEnabled] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [savingNotifications, setSavingNotifications] = useState(false);
+  const [checkingBiometrics, setCheckingBiometrics] = useState(false);
+
+  useEffect(() => {
+    if (!userId) return undefined;
+    let active = true;
+    const unsubscribe = onSnapshot(doc(db, 'users', userId), (snapshot) => {
+      setPushEnabled(snapshot.data()?.notificationsEnabled === true);
+    });
+    void AsyncStorage.getItem(`${BIOMETRIC_KEY}${userId}`).then((value) => {
+      if (active) setBiometricsEnabled(value === 'true');
+    });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [userId]);
+
+  async function toggleNotifications(enabled: boolean) {
+    if (!userId) return;
+    setSavingNotifications(true);
+    try {
+      if (enabled) await enablePushNotifications(userId);
+      else await disablePushNotifications(userId);
+      setPushEnabled(enabled);
+    } catch (error) {
+      Alert.alert('Notifications unavailable', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setSavingNotifications(false);
+    }
+  }
+
+  async function toggleBiometrics(enabled: boolean) {
+    if (!userId) return;
+    if (!enabled) {
+      await AsyncStorage.removeItem(`${BIOMETRIC_KEY}${userId}`);
+      setBiometricsEnabled(false);
+      return;
+    }
+
+    setCheckingBiometrics(true);
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!hasHardware || !enrolled) {
+        Alert.alert('Biometrics unavailable', 'Set up Face ID or a fingerprint in your device settings first.');
+        return;
+      }
+      const result = await LocalAuthentication.authenticateAsync({ promptMessage: 'Enable SmartChalk app lock' });
+      if (result.success) {
+        await AsyncStorage.setItem(`${BIOMETRIC_KEY}${userId}`, 'true');
+        setBiometricsEnabled(true);
+      }
+    } catch (error) {
+      Alert.alert('Could not enable app lock', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setCheckingBiometrics(false);
+    }
+  }
 
   return (
     <View style={styles.mainContainer}>
       <View style={[styles.safeArea, { paddingTop: Math.max(insets.top, 16) }]}>
         <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-          {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>System Settings</Text>
-            <Text style={styles.subtitle}>Configure preferences & application behavior</Text>
+            <Text style={styles.eyebrow}>SMARTCHALK</Text>
+            <Text style={styles.title}>Settings</Text>
+            <Text style={styles.subtitle}>Manage your learning and account preferences.</Text>
           </View>
 
-          {/* Section: App Preferences */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Preferences</Text>
+            <Text style={styles.sectionTitle}>Notifications</Text>
 
             <View style={styles.row}>
               <View style={styles.iconCircle}>
-                <Ionicons name="notifications-outline" size={22} color="#4F46E5" />
+                <MaterialCommunityIcons name="bell-outline" size={21} color="#2D66C8" />
               </View>
               <View style={styles.rowContent}>
-                <Text style={styles.rowTitle}>Push Notifications</Text>
-                <Text style={styles.rowSubtitle}>Receive critical alerts and updates</Text>
+                <Text style={styles.rowTitle}>Class and assignment updates</Text>
+                <Text style={styles.rowSubtitle}>New assignments, tests, quizzes, announcements, and grades.</Text>
               </View>
               <Switch
                 value={pushEnabled}
-                onValueChange={setPushEnabled}
-                trackColor={{ false: '#E5E7EB', true: '#C7D2FE' }}
-                thumbColor={pushEnabled ? '#4F46E5' : '#F3F4F6'}
+                onValueChange={toggleNotifications}
+                disabled={savingNotifications}
+                trackColor={{ false: '#DDE8F0', true: '#A8C6ED' }}
+                thumbColor={pushEnabled ? '#2D66C8' : '#FFFFFF'}
               />
             </View>
 
-            <View style={styles.row}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="moon-outline" size={22} color="#4F46E5" />
-              </View>
-              <View style={styles.rowContent}>
-                <Text style={styles.rowTitle}>Dark Mode</Text>
-                <Text style={styles.rowSubtitle}>Adaptive high-contrast slate theme</Text>
-              </View>
-              <Switch
-                value={darkMode}
-                onValueChange={setDarkMode}
-                trackColor={{ false: '#E5E7EB', true: '#C7D2FE' }}
-                thumbColor={darkMode ? '#4F46E5' : '#F3F4F6'}
-              />
-            </View>
+            {!pushEnabled ? <Text style={styles.notice}>Push requires a linked EAS project and notification credentials. In-app updates remain available.</Text> : null}
           </View>
 
-          {/* Section: Security */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Security & Privacy</Text>
+            <Text style={styles.sectionTitle}>Security</Text>
 
             <View style={styles.row}>
               <View style={styles.iconCircle}>
-                <Ionicons name="finger-print-outline" size={22} color="#4F46E5" />
+                <MaterialCommunityIcons name="fingerprint" size={22} color="#2D66C8" />
               </View>
               <View style={styles.rowContent}>
-                <Text style={styles.rowTitle}>Biometric Lock</Text>
-                <Text style={styles.rowSubtitle}>Require FaceID or Fingerprint on launch</Text>
+                <Text style={styles.rowTitle}>Biometric app lock</Text>
+                <Text style={styles.rowSubtitle}>Verify with your device before opening SmartChalk.</Text>
               </View>
               <Switch
                 value={biometricsEnabled}
-                onValueChange={setBiometricsEnabled}
-                trackColor={{ false: '#E5E7EB', true: '#C7D2FE' }}
-                thumbColor={biometricsEnabled ? '#4F46E5' : '#F3F4F6'}
+                onValueChange={toggleBiometrics}
+                disabled={checkingBiometrics}
+                trackColor={{ false: '#DDE8F0', true: '#A8C6ED' }}
+                thumbColor={biometricsEnabled ? '#2D66C8' : '#FFFFFF'}
               />
             </View>
 
-            <TouchableOpacity style={styles.row} onPress={() => alert('Opening Session Log')}>
+            <Pressable style={styles.row} onPress={() => navigation.navigate('ProfileTab')}>
               <View style={styles.iconCircle}>
-                <Ionicons name="key-outline" size={22} color="#4F46E5" />
+                <MaterialCommunityIcons name="account-edit-outline" size={21} color="#2D66C8" />
               </View>
               <View style={styles.rowContent}>
-                <Text style={styles.rowTitle}>Active Sessions</Text>
-                <Text style={styles.rowSubtitle}>Manage connected devices and tokens</Text>
+                <Text style={styles.rowTitle}>Student profile</Text>
+                <Text style={styles.rowSubtitle}>Update grade, subjects, contact details, and photo.</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
+              <MaterialCommunityIcons name="chevron-right" size={20} color="#91A0AE" />
+            </Pressable>
           </View>
 
-          {/* Section: Storage & Cache */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Storage & Telemetry</Text>
-
-            <TouchableOpacity style={styles.row} onPress={() => alert('Local cache cleared!')}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="trash-bin-outline" size={22} color="#EF4444" />
-              </View>
-              <View style={styles.rowContent}>
-                <Text style={styles.rowTitle}>Clear Offline Cache</Text>
-                <Text style={styles.rowSubtitle}>Purge cached queries and temporary storage</Text>
-              </View>
-              <Text style={styles.cacheSizeText}>14.2 MB</Text>
-            </TouchableOpacity>
+          <View style={styles.aboutRow}>
+            <MaterialCommunityIcons name="school-outline" size={19} color="#2D66C8" />
+            <Text style={styles.aboutText}>SmartChalk  ·  {Constants.expoConfig?.version || '1.0.0'}</Text>
           </View>
         </ScrollView>
       </View>
@@ -122,60 +155,60 @@ export default function SettingsScreen({ navigation }: MainTabScreenProps<'Setti
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#EDF8FD',
   },
   safeArea: {
     flex: 1,
   },
   container: {
-    padding: 24,
-    paddingBottom: 40,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 36,
   },
   header: {
-    marginTop: 10,
-    marginBottom: 24,
+    marginBottom: 20,
+  },
+  eyebrow: {
+    color: '#3971C9',
+    fontSize: 10,
+    fontWeight: '800',
+    marginBottom: 5,
   },
   title: {
-    fontSize: 28,
+    fontSize: 25,
     fontWeight: '800',
-    color: '#111827',
-    marginBottom: 4,
+    color: '#25394D',
+    marginBottom: 5,
   },
   subtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#8291A0',
   },
   section: {
-    marginBottom: 28,
+    marginBottom: 22,
   },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#4B5563',
+    color: '#60758A',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
     marginBottom: 12,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 14,
-    marginBottom: 10,
+    padding: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    borderColor: '#E4EDF3',
+    marginBottom: 9,
   },
   iconCircle: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#E8F1FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -186,16 +219,29 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#26394D',
     marginBottom: 2,
   },
   rowSubtitle: {
     fontSize: 12,
     color: '#6B7280',
   },
-  cacheSizeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#9CA3AF',
+  notice: {
+    color: '#8B6B2A',
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 8,
+  },
+  aboutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 4,
+    paddingVertical: 14,
+  },
+  aboutText: {
+    color: '#8291A0',
+    fontSize: 11,
   },
 });
