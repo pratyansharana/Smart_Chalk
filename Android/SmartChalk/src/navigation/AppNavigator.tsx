@@ -4,6 +4,7 @@ import LoginScreen from '../screens/LoginScreen';
 import SignupScreen from '../screens/SignupScreen';
 import MainTabs from './MainTabs';
 import { SplashScreen } from '../screens/SplashScreen';
+import BatchDetailsScreen from '../screens/BatchDetailsScreen';
 import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from './types';
 
@@ -19,12 +20,18 @@ export default function AppNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {user ? (
-        // Authenticated Protected Stack
-        <Stack.Screen 
-          name="MainTabs" 
-          component={MainTabs} 
-          options={{ gestureEnabled: false }} 
-        />
+        <>
+          <Stack.Screen
+            name="MainTabs"
+            component={MainTabs}
+            options={{ gestureEnabled: false }}
+          />
+          <Stack.Screen
+            name="BatchDetails"
+            component={BatchDetailsScreen}
+            options={{ gestureEnabled: true }}
+          />
+        </>
       ) : (
         // Unauthenticated Public Auth Stack
         <>

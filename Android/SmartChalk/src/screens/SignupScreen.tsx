@@ -13,14 +13,16 @@ import {
     ScrollView
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../config/firebaseconfig';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { auth, db } from '../config/firebaseconfig';
 import { useAuth } from '../context/AuthContext';
 import type { RootStackScreenProps } from '../navigation/types';
 
 export default function SignupScreen({ navigation }: RootStackScreenProps<'Signup'>) {
     const insets = useSafeAreaInsets();
     const { bypassAuth } = useAuth();
+    const [displayName, setDisplayName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -28,7 +30,7 @@ export default function SignupScreen({ navigation }: RootStackScreenProps<'Signu
 
     const handleSignup = async () => {
         if (!email || !password) {
-            alert('Please enter both email and password');
+            alert('Please enter an email and password');
             return;
         }
 
@@ -37,6 +39,24 @@ export default function SignupScreen({ navigation }: RootStackScreenProps<'Signu
 
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const studentName = displayName.trim() || email.split('@')[0] || 'Student';
+            await updateProfile(userCredential.user, { displayName: studentName });
+            await setDoc(doc(db, 'users', userCredential.user.uid), {
+                uid: userCredential.user.uid,
+                email: userCredential.user.email,
+                displayName: studentName,
+                photoURL: userCredential.user.photoURL || null,
+                role: 'student',
+                createdAt: serverTimestamp(),
+                profile: {
+                    grade: null,
+                    subjectsOfInterest: [],
+                    subjectsTaught: [],
+                    bio: null,
+                    phone: null,
+                },
+                linkedStudentIds: null,
+            }, { merge: true });
             console.log('User created:', userCredential.user.email);
             // AuthContext onAuthStateChanged automatically transitions to MainTabs
         } catch (error: any) {
@@ -73,6 +93,18 @@ export default function SignupScreen({ navigation }: RootStackScreenProps<'Signu
 
                         {/* Input Section */}
                         <View style={styles.formContainer}>
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.inputLabel}>Name</Text>
+                                <TextInput
+                                    placeholder="Your name"
+                                    placeholderTextColor="#9CA3AF"
+                                    style={styles.input}
+                                    value={displayName}
+                                    onChangeText={setDisplayName}
+                                    autoCapitalize="words"
+                                    editable={!loading}
+                                />
+                            </View>
                             <View style={styles.inputContainer}>
                                 <Text style={styles.inputLabel}>Email</Text>
                                 <TextInput 

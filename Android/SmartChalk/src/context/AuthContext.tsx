@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '../config/firebaseconfig';
+import { onAuthStateChanged, updateProfile, User } from 'firebase/auth';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { auth, db } from '../config/firebaseconfig';
 
 interface AuthContextType {
   user: User | null;
@@ -21,11 +22,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setIsLoading(false);
+    let active = true;
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      try {
+        if (currentUser && db) {
+          const userRef = doc(db, 'users', currentUser.uid);
+          const existingProfile = await getDoc(userRef);
+          if (!existingProfile.exists()) {
+            const displayName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Student';
+            if (!currentUser.displayName) await updateProfile(currentUser, { displayName });
+            await setDoc(userRef, {
+              uid: currentUser.uid,
+              email: currentUser.email,
+              displayName,
+              photoURL: currentUser.photoURL || null,
+              role: 'student',
+              createdAt: serverTimestamp(),
+              profile: {
+                grade: null,
+                subjectsOfInterest: [],
+                subjectsTaught: [],
+                bio: null,
+                phone: null,
+              },
+              linkedStudentIds: null,
+            }, { merge: true });
+          }
+        }
+      } catch (error) {
+        console.error('User profile bootstrap failed:', error);
+      }
+      if (active) {
+        setUser(currentUser);
+        setIsLoading(false);
+      }
     });
-    return unsubscribe;
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 
   const bypassAuth = () => {

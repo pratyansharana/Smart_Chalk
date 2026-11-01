@@ -1,112 +1,78 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { StateScreen } from '../components/StateScreen';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { auth } from '../config/firebaseconfig';
+import { getAssignmentDueDate, useStudentDashboard } from '../hooks/useStudentDashboard';
 
-interface NotificationItem {
-  id: string;
-  title: string;
-  message: string;
-  time: string;
-  unread: boolean;
-  type: 'security' | 'system' | 'update';
+function toDate(value: unknown) {
+  if (!value) return null;
+  if (typeof value === 'object' && value !== null && 'toDate' in value && typeof value.toDate === 'function') {
+    return value.toDate();
+  }
+  const date = new Date(value as string | number);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
-
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: '1',
-    title: 'New Device Login Detected',
-    message: 'A login to your Firebase account was made from Windows (Chrome/Expo Go).',
-    time: '5m ago',
-    unread: true,
-    type: 'security',
-  },
-  {
-    id: '2',
-    title: 'Session Token Refreshed',
-    message: 'Your OAuth session token was seamlessly rotated via AsyncStorage persistence.',
-    time: '1h ago',
-    unread: true,
-    type: 'system',
-  },
-  {
-    id: '3',
-    title: 'Template Dependencies Verified',
-    message: 'React 19 & Expo SDK 54 packages are synchronized with strict TypeScript definitions.',
-    time: '2d ago',
-    unread: false,
-    type: 'update',
-  },
-];
 
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
-
-  const markAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
-  };
-
-  const clearAll = () => {
-    setNotifications([]);
-  };
+  const { classes, assignments, submissions } = useStudentDashboard(auth.currentUser?.uid);
+  const updates = [
+    ...classes.data.flatMap((batch) => (batch.notes || []).map((note) => ({
+      id: `announcement-${batch.id}-${note.id}`,
+      title: batch.title || batch.subject || 'Class announcement',
+      message: note.text,
+      date: toDate(note.createdAt),
+      icon: 'bullhorn-outline' as const,
+      tint: '#E8F1FF',
+      color: '#3168CC',
+    }))),
+    ...assignments.data.filter((assignment) => !submissions.data.some((item) => item.assignmentId === assignment.id)).map((assignment) => ({
+      id: `assignment-${assignment.id}`,
+      title: assignment.title,
+      message: `Due ${getAssignmentDueDate(assignment)?.toLocaleDateString() || 'date pending'}`,
+      date: getAssignmentDueDate(assignment),
+      icon: 'file-document-outline' as const,
+      tint: '#FFF3D1',
+      color: '#B77A1A',
+    })),
+    ...submissions.data.filter((submission) => typeof submission.grade === 'number').map((submission) => ({
+      id: `grade-${submission.id}`,
+      title: 'Assignment graded',
+      message: `Your work was graded ${submission.grade}${submission.maxScore ? ` / ${submission.maxScore}` : ''}${submission.feedback ? ` · ${submission.feedback}` : ''}`,
+      date: toDate(submission.submittedAt),
+      icon: 'check-decagram-outline' as const,
+      tint: '#E4F6EA',
+      color: '#287E52',
+    })),
+  ].sort((left, right) => (right.date?.getTime() || 0) - (left.date?.getTime() || 0));
+  const loading = classes.loading || assignments.loading || submissions.loading;
 
   return (
     <View style={styles.mainContainer}>
       <View style={[styles.safeArea, { paddingTop: Math.max(insets.top, 16) }]}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Notifications</Text>
-            <Text style={styles.subtitle}>Security alerts & system activity</Text>
+            <Text style={styles.title}>Your updates</Text>
+            <Text style={styles.subtitle}>Announcements, deadlines, and feedback</Text>
           </View>
-          {notifications.length > 0 && (
-            <View style={styles.headerActions}>
-              <TouchableOpacity onPress={markAllRead} style={styles.actionBtn}>
-                <Text style={styles.actionBtnText}>Mark read</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={clearAll} style={styles.actionBtn}>
-                <Text style={[styles.actionBtnText, { color: '#EF4444' }]}>Clear</Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
 
-        {notifications.length === 0 ? (
-          <StateScreen
-            variant="empty"
-            title="All Caught Up!"
-            description="You have no unread notifications or pending security alerts."
-            buttonText="Reload Notifications"
-            onAction={() => setNotifications(INITIAL_NOTIFICATIONS)}
-          />
-        ) : (
-          <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-            {notifications.map((item) => (
-              <View key={item.id} style={[styles.card, item.unread && styles.cardUnread]}>
-                <View style={[
-                  styles.iconCircle,
-                  item.type === 'security' ? styles.iconSecurity : styles.iconSystem
-                ]}>
-                  <Ionicons
-                    name={item.type === 'security' ? 'shield-checkmark-outline' : 'information-circle-outline'}
-                    size={22}
-                    color={item.type === 'security' ? '#EF4444' : '#4F46E5'}
-                  />
-                </View>
-
-                <View style={styles.cardContent}>
-                  <View style={styles.cardTitleRow}>
-                    <Text style={styles.cardTitle}>{item.title}</Text>
-                    {item.unread && <View style={styles.unreadDot} />}
-                  </View>
-                  <Text style={styles.cardMessage}>{item.message}</Text>
-                  <Text style={styles.cardTime}>{item.time}</Text>
-                </View>
+        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+          {loading ? <Text style={styles.emptyText}>Loading your updates...</Text> : updates.map((item) => (
+            <View key={item.id} style={styles.card}>
+              <View style={[styles.iconCircle, { backgroundColor: item.tint }]}>
+                <MaterialCommunityIcons name={item.icon} size={21} color={item.color} />
               </View>
-            ))}
-          </ScrollView>
-        )}
+              <View style={styles.cardContent}>
+                <Text style={styles.cardTitle}>{item.title}</Text>
+                <Text style={styles.cardMessage}>{item.message}</Text>
+                {item.date ? <Text style={styles.cardTime}>{item.date.toLocaleDateString()}</Text> : null}
+              </View>
+            </View>
+          ))}
+          {!loading && updates.length === 0 ? <Text style={styles.emptyText}>You&apos;re all caught up. New class announcements and feedback will appear here.</Text> : null}
+        </ScrollView>
       </View>
     </View>
   );
@@ -222,5 +188,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#9CA3AF',
     fontWeight: '500',
+  },
+  emptyText: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 18,
+    color: '#8291A0',
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
   },
 });

@@ -1,6 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons'; // Expo's built-in icon library
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import HomeScreen from '../screens/HomeScreen';
 import ExploreScreen from '../screens/ExploreScreen';
@@ -19,32 +19,36 @@ export default function MainTabs() {
         
         // Dynamic Icon Logic
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap = 'home';
+          let iconName: keyof typeof MaterialCommunityIcons.glyphMap = 'home-variant';
 
           if (route.name === 'HomeTab') {
-            iconName = focused ? 'home' : 'home-outline';
+            iconName = focused ? 'home-variant' : 'home-variant-outline';
           } else if (route.name === 'ExploreTab') {
-            iconName = focused ? 'compass' : 'compass-outline';
+            iconName = focused ? 'book-open-variant' : 'book-open-outline';
           } else if (route.name === 'NotificationsTab') {
-            iconName = focused ? 'notifications' : 'notifications-outline';
+            iconName = focused ? 'bell' : 'bell-outline';
           } else if (route.name === 'SettingsTab') {
-            iconName = focused ? 'settings' : 'settings-outline';
+            iconName = focused ? 'cog' : 'cog-outline';
           } else if (route.name === 'ProfileTab') {
-            iconName = focused ? 'person' : 'person-outline';
+            iconName = focused ? 'account' : 'account-outline';
           }
 
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
         },
         
         // Tab Bar Styling
-        tabBarActiveTintColor: '#4F46E5',
-        tabInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: '#2D66C8',
+        tabBarInactiveTintColor: '#98A5B2',
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '500',
+        },
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
-          height: 60,
-          paddingBottom: 8,
+          borderTopColor: '#E3EDF4',
+          height: 64,
+          paddingBottom: 7,
           paddingTop: 8,
         },
       })}
@@ -57,12 +61,12 @@ export default function MainTabs() {
       <Tab.Screen 
         name="ExploreTab" 
         component={ExploreScreen} 
-        options={{ tabBarLabel: 'Explore' }} 
+        options={{ tabBarLabel: 'Classes' }} 
       />
       <Tab.Screen 
         name="NotificationsTab" 
         component={NotificationsScreen} 
-        options={{ tabBarLabel: 'Alerts' }} 
+        options={{ tabBarLabel: 'Updates' }} 
       />
       <Tab.Screen 
         name="SettingsTab" 

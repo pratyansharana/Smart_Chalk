@@ -77,7 +77,30 @@ service cloud.firestore {
     match /test_submissions/{submissionId} {
       allow create: if isStudent() && request.resource.data.studentId == request.auth.uid;
       allow read: if isTeacher() || isAdmin() || (isStudent() && resource.data.studentId == request.auth.uid);
-      allow update: if isTeacher() || isAdmin();
+      allow update: if isTeacher() || isAdmin() || (
+        isStudent() &&
+        resource.data.studentId == request.auth.uid &&
+        request.resource.data.studentId == resource.data.studentId &&
+        request.resource.data.testId == resource.data.testId &&
+        request.resource.data.classId == resource.data.classId &&
+        request.resource.data.status == 'submitted' &&
+        request.resource.data.grade == null &&
+        request.resource.data.feedback == null &&
+        request.resource.data.gradedBy == null &&
+        request.resource.data.gradedAt == null &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'submittedFileURL',
+          'submittedFileName',
+          'submittedFiles',
+          'studentText',
+          'status',
+          'grade',
+          'feedback',
+          'gradedBy',
+          'gradedAt',
+          'submittedAt'
+        ])
+      );
       allow delete: if isAdmin();
     }
 
