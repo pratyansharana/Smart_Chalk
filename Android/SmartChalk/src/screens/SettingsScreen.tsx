@@ -37,12 +37,20 @@ export default function SettingsScreen({ navigation }: MainTabScreenProps<'Setti
 
   async function toggleNotifications(enabled: boolean) {
     if (!userId) return;
+    console.log('[SettingsScreen] toggleNotifications start', { enabled, userId });
     setSavingNotifications(true);
     try {
-      if (enabled) await enablePushNotifications(userId);
-      else await disablePushNotifications(userId);
+      if (enabled) {
+        console.log('[SettingsScreen] enabling push notifications');
+        await enablePushNotifications(userId);
+      } else {
+        console.log('[SettingsScreen] disabling push notifications');
+        await disablePushNotifications(userId);
+      }
       setPushEnabled(enabled);
+      console.log('[SettingsScreen] toggleNotifications completed', { enabled, pushEnabled: enabled });
     } catch (error) {
+      console.log('[SettingsScreen] toggleNotifications failed', { enabled, error });
       Alert.alert('Notifications unavailable', error instanceof Error ? error.message : 'Please try again.');
     } finally {
       setSavingNotifications(false);

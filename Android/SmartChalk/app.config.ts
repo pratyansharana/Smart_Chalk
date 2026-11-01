@@ -19,9 +19,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ? config.slug.replace(/-/g, '').toLowerCase() 
     : 'template';
 
-  const companyPrefix = 'com.yourname'; // CHANGE THIS TO YOUR ACTUAL DEV NAME/COMPANY
+  const companyPrefix = 'com.yourname';
+  const appBundleId = 'com.yourname.smart_chalk';
 
-  // Notice the parentheses ( ) directly after return
   return {
     ...config,
     plugins: [
@@ -39,12 +39,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     slug: config.slug || 'expo-starter-template',
     ios: {
       ...config.ios,
-      bundleIdentifier: `${companyPrefix}.${cleanSlug}`,
+      bundleIdentifier: appBundleId,
       googleServicesFile: './GoogleService-Info.plist',
     },
     android: {
       ...config.android,
-      package: `${companyPrefix}.${cleanSlug}`,
+      package: appBundleId,
       googleServicesFile: './google-services.json',
     },
   };

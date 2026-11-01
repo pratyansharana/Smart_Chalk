@@ -18,6 +18,7 @@ Notifications.setNotificationHandler({
 });
 
 export async function enablePushNotifications(userId: string) {
+  console.log('[notificationService] enablePushNotifications start', { userId });
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('smartchalk-updates', {
       name: 'SmartChalk updates',
@@ -29,33 +30,41 @@ export async function enablePushNotifications(userId: string) {
   }
 
   const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
+  console.log('[notificationService] projectId', { projectId });
   if (!projectId) {
     throw new Error('Push notifications need an EAS project ID. Link this app with `npx eas-cli init`, then rebuild.');
   }
 
   const currentPermissions = await Notifications.getPermissionsAsync();
+  console.log('[notificationService] current permissions', currentPermissions);
   const permissions = currentPermissions.granted
     ? currentPermissions
     : await Notifications.requestPermissionsAsync();
   const iosProvisional = permissions.ios?.status === IosAuthorizationStatus.PROVISIONAL;
+  console.log('[notificationService] final permissions state', { permissions, iosProvisional });
   if (!permissions.granted && !iosProvisional) {
     throw new Error('Notification permission was not granted. You can enable it in your device settings.');
   }
 
   const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+  console.log('[notificationService] expo push token generated', { token });
   await updateDoc(doc(db, 'users', userId), {
     expoPushTokens: arrayUnion(token),
     notificationsEnabled: true,
   });
   await AsyncStorage.setItem(`${TOKEN_STORAGE_PREFIX}${userId}`, token);
+  console.log('[notificationService] enablePushNotifications success', { userId, token });
   return token;
 }
 
 export async function disablePushNotifications(userId: string) {
+  console.log('[notificationService] disablePushNotifications start', { userId });
   await updateDoc(doc(db, 'users', userId), { notificationsEnabled: false });
+  console.log('[notificationService] disablePushNotifications success', { userId });
 }
 
 export async function unregisterPushToken(userId: string) {
+  console.log('[notificationService] unregisterPushToken start', { userId });
   const token = await AsyncStorage.getItem(`${TOKEN_STORAGE_PREFIX}${userId}`);
   if (token) {
     const { arrayRemove } = await import('firebase/firestore');
@@ -63,4 +72,5 @@ export async function unregisterPushToken(userId: string) {
     await AsyncStorage.removeItem(`${TOKEN_STORAGE_PREFIX}${userId}`);
   }
   await disablePushNotifications(userId);
+  console.log('[notificationService] unregisterPushToken complete', { userId });
 }

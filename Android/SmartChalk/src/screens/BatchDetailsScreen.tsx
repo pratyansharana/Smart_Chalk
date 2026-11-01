@@ -16,7 +16,7 @@ import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AttachmentViewer } from '../components/AttachmentViewer';
-import { RichContent } from '../components/RichContent';
+import { QuestionPaperContent, RichContent } from '../components/RichContent';
 import { auth, db, storage } from '../config/firebaseconfig';
 import type { RootStackScreenProps } from '../navigation/types';
 
@@ -564,42 +564,75 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
               if (!assignment) return <EmptyState text="This assignment is no longer available." />;
               const submission = assignmentSubmissionById.get(assignment.id);
               const key = `assignment-${assignment.id}`;
+              console.log('[BatchDetailsScreen] assignment opened', {
+                assignmentId: assignment.id,
+                title: assignment.title,
+                descriptionLength: String(assignment.description || assignment.subject || '').length,
+                hasWorksheet: Boolean(assignment.worksheetFileURL),
+              });
               return (
-                <View style={styles.contentRow}>
-                  <Pressable onPress={() => setSelectedAssignmentId('')} style={styles.inlineAction}>
-                    <MaterialCommunityIcons name="arrow-left" size={17} color="#2D66C8" />
-                    <Text style={styles.inlineActionText}>All assignments</Text>
-                  </Pressable>
-                  <Text style={styles.itemTitle}>{String(assignment.title || 'Assignment')}</Text>
-                  <RichContent content={String(assignment.description || assignment.subject || '')} />
-                  <Text style={styles.metaText}>Due {formatDate(assignment.dueDate)}  ·  Max score {String(assignment.maxScore || 100)}</Text>
-                  {typeof assignment.worksheetFileURL === 'string' && assignment.worksheetFileURL ? (
-                    <Pressable onPress={() => openAttachment(assignment.worksheetFileURL as string, `${String(assignment.title || 'Worksheet')}.pdf`)} style={styles.inlineAction}>
-                      <MaterialCommunityIcons name="download-outline" size={17} color="#2D66C8" />
-                      <Text style={styles.inlineActionText}>Download worksheet</Text>
+                <View style={styles.assignmentDetailCard}>
+                    <Pressable onPress={() => setSelectedAssignmentId('')} style={styles.inlineAction}>
+                      <MaterialCommunityIcons name="arrow-left" size={17} color="#2D66C8" />
+                      <Text style={styles.inlineActionText}>All assignments</Text>
                     </Pressable>
-                  ) : null}
-                  {submission ? (
-                    <View style={styles.submissionState}>
-                      <Text style={styles.statusText}>{submission.grade === null || submission.grade === undefined ? 'Submitted for review' : `Score: ${String(submission.grade)} / ${String(assignment.maxScore || 100)}`}</Text>
-                      {typeof submission.feedback === 'string' && submission.feedback ? <RichContent content={submission.feedback} /> : null}
-                      {typeof submission.submittedFileURL === 'string' && submission.submittedFileURL ? (
-                        <Pressable onPress={() => openAttachment(submission.submittedFileURL as string, String(submission.submittedFileName || 'Solution'))} style={styles.inlineAction}>
-                          <MaterialCommunityIcons name="file-eye-outline" size={17} color="#2D66C8" />
-                          <Text style={styles.inlineActionText}>{String(submission.submittedFileName || 'View submitted solution')}</Text>
-                        </Pressable>
-                      ) : null}
+
+                    <View style={styles.assignmentDetailHeader}>
+                      <View style={styles.assignmentBadge}>
+                        <MaterialCommunityIcons name="file-document-outline" size={14} color="#2D66C8" />
+                        <Text style={styles.assignmentBadgeText}>Assignment</Text>
+                      </View>
+                      <Text style={styles.assignmentDueText}>Due {formatDate(assignment.dueDate)}</Text>
                     </View>
-                  ) : (
-                    <View style={styles.uploadArea}>
-                      <Pressable onPress={() => selectFiles(key)} style={styles.secondaryButton}>
-                        <Text style={styles.secondaryButtonText}>{filesByKey[key]?.length ? `${filesByKey[key].length} file(s) selected` : 'Choose solution files'}</Text>
+
+                    <Text style={styles.assignmentDetailTitle}>{String(assignment.title || 'Assignment')}</Text>
+                    <View style={styles.assignmentMetaRow}>
+                      <Text style={styles.assignmentMetaPill}>Max {String(assignment.maxScore || 100)}</Text>
+                      <Text style={styles.assignmentMetaPill}>{submission ? 'Submitted' : 'Pending submission'}</Text>
+                    </View>
+
+                    {!!String(assignment.description || assignment.subject || '').trim() && (
+                      <View style={styles.assignmentBodyWrap}>
+                        <Text style={styles.assignmentContentHeading}>Goals & Guidelines</Text>
+                        <RichContent content={String(assignment.description || assignment.subject || '')} />
+                      </View>
+                    )}
+
+                    {!!String(assignment.assignmentContent || '').trim() && (
+                      <View style={styles.assignmentBodyWrap}>
+                        <Text style={styles.assignmentContentHeading}>Tasks & Questions</Text>
+                        <QuestionPaperContent content={String(assignment.assignmentContent)} />
+                      </View>
+                    )}
+
+                    {typeof assignment.worksheetFileURL === 'string' && assignment.worksheetFileURL ? (
+                      <Pressable onPress={() => openAttachment(assignment.worksheetFileURL as string, `${String(assignment.title || 'Worksheet')}.pdf`)} style={styles.assignmentActionButton}>
+                        <MaterialCommunityIcons name="download-outline" size={17} color="#2D66C8" />
+                        <Text style={styles.assignmentActionText}>Download worksheet</Text>
                       </Pressable>
-                      {filesByKey[key]?.length ? <Pressable disabled={uploadingKey === key} onPress={() => submitAssignment(assignment)} style={styles.primaryButton}>
-                        <Text style={styles.primaryButtonText}>{uploadingKey === key ? `Uploading ${uploadProgress}%` : 'Submit'}</Text>
-                      </Pressable> : null}
-                    </View>
-                  )}
+                    ) : null}
+
+                    {submission ? (
+                      <View style={styles.submissionState}>
+                        <Text style={styles.statusText}>{submission.grade === null || submission.grade === undefined ? 'Submitted for review' : `Score: ${String(submission.grade)} / ${String(assignment.maxScore || 100)}`}</Text>
+                        {typeof submission.feedback === 'string' && submission.feedback ? <RichContent content={submission.feedback} /> : null}
+                        {typeof submission.submittedFileURL === 'string' && submission.submittedFileURL ? (
+                          <Pressable onPress={() => openAttachment(submission.submittedFileURL as string, String(submission.submittedFileName || 'Solution'))} style={styles.assignmentActionButton}>
+                            <MaterialCommunityIcons name="file-eye-outline" size={17} color="#2D66C8" />
+                            <Text style={styles.assignmentActionText}>{String(submission.submittedFileName || 'View submitted solution')}</Text>
+                          </Pressable>
+                        ) : null}
+                      </View>
+                    ) : (
+                      <View style={styles.uploadArea}>
+                        <Pressable onPress={() => selectFiles(key)} style={styles.secondaryButton}>
+                          <Text style={styles.secondaryButtonText}>{filesByKey[key]?.length ? `${filesByKey[key].length} file(s) selected` : 'Choose solution files'}</Text>
+                        </Pressable>
+                        {filesByKey[key]?.length ? <Pressable disabled={uploadingKey === key} onPress={() => submitAssignment(assignment)} style={styles.primaryButton}>
+                          <Text style={styles.primaryButtonText}>{uploadingKey === key ? `Uploading ${uploadProgress}%` : 'Submit'}</Text>
+                        </Pressable> : null}
+                      </View>
+                    )}
                 </View>
               );
             })() : (
@@ -613,9 +646,18 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
                 {assignments.filter((item) => includeCompletedAssignments || !assignmentSubmissionById.has(item.id)).map((assignment) => {
                   const complete = assignmentSubmissionById.has(assignment.id);
                   return (
-                    <Pressable key={assignment.id} onPress={() => setSelectedAssignmentId(assignment.id)} style={styles.titleRow}>
-                      <MaterialCommunityIcons name={complete ? 'check-circle-outline' : 'circle-outline'} size={19} color={complete ? '#287E52' : '#2D66C8'} />
-                      <Text style={styles.titleRowText} numberOfLines={2}>{String(assignment.title || 'Assignment')}</Text>
+                    <Pressable key={assignment.id} onPress={() => setSelectedAssignmentId(assignment.id)} style={styles.assignmentListItem}>
+                      <View style={styles.assignmentListIconWrap}>
+                        <MaterialCommunityIcons name={complete ? 'check-circle-outline' : 'file-document-outline'} size={19} color={complete ? '#287E52' : '#2D66C8'} />
+                      </View>
+                      <View style={styles.assignmentListBody}>
+                        <Text style={styles.assignmentListTitle} numberOfLines={2}>{String(assignment.title || 'Assignment')}</Text>
+                        <Text style={styles.assignmentListMeta} numberOfLines={2}>{String(assignment.description || assignment.subject || 'No description added yet.')}</Text>
+                        <View style={styles.assignmentListFooter}>
+                          <Text style={styles.assignmentListDue}>Due {formatDate(assignment.dueDate)}</Text>
+                          <Text style={styles.assignmentListScore}>{String(assignment.maxScore || 100)} pts</Text>
+                        </View>
+                      </View>
                       <MaterialCommunityIcons name="chevron-right" size={19} color="#98A5B2" />
                     </Pressable>
                   );
@@ -635,59 +677,65 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
               if (!test) return <EmptyState text="This test is no longer available." />;
               const submission = testSubmissions.find((item) => item.testId === test.id && item.classId === batchId);
               const key = `test-${test.id}`;
+              console.log('[BatchDetailsScreen] test opened', {
+                testId: test.id,
+                title: test.title,
+                descriptionLength: String(test.description || '').length,
+                hasTestFile: Boolean(test.testFileURL),
+              });
               return (
                 <View style={styles.contentRow}>
-                  <Pressable onPress={() => setSelectedTestId('')} style={styles.inlineAction}>
-                    <MaterialCommunityIcons name="arrow-left" size={17} color="#2D66C8" />
-                    <Text style={styles.inlineActionText}>All tests</Text>
-                  </Pressable>
-                  <Text style={styles.itemTitle}>{String(test.title || 'Class test')}</Text>
-                  <RichContent content={String(test.description || '')} />
-                  <Text style={styles.metaText}>Due {formatDate(test.dueDate)}  ·  Max score {String(test.maxScore || 100)}</Text>
-                  {typeof test.testContent === 'string' && test.testContent ? <RichContent content={test.testContent} /> : null}
-                  {typeof test.testFileURL === 'string' && test.testFileURL ? (
-                    <Pressable onPress={() => openAttachment(test.testFileURL as string, `${String(test.title || 'Test')}.pdf`)} style={styles.inlineAction}>
-                      <MaterialCommunityIcons name="download-outline" size={17} color="#2D66C8" />
-                      <Text style={styles.inlineActionText}>Open test paper</Text>
+                    <Pressable onPress={() => setSelectedTestId('')} style={styles.inlineAction}>
+                      <MaterialCommunityIcons name="arrow-left" size={17} color="#2D66C8" />
+                      <Text style={styles.inlineActionText}>All tests</Text>
                     </Pressable>
-                  ) : null}
-                  {submission && submission.status !== 'resubmit_requested' ? (
-                    <View style={styles.submissionState}>
-                      <Text style={styles.statusText}>{submission.status === 'graded' ? `Graded: ${String(submission.grade)} / ${String(test.maxScore || 100)}` : 'Submitted for grading'}</Text>
-                      {typeof submission.feedback === 'string' && submission.feedback ? <RichContent content={submission.feedback} /> : null}
-                      {typeof submission.submittedFileURL === 'string' && submission.submittedFileURL ? (
-                        <Pressable onPress={() => openAttachment(submission.submittedFileURL as string, String(submission.submittedFileName || 'Solution'))} style={styles.inlineAction}>
-                          <MaterialCommunityIcons name="file-eye-outline" size={17} color="#2D66C8" />
-                          <Text style={styles.inlineActionText}>{String(submission.submittedFileName || 'View submitted solution')}</Text>
-                        </Pressable>
-                      ) : null}
-                    </View>
-                  ) : (
-                    <View style={styles.uploadArea}>
-                      {submission?.status === 'resubmit_requested' ? (
-                        <View style={styles.warningBox}>
-                          <Text style={styles.warningTitle}>Teacher requested a resubmission</Text>
-                          <RichContent content={String(submission.feedback || 'Review your answers and submit again.')} />
-                        </View>
-                      ) : null}
-                      <TextInput
-                        multiline
-                        value={testAnswers[test.id] || ''}
-                        onChangeText={(value) => setTestAnswers((current) => ({ ...current, [test.id]: value }))}
-                        placeholder="Write your answers here (optional if attaching files)"
-                        placeholderTextColor="#91A0AE"
-                        style={[styles.input, styles.answerInput]}
-                      />
-                      <View style={styles.actionRow}>
-                        <Pressable onPress={() => selectFiles(key)} style={styles.secondaryButton}>
-                          <Text style={styles.secondaryButtonText}>{filesByKey[key]?.length ? `${filesByKey[key].length} file(s) selected` : 'Attach solution'}</Text>
-                        </Pressable>
-                        <Pressable disabled={uploadingKey === key} onPress={() => submitTest(test)} style={styles.primaryButton}>
-                          <Text style={styles.primaryButtonText}>{uploadingKey === key ? `Uploading ${uploadProgress}%` : 'Submit test'}</Text>
-                        </Pressable>
+                    <Text style={styles.itemTitle}>{String(test.title || 'Class test')}</Text>
+                    <RichContent content={String(test.description || '')} />
+                    <Text style={styles.metaText}>Due {formatDate(test.dueDate)}  ·  Max score {String(test.maxScore || 100)}</Text>
+                    {typeof test.testContent === 'string' && test.testContent ? <QuestionPaperContent content={test.testContent} /> : null}
+                    {typeof test.testFileURL === 'string' && test.testFileURL ? (
+                      <Pressable onPress={() => openAttachment(test.testFileURL as string, `${String(test.title || 'Test')}.pdf`)} style={styles.inlineAction}>
+                        <MaterialCommunityIcons name="download-outline" size={17} color="#2D66C8" />
+                        <Text style={styles.inlineActionText}>Open test paper</Text>
+                      </Pressable>
+                    ) : null}
+                    {submission && submission.status !== 'resubmit_requested' ? (
+                      <View style={styles.submissionState}>
+                        <Text style={styles.statusText}>{submission.status === 'graded' ? `Graded: ${String(submission.grade)} / ${String(test.maxScore || 100)}` : 'Submitted for grading'}</Text>
+                        {typeof submission.feedback === 'string' && submission.feedback ? <RichContent content={submission.feedback} /> : null}
+                        {typeof submission.submittedFileURL === 'string' && submission.submittedFileURL ? (
+                          <Pressable onPress={() => openAttachment(submission.submittedFileURL as string, String(submission.submittedFileName || 'Solution'))} style={styles.inlineAction}>
+                            <MaterialCommunityIcons name="file-eye-outline" size={17} color="#2D66C8" />
+                            <Text style={styles.inlineActionText}>{String(submission.submittedFileName || 'View submitted solution')}</Text>
+                          </Pressable>
+                        ) : null}
                       </View>
-                    </View>
-                  )}
+                    ) : (
+                      <View style={styles.uploadArea}>
+                        {submission?.status === 'resubmit_requested' ? (
+                          <View style={styles.warningBox}>
+                            <Text style={styles.warningTitle}>Teacher requested a resubmission</Text>
+                            <RichContent content={String(submission.feedback || 'Review your answers and submit again.')} />
+                          </View>
+                        ) : null}
+                        <TextInput
+                          multiline
+                          value={testAnswers[test.id] || ''}
+                          onChangeText={(value) => setTestAnswers((current) => ({ ...current, [test.id]: value }))}
+                          placeholder="Write your answers here (optional if attaching files)"
+                          placeholderTextColor="#91A0AE"
+                          style={[styles.input, styles.answerInput]}
+                        />
+                        <View style={styles.actionRow}>
+                          <Pressable onPress={() => selectFiles(key)} style={styles.secondaryButton}>
+                            <Text style={styles.secondaryButtonText}>{filesByKey[key]?.length ? `${filesByKey[key].length} file(s) selected` : 'Attach solution'}</Text>
+                          </Pressable>
+                          <Pressable disabled={uploadingKey === key} onPress={() => submitTest(test)} style={styles.primaryButton}>
+                            <Text style={styles.primaryButtonText}>{uploadingKey === key ? `Uploading ${uploadProgress}%` : 'Submit test'}</Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    )}
                 </View>
               );
             })() : (
@@ -927,7 +975,55 @@ const styles = StyleSheet.create({
   sectionHeading: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 3 },
   sectionTitle: { color: '#25394D', fontSize: 17, fontWeight: '800' },
   contentRow: { backgroundColor: '#FFFFFF', borderRadius: 13, padding: 15, gap: 9 },
+  detailScrollContent: { paddingBottom: 8 },
   itemTitle: { color: '#26394D', fontSize: 15, fontWeight: '700' },
+  assignmentDetailCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2EDF6',
+    shadowColor: '#1F2A44',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+    gap: 12,
+  },
+  assignmentDetailHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  assignmentBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EDF5FF', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  assignmentBadgeText: { color: '#2D66C8', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
+  assignmentDueText: { color: '#617385', fontSize: 11, fontWeight: '700' },
+  assignmentDetailTitle: { color: '#24374F', fontSize: 24, fontWeight: '800', lineHeight: 30 },
+  assignmentMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  assignmentMetaPill: { backgroundColor: '#F2F8FF', borderRadius: 999, borderWidth: 1, borderColor: '#DDEBFF', paddingHorizontal: 10, paddingVertical: 6, color: '#2D66C8', fontSize: 11, fontWeight: '700' },
+  assignmentBodyWrap: { backgroundColor: '#F8FBFF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#EAF0F6' },
+  assignmentContentHeading: { color: '#24374F', fontSize: 13, fontWeight: '800', marginBottom: 8 },
+  assignmentActionButton: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: '#EEF5FF', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  assignmentActionText: { color: '#2D66C8', fontSize: 12, fontWeight: '700' },
+  assignmentListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#E3EDF5',
+    shadowColor: '#1F2A44',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
+  },
+  assignmentListIconWrap: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#EDF5FF', alignItems: 'center', justifyContent: 'center' },
+  assignmentListBody: { flex: 1 },
+  assignmentListTitle: { color: '#24374F', fontSize: 14, fontWeight: '800', marginBottom: 3 },
+  assignmentListMeta: { color: '#64798B', fontSize: 11, lineHeight: 16 },
+  assignmentListFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
+  assignmentListDue: { color: '#2D66C8', fontSize: 10, fontWeight: '700' },
+  assignmentListScore: { color: '#5E7082', fontSize: 10, fontWeight: '700' },
   bodyText: { color: '#5E7082', fontSize: 13, lineHeight: 19 },
   metaText: { color: '#8B99A7', fontSize: 11, lineHeight: 16 },
   inlineAction: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 5 },
