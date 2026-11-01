@@ -9,12 +9,12 @@ const includedFeatures = [
 
 const plans = [
   {
-    name: 'Group of 2 · 3 Days / Week',
+    name: 'Group of 2 Students · 3 Days / Week',
     price: '₹4,000',
     bestFor: 'Three days of weekly lessons for a pair of students.',
   },
   {
-    name: 'Group of 2 · 5 Days / Week',
+    name: 'Group of 2 Students · 5 Days / Week',
     price: '₹6,000',
     bestFor: 'Five days of weekly lessons for a pair of students.',
   },
