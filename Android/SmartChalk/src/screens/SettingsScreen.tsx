@@ -24,7 +24,9 @@ export default function SettingsScreen({ navigation }: MainTabScreenProps<'Setti
     if (!userId) return undefined;
     let active = true;
     const unsubscribe = onSnapshot(doc(db, 'users', userId), (snapshot) => {
-      setPushEnabled(snapshot.data()?.notificationsEnabled === true);
+      if (active) {
+        setPushEnabled(snapshot.data()?.notificationsEnabled === true);
+      }
     });
     void AsyncStorage.getItem(`${BIOMETRIC_KEY}${userId}`).then((value) => {
       if (active) setBiometricsEnabled(value === 'true');
@@ -87,73 +89,99 @@ export default function SettingsScreen({ navigation }: MainTabScreenProps<'Setti
 
   return (
     <View style={styles.mainContainer}>
-      <View style={[styles.safeArea, { paddingTop: Math.max(insets.top, 16) }]}>
+      <View style={[styles.safeArea, { paddingTop: Math.max(insets.top, 8) }]}>
         <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+          
+          {/* Back Button */}
+          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+            <MaterialCommunityIcons name="arrow-left" size={18} color="#64748B" />
+            <Text style={styles.backText}>Back</Text>
+          </Pressable>
+
+          {/* Header Banner */}
           <View style={styles.header}>
-            <Text style={styles.eyebrow}>SMARTCHALK</Text>
+            <View style={styles.eyebrowBadge}>
+              <MaterialCommunityIcons name="tune" size={12} color="#2563EB" />
+              <Text style={styles.eyebrowText}>PREFERENCES & SECURITY</Text>
+            </View>
             <Text style={styles.title}>Settings</Text>
-            <Text style={styles.subtitle}>Manage your learning and account preferences.</Text>
+            <Text style={styles.subtitle}>Manage your learning environment and account security.</Text>
           </View>
 
+          {/* Notifications Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Notifications</Text>
 
-            <View style={styles.row}>
-              <View style={styles.iconCircle}>
-                <MaterialCommunityIcons name="bell-outline" size={21} color="#2D66C8" />
+            <View style={styles.card}>
+              <View style={styles.row}>
+                <View style={[styles.iconCircle, { backgroundColor: '#EFF6FF' }]}>
+                  <MaterialCommunityIcons name="bell-outline" size={20} color="#2563EB" />
+                </View>
+                <View style={styles.rowContent}>
+                  <Text style={styles.rowTitle}>Class & Assignment Updates</Text>
+                  <Text style={styles.rowSubtitle}>New assignments, tests, quizzes, announcements, and grades.</Text>
+                </View>
+                <Switch
+                  value={pushEnabled}
+                  onValueChange={toggleNotifications}
+                  disabled={savingNotifications}
+                  trackColor={{ false: '#CBD5E1', true: '#93C5FD' }}
+                  thumbColor={pushEnabled ? '#2563EB' : '#FFFFFF'}
+                />
               </View>
-              <View style={styles.rowContent}>
-                <Text style={styles.rowTitle}>Class and assignment updates</Text>
-                <Text style={styles.rowSubtitle}>New assignments, tests, quizzes, announcements, and grades.</Text>
-              </View>
-              <Switch
-                value={pushEnabled}
-                onValueChange={toggleNotifications}
-                disabled={savingNotifications}
-                trackColor={{ false: '#DDE8F0', true: '#A8C6ED' }}
-                thumbColor={pushEnabled ? '#2D66C8' : '#FFFFFF'}
-              />
-            </View>
 
-            {!pushEnabled ? <Text style={styles.notice}>Push requires a linked EAS project and notification credentials. In-app updates remain available.</Text> : null}
+              {!pushEnabled ? (
+                <View style={styles.noticeBox}>
+                  <MaterialCommunityIcons name="information-outline" size={15} color="#D97706" style={{ marginTop: 1 }} />
+                  <Text style={styles.noticeText}>Push requires a linked EAS project and notification credentials. In-app updates remain fully available.</Text>
+                </View>
+              ) : null}
+            </View>
           </View>
 
+          {/* Security & Account Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Security</Text>
+            <Text style={styles.sectionTitle}>Security & Profile</Text>
 
-            <View style={styles.row}>
-              <View style={styles.iconCircle}>
-                <MaterialCommunityIcons name="fingerprint" size={22} color="#2D66C8" />
+            <View style={styles.card}>
+              <View style={[styles.row, { borderBottomWidth: 1, borderBottomColor: '#F1F5F9', paddingBottom: 14, marginBottom: 14 }]}>
+                <View style={[styles.iconCircle, { backgroundColor: '#F0FDF4' }]}>
+                  <MaterialCommunityIcons name="fingerprint" size={21} color="#16A34A" />
+                </View>
+                <View style={styles.rowContent}>
+                  <Text style={styles.rowTitle}>Biometric App Lock</Text>
+                  <Text style={styles.rowSubtitle}>Verify with your device before opening SmartChalk.</Text>
+                </View>
+                <Switch
+                  value={biometricsEnabled}
+                  onValueChange={toggleBiometrics}
+                  disabled={checkingBiometrics}
+                  trackColor={{ false: '#CBD5E1', true: '#86EFAC' }}
+                  thumbColor={biometricsEnabled ? '#16A34A' : '#FFFFFF'}
+                />
               </View>
-              <View style={styles.rowContent}>
-                <Text style={styles.rowTitle}>Biometric app lock</Text>
-                <Text style={styles.rowSubtitle}>Verify with your device before opening SmartChalk.</Text>
-              </View>
-              <Switch
-                value={biometricsEnabled}
-                onValueChange={toggleBiometrics}
-                disabled={checkingBiometrics}
-                trackColor={{ false: '#DDE8F0', true: '#A8C6ED' }}
-                thumbColor={biometricsEnabled ? '#2D66C8' : '#FFFFFF'}
-              />
+
+              <Pressable style={[styles.row, { marginBottom: 0 }]} onPress={() => navigation.navigate('ProfileTab')}>
+                <View style={[styles.iconCircle, { backgroundColor: '#F3E8FF' }]}>
+                  <MaterialCommunityIcons name="account-edit-outline" size={20} color="#9333EA" />
+                </View>
+                <View style={styles.rowContent}>
+                  <Text style={styles.rowTitle}>Student Profile</Text>
+                  <Text style={styles.rowSubtitle}>Update grade, subjects, contact details, and photo.</Text>
+                </View>
+                <View style={styles.chevronBox}>
+                  <MaterialCommunityIcons name="chevron-right" size={18} color="#94A3B8" />
+                </View>
+              </Pressable>
             </View>
-
-            <Pressable style={styles.row} onPress={() => navigation.navigate('ProfileTab')}>
-              <View style={styles.iconCircle}>
-                <MaterialCommunityIcons name="account-edit-outline" size={21} color="#2D66C8" />
-              </View>
-              <View style={styles.rowContent}>
-                <Text style={styles.rowTitle}>Student profile</Text>
-                <Text style={styles.rowSubtitle}>Update grade, subjects, contact details, and photo.</Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={20} color="#91A0AE" />
-            </Pressable>
           </View>
 
+          {/* App Version Footer */}
           <View style={styles.aboutRow}>
-            <MaterialCommunityIcons name="school-outline" size={19} color="#2D66C8" />
-            <Text style={styles.aboutText}>SmartChalk  ·  {Constants.expoConfig?.version || '1.0.0'}</Text>
+            <MaterialCommunityIcons name="school-outline" size={16} color="#64748B" />
+            <Text style={styles.aboutText}>SmartChalk Workspace  ·  v{Constants.expoConfig?.version || '1.0.0'}</Text>
           </View>
+
         </ScrollView>
       </View>
     </View>
@@ -163,7 +191,7 @@ export default function SettingsScreen({ navigation }: MainTabScreenProps<'Setti
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#EDF8FD',
+    backgroundColor: '#F8FAFC',
   },
   safeArea: {
     flex: 1,
@@ -171,85 +199,141 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
     paddingTop: 10,
-    paddingBottom: 36,
+    paddingBottom: 40,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 16,
+  },
+  backText: {
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: '600',
   },
   header: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  eyebrow: {
-    color: '#3971C9',
+  eyebrowBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+    gap: 4,
+  },
+  eyebrowText: {
+    color: '#2563EB',
     fontSize: 10,
     fontWeight: '800',
-    marginBottom: 5,
+    letterSpacing: 0.5,
   },
   title: {
-    fontSize: 25,
+    fontSize: 26,
     fontWeight: '800',
-    color: '#25394D',
-    marginBottom: 5,
+    color: '#0F172A',
+    marginBottom: 4,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#8291A0',
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
   },
   section: {
-    marginBottom: 22,
+    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#60758A',
+    fontWeight: '800',
+    color: '#0F172A',
     textTransform: 'uppercase',
-    marginBottom: 12,
+    letterSpacing: 0.3,
+    marginBottom: 10,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E4EDF3',
-    marginBottom: 9,
   },
   iconCircle: {
     width: 42,
     height: 42,
-    borderRadius: 21,
-    backgroundColor: '#E8F1FF',
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
   },
   rowContent: {
     flex: 1,
+    marginRight: 10,
   },
   rowTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#26394D',
+    color: '#0F172A',
     marginBottom: 2,
   },
   rowSubtitle: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+    lineHeight: 15,
   },
-  notice: {
-    color: '#8B6B2A',
+  noticeBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FEFCE8',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: '#FEF08A',
+    gap: 8,
+  },
+  noticeText: {
+    flex: 1,
+    color: '#854D0E',
     fontSize: 11,
     lineHeight: 16,
-    marginTop: 8,
+    fontWeight: '500',
+  },
+  chevronBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   aboutRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginTop: 4,
-    paddingVertical: 14,
+    marginTop: 8,
+    paddingVertical: 12,
   },
   aboutText: {
-    color: '#8291A0',
-    fontSize: 11,
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

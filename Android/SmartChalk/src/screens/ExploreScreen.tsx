@@ -47,70 +47,127 @@ export default function ExploreScreen({ navigation }: MainTabScreenProps<'Explor
 
   return (
     <View style={styles.mainContainer}>
-      <View style={[styles.safeArea, { paddingTop: Math.max(insets.top, 16) }]}>
-        <ScrollView contentContainerStyle={styles.calendarContainer} showsVerticalScrollIndicator={false}>
-          <View style={styles.calendarHeader}>
-            <View style={styles.titleWrapper}>
-              <Text style={styles.calendarTitle}>My classes</Text>
-              <Text style={styles.calendarSubtitle}>Your enrolled learning batches</Text>
+      <View style={[styles.safeArea, { paddingTop: Math.max(insets.top, 8) }]}>
+        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+          
+          {/* Header Banner */}
+          <View style={styles.header}>
+            <View style={styles.eyebrowBadge}>
+              <MaterialCommunityIcons name="compass-outline" size={12} color="#2563EB" />
+              <Text style={styles.eyebrowText}>DISCOVERY & ACCESS</Text>
             </View>
+            <Text style={styles.title}>Explore Batches</Text>
+            <Text style={styles.subtitle}>Discover new subjects, join classes, and expand your learning path.</Text>
           </View>
 
-          <View style={styles.batchList}>
-            {classes.loading ? <Text style={styles.listMessage}>Loading your classes...</Text> : activeClasses.map((item) => (
-              <Pressable key={item.id} onPress={() => navigation.navigate('BatchDetails', { batchId: item.id })} style={styles.classCard}>
-                <View style={styles.classCardHeader}>
-                  <View style={styles.classIcon}>
-                    <MaterialCommunityIcons name="book-open-variant" size={22} color="#2D66C8" />
-                  </View>
-                  <View style={styles.classCardCopy}>
-                    <Text style={styles.subjectLabel}>{item.subject || 'CLASS BATCH'}</Text>
-                    <Text style={styles.classCardTitle} numberOfLines={2}>{item.title || 'Learning batch'}</Text>
-                  </View>
-                  {item.status === 'live' ? <Text style={styles.liveBadge}>LIVE</Text> : null}
-                </View>
-                <Text style={styles.classCardMeta}>{item.schedule || 'Schedule pending'}</Text>
-                {item.notes?.length ? <Text style={styles.classCardMeta}>{item.notes.length} teacher update(s)</Text> : null}
-                <View style={styles.openBatchRow}>
-                  <Text style={styles.openBatchText}>Open workspace</Text>
-                  <MaterialCommunityIcons name="arrow-right" size={17} color="#2D66C8" />
-                </View>
+          {/* Join New Batch Hero Card */}
+          <View style={styles.heroJoinCard}>
+            <View style={styles.heroJoinGlow} />
+            <View style={styles.heroJoinContent}>
+              <View style={styles.heroJoinIconBox}>
+                <MaterialCommunityIcons name="telescope" size={22} color="#FFFFFF" />
+              </View>
+              <View style={styles.heroJoinTextGroup}>
+                <Text style={styles.heroJoinTitle}>Join a New Batch</Text>
+                <Text style={styles.heroJoinSubtitle}>Got a batch ID from your teacher? Enter it below to request instant access.</Text>
+              </View>
+            </View>
+
+            <View style={styles.joinFormRow}>
+              <TextInput
+                value={batchId}
+                onChangeText={setBatchId}
+                placeholder="Enter Batch ID..."
+                placeholderTextColor="#94A3B8"
+                autoCapitalize="none"
+                style={styles.batchInput}
+              />
+              <Pressable
+                disabled={requesting || !batchId.trim()}
+                onPress={handleJoinRequest}
+                style={[styles.joinButton, (requesting || !batchId.trim()) && styles.joinButtonDisabled]}
+              >
+                <Text style={styles.joinButtonText}>{requesting ? 'Sending...' : 'Join'}</Text>
               </Pressable>
-            ))}
-            {!classes.loading && activeClasses.length === 0 ? <Text style={styles.listMessage}>No active batches yet. Request access using the batch ID from your teacher.</Text> : null}
+            </View>
+            {requestStatus ? (
+              <Text style={[styles.statusMessage, requestStatus.type === 'success' ? styles.successMessage : styles.errorMessage]}>
+                {requestStatus.message}
+              </Text>
+            ) : null}
           </View>
 
+          {/* Pending Requests Section */}
           {pendingClasses.data.length > 0 ? (
-            <View style={styles.pendingSection}>
-              <Text style={styles.joinTitle}>Requests awaiting approval</Text>
-              {pendingClasses.data.map((item) => (
-                <View key={item.id} style={styles.pendingCard}>
-                  <MaterialCommunityIcons name="clock-outline" size={18} color="#A97920" />
-                  <View style={styles.classCardCopy}>
-                    <Text style={styles.classCardTitle}>{item.title || item.subject || 'Class batch'}</Text>
-                    <Text style={styles.classCardMeta}>Waiting for teacher approval</Text>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Requests Awaiting Approval</Text>
+              <View style={styles.listContainer}>
+                {pendingClasses.data.map((item) => (
+                  <View key={item.id} style={styles.pendingCard}>
+                    <View style={styles.pendingIconBox}>
+                      <MaterialCommunityIcons name="clock-outline" size={20} color="#D97706" />
+                    </View>
+                    <View style={styles.cardCopy}>
+                      <Text style={styles.cardTitle} numberOfLines={1}>{item.title || item.subject || 'Class batch'}</Text>
+                      <Text style={styles.cardMeta}>Waiting for teacher approval</Text>
+                    </View>
                   </View>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
           ) : null}
 
-          <View style={styles.joinForm}>
-            <Text style={styles.joinTitle}>Join a new batch</Text>
-            <Text style={styles.joinDescription}>Enter the batch ID shared by your teacher to request access.</Text>
-            <TextInput
-              value={batchId}
-              onChangeText={setBatchId}
-              placeholder="Batch ID"
-              placeholderTextColor="#91A0AE"
-              autoCapitalize="none"
-              style={styles.batchInput}
-            />
-            <Pressable disabled={requesting || !batchId.trim()} onPress={handleJoinRequest} style={[styles.joinButton, (requesting || !batchId.trim()) && styles.joinButtonDisabled]}>
-              <Text style={styles.joinButtonText}>{requesting ? 'Sending request...' : 'Request to join'}</Text>
-            </Pressable>
-            {requestStatus ? <Text style={requestStatus.type === 'success' ? styles.successMessage : styles.errorMessage}>{requestStatus.message}</Text> : null}
+          {/* Enrolled Active Classes */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>My Enrolled Batches</Text>
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeText}>{activeClasses.length}</Text>
+              </View>
+            </View>
+
+            <View style={styles.listContainer}>
+              {classes.loading ? (
+                <View style={styles.placeholderCard}>
+                  <MaterialCommunityIcons name="loading" size={22} color="#94A3B8" style={{ marginBottom: 6 }} />
+                  <Text style={styles.placeholderText}>Loading your classes...</Text>
+                </View>
+              ) : activeClasses.length === 0 ? (
+                <View style={styles.placeholderCard}>
+                  <MaterialCommunityIcons name="school-outline" size={26} color="#94A3B8" style={{ marginBottom: 6 }} />
+                  <Text style={styles.placeholderText}>No active batches yet. Enter a batch ID above to join your first class.</Text>
+                </View>
+              ) : activeClasses.map((item) => (
+                <Pressable
+                  key={item.id}
+                  onPress={() => navigation.navigate('BatchDetails', { batchId: item.id })}
+                  style={styles.classCard}
+                >
+                  <View style={styles.classCardHeader}>
+                    <View style={styles.classIcon}>
+                      <MaterialCommunityIcons name="book-open-variant" size={20} color="#2563EB" />
+                    </View>
+                    <View style={styles.classCardCopy}>
+                      <Text style={styles.subjectLabel}>{item.subject || 'CLASS BATCH'}</Text>
+                      <Text style={styles.classCardTitle} numberOfLines={1}>{item.title || 'Learning batch'}</Text>
+                    </View>
+                    {item.status === 'live' && <Text style={styles.liveBadge}>LIVE</Text>}
+                  </View>
+
+                  <View style={styles.classCardFooter}>
+                    <Text style={styles.classCardMeta} numberOfLines={1}>
+                      {item.schedule || 'Schedule pending'} {item.notes?.length ? `· ${item.notes.length} update(s)` : ''}
+                    </Text>
+                    <View style={styles.openBatchRow}>
+                      <Text style={styles.openBatchText}>Open workspace</Text>
+                      <MaterialCommunityIcons name="arrow-right" size={16} color="#2563EB" />
+                    </View>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
           </View>
+
         </ScrollView>
       </View>
     </View>
@@ -120,249 +177,210 @@ export default function ExploreScreen({ navigation }: MainTabScreenProps<'Explor
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#EDF8FD',
+    backgroundColor: '#F8FAFC',
   },
   safeArea: {
     flex: 1,
   },
-  filterRow: {
-    flexDirection: 'row',
-    gap: 8,
+  container: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 40,
+  },
+  header: {
     marginBottom: 20,
   },
-  calendarContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 36,
-  },
-  calendarHeader: {
+  eyebrowBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 19,
-  },
-  titleWrapper: {
-    flex: 1,
-  },
-  calendarTitle: {
-    color: '#24384D',
-    fontSize: 25,
-    fontWeight: '700',
-  },
-  calendarSubtitle: {
-    color: '#8B98A5',
-    fontSize: 12,
-    marginTop: 3,
-  },
-  todayIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#DDEBF4',
+    borderColor: '#DBEAFE',
+    gap: 4,
   },
-  weekPill: {
-    minHeight: 34,
-    paddingHorizontal: 14,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#DFE8EF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  weekPillActive: {
-    backgroundColor: '#DDED63',
-    borderColor: '#DDED63',
-  },
-  weekPillText: {
-    color: '#84909B',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  weekPillTextActive: {
-    color: '#344132',
-  },
-  todayPill: {
-    minHeight: 34,
-    paddingHorizontal: 14,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#DFE8EF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  todayPillText: {
-    color: '#526579',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  dayRow: {
-    gap: 8,
-    paddingRight: 4,
-    marginBottom: 21,
-  },
-  dayButton: {
-    width: 43,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E4EDF3',
-  },
-  dayButtonActive: {
-    backgroundColor: '#2D66C8',
-    borderColor: '#2D66C8',
-  },
-  dayName: {
-    color: '#8A96A2',
+  eyebrowText: {
+    color: '#2563EB',
     fontSize: 10,
-    marginBottom: 5,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  dayDate: {
-    color: '#33475C',
-    fontSize: 15,
-    fontWeight: '700',
+  title: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 4,
+    letterSpacing: -0.5,
   },
-  dayTextActive: {
-    color: '#FFFFFF',
+  subtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
   },
-  scheduleHeading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 13,
+  heroJoinCard: {
+    backgroundColor: '#2563EB',
+    borderRadius: 22,
+    padding: 18,
+    marginBottom: 24,
+    overflow: 'hidden',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 4,
   },
-  scheduleTitle: {
-    color: '#25394D',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  scheduleDate: {
-    color: '#91A0AD',
-    fontSize: 11,
-    marginTop: 3,
-  },
-  sessionCount: {
-    color: '#66809A',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  scheduleList: {
-    gap: 2,
-  },
-  scheduleRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-  },
-  timeLabel: {
-    width: 58,
-    paddingTop: 14,
-    color: '#8B99A7',
-    fontSize: 10,
-  },
-  timelineRail: {
-    width: 14,
-    alignItems: 'center',
-  },
-  timelineDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#8CAED5',
-    marginTop: 17,
-    zIndex: 1,
-  },
-  timelineLine: {
+  heroJoinGlow: {
     position: 'absolute',
-    top: 17,
-    bottom: 0,
-    width: 1,
-    backgroundColor: '#D8E6EF',
+    top: -40,
+    right: -40,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-  scheduleCard: {
+  heroJoinContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  heroJoinIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  heroJoinTextGroup: {
     flex: 1,
-    minHeight: 81,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
-    borderRadius: 11,
+  },
+  heroJoinTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  heroJoinSubtitle: {
+    color: '#E2E8F0',
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '500',
+  },
+  joinFormRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  batchInput: {
+    flex: 1,
+    height: 46,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    color: '#0F172A',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  joinButton: {
+    height: 46,
+    paddingHorizontal: 20,
+    backgroundColor: '#0F172A',
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  joinButtonDisabled: {
+    opacity: 0.6,
+  },
+  joinButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  statusMessage: {
+    marginTop: 10,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  successMessage: {
+    color: '#DCFCE7',
+  },
+  errorMessage: {
+    color: '#FEE2E2',
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 10,
   },
-  scheduleCardTop: {
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: 10,
+  },
+  countBadge: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+  },
+  countBadgeText: {
+    color: '#2563EB',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  listContainer: {
+    gap: 12,
+  },
+  pendingCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 7,
-  },
-  durationLabel: {
-    color: '#8996A4',
-    fontSize: 9,
-  },
-  className: {
-    color: '#26394D',
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 3,
-  },
-  roomLabel: {
-    color: '#718296',
-    fontSize: 10,
-  },
-  emptySchedule: {
-    alignItems: 'center',
-    paddingHorizontal: 30,
-    paddingVertical: 48,
-  },
-  emptyIcon: {
-    width: 58,
-    height: 58,
+    backgroundColor: '#FEFCE8',
     borderRadius: 18,
-    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#FEF08A',
+    gap: 14,
+  },
+  pendingIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#FEF3C7',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
-  },
-  emptyTitle: {
-    color: '#34495E',
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 5,
-  },
-  emptyText: {
-    color: '#8797A6',
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: 'center',
-  },
-  batchList: {
-    gap: 11,
-    marginBottom: 22,
-  },
-  listMessage: {
-    color: '#8291A0',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 18,
-    fontSize: 13,
-    lineHeight: 19,
   },
   classCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 15,
+    borderRadius: 18,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#E4EDF3',
+    borderColor: '#E2E8F0',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
   },
   classCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 11,
+    gap: 12,
+    marginBottom: 12,
   },
   classIcon: {
     width: 42,
@@ -370,20 +388,22 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E8F1FF',
+    backgroundColor: '#EFF6FF',
   },
   classCardCopy: {
     flex: 1,
   },
   subjectLabel: {
-    color: '#3971C9',
-    fontSize: 9,
+    color: '#2563EB',
+    fontSize: 10,
     fontWeight: '800',
-    marginBottom: 3,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 2,
   },
   classCardTitle: {
-    color: '#26394D',
-    fontSize: 14,
+    color: '#0F172A',
+    fontSize: 15,
     fontWeight: '700',
   },
   liveBadge: {
@@ -391,92 +411,66 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    color: '#287E52',
-    backgroundColor: '#E4F6EA',
-    fontSize: 9,
+    color: '#15803D',
+    backgroundColor: '#F0FDF4',
+    fontSize: 10,
     fontWeight: '800',
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
   },
-  classCardMeta: {
-    color: '#8291A0',
-    fontSize: 11,
-    lineHeight: 16,
-    marginTop: 8,
-  },
-  openBatchRow: {
+  classCardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderTopWidth: 1,
-    borderTopColor: '#EAF0F4',
-    paddingTop: 10,
-    marginTop: 12,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 12,
   },
-  openBatchText: {
-    color: '#2D66C8',
+  classCardMeta: {
+    color: '#64748B',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '500',
+    flex: 1,
+    marginRight: 8,
   },
-  pendingSection: {
-    gap: 9,
-    marginBottom: 22,
-  },
-  pendingCard: {
+  openBatchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#FFF8E8',
-    borderRadius: 12,
-    padding: 13,
+    gap: 4,
   },
-  joinForm: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 16,
-    gap: 10,
-  },
-  joinTitle: {
-    color: '#26394D',
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  joinDescription: {
-    color: '#8291A0',
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  batchInput: {
-    minHeight: 43,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E0EAF1',
-    backgroundColor: '#F3F8FB',
-    color: '#27394B',
-    paddingHorizontal: 12,
-    fontSize: 13,
-  },
-  joinButton: {
-    minHeight: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 10,
-    backgroundColor: '#2D66C8',
-  },
-  joinButtonDisabled: {
-    opacity: 0.55,
-  },
-  joinButtonText: {
-    color: '#FFFFFF',
+  openBatchText: {
+    color: '#2563EB',
     fontSize: 12,
     fontWeight: '700',
   },
-  successMessage: {
-    color: '#287E52',
-    fontSize: 12,
-    lineHeight: 18,
+  placeholderCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 24,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  errorMessage: {
-    color: '#B75548',
+  placeholderText: {
+    color: '#64748B',
     fontSize: 12,
+    textAlign: 'center',
     lineHeight: 18,
+    fontWeight: '500',
+  },
+  cardCopy: {
+    flex: 1,
+  },
+  cardTitle: {
+    color: '#0F172A',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  cardMeta: {
+    color: '#854D0E',
+    fontSize: 11,
+    fontWeight: '500',
   },
 });

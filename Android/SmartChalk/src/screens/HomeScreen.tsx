@@ -1,29 +1,93 @@
-import React from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { signOut } from 'firebase/auth';
-import { auth } from '../config/firebaseconfig';
-import { getAssignmentDueDate, useStudentDashboard } from '../hooks/useStudentDashboard';
+import { doc, updateDoc, arrayUnion, setDoc, getDoc } from 'firebase/firestore';
+import * as Notifications from 'expo-notifications';
+import { auth, db } from '../config/firebaseconfig';
+import { useStudentDashboard } from '../hooks/useStudentDashboard';
 import type { MainTabScreenProps } from '../navigation/types';
+
+// Self-contained push notification registration to prevent missing import crashes
+async function registerForPushNotificationsSafe(userId: string) {
+    if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('smartchalk-updates', {
+            name: 'Class and assignment updates',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#2563EB',
+        });
+    }
+
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+    }
+
+    if (finalStatus !== 'granted') {
+        return null;
+    }
+
+    try {
+        const tokenData = await Notifications.getExpoPushTokenAsync();
+        const expoPushToken = tokenData.data;
+
+        const userRef = doc(db, 'users', userId);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+            await updateDoc(userRef, {
+                expoPushTokens: arrayUnion(expoPushToken),
+                notificationsEnabled: true,
+            });
+        } else {
+            await setDoc(userRef, {
+                expoPushTokens: [expoPushToken],
+                notificationsEnabled: true,
+            }, { merge: true });
+        }
+
+        return expoPushToken;
+    } catch (error) {
+        console.error('Error saving push token on home load:', error);
+        return null;
+    }
+}
 
 export default function HomeScreen({ navigation }: MainTabScreenProps<'HomeTab'>) {
     const insets = useSafeAreaInsets();
     const user = auth.currentUser;
     const displayName = user?.displayName || user?.email?.split('@')[0] || 'Student';
     const firstName = displayName.split(/[ ._-]/)[0];
-    const { classes, assignments, submissions } = useStudentDashboard(user?.uid);
-    const activeClasses = classes.data.filter((item) => item.status !== 'discontinued');
-    const submittedAssignmentIds = new Set(submissions.data.map((item) => item.assignmentId).filter(Boolean));
-    const pendingAssignments = assignments.data.filter((item) => !submittedAssignmentIds.has(item.id));
-    const gradedSubmissions = submissions.data.filter((item) => typeof item.grade === 'number');
+    
+    const dashboard = useStudentDashboard(user?.uid) || {};
+    const classes = dashboard.classes || { data: [], loading: false };
+    const assignments = dashboard.assignments || { data: [], loading: false };
+    const submissions = dashboard.submissions || { data: [], loading: false };
+
+    const activeClasses = (classes.data || []).filter((item) => item.status !== 'discontinued');
+    const submittedAssignmentIds = new Set((submissions.data || []).map((item) => item.assignmentId).filter(Boolean));
+    const pendingAssignments = (assignments.data || []).filter((item) => !submittedAssignmentIds.has(item.id));
+    const gradedSubmissions = (submissions.data || []).filter((item) => typeof item.grade === 'number');
+    
     const averageGrade = gradedSubmissions.length
         ? Math.round(gradedSubmissions.reduce((sum, item) => {
-            const assignment = assignments.data.find((entry) => entry.id === item.assignmentId);
+            const assignment = (assignments.data || []).find((entry) => entry.id === item.assignmentId);
             const maxScore = assignment?.maxScore || item.maxScore || 100;
             return sum + ((item.grade || 0) / maxScore) * 100;
         }, 0) / gradedSubmissions.length)
         : null;
+
+    useEffect(() => {
+        if (!user?.uid) return;
+        registerForPushNotificationsSafe(user.uid).catch((err) => {
+            console.log('Auto notification registration failed:', err);
+        });
+    }, [user?.uid]);
 
     const handleLogout = () => {
         Alert.alert('Sign out', 'Are you sure you want to sign out?', [
@@ -45,130 +109,179 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'HomeTab'>
 
     return (
         <View style={styles.mainContainer}>
-            <View style={[styles.safeArea, { paddingTop: Math.max(insets.top, 16) }]}>
+            <View style={[styles.safeArea, { paddingTop: Math.max(insets.top, 8) }]}>
                 <ScrollView
-                    contentContainerStyle={styles.scrollContainer}
+                    contentContainerStyle={styles.container}
                     showsVerticalScrollIndicator={false}
                 >
+                    {/* Header Banner matching ExploreScreen style */}
                     <View style={styles.header}>
-                        <View style={styles.headerCopy}>
-                            <Text style={styles.greeting}>Good morning,</Text>
-                            <Text style={styles.name} numberOfLines={1}>{firstName}</Text>
+                        <View style={styles.eyebrowBadge}>
+                            <MaterialCommunityIcons name="view-dashboard-outline" size={12} color="#2563EB" />
+                            <Text style={styles.eyebrowText}>STUDENT DASHBOARD</Text>
                         </View>
-                        <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel="Open profile"
-                            style={styles.profileBadge}
-                            onPress={() => navigation.navigate('ProfileTab')}
-                        >
-                            {user?.photoURL ? (
-                                <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
-                            ) : (
-                                <Text style={styles.profileBadgeText}>{firstName.charAt(0).toUpperCase()}</Text>
-                            )}
-                        </Pressable>
-                    </View>
-
-                    <View style={styles.statsRow}>
-                        <View style={styles.statBox}>
-                            <View style={[styles.statIcon, { backgroundColor: '#E9F1FF' }]}>
-                                <MaterialCommunityIcons name="file-document-outline" size={22} color="#3168CC" />
+                        <View style={styles.headerTopRow}>
+                            <View style={styles.headerTextGroup}>
+                                <Text style={styles.title}>Welcome, {firstName}</Text>
+                                <Text style={styles.subtitle}>Your classes, pending tasks, and AI study companion</Text>
                             </View>
-                            <Text style={styles.statValue}>{assignments.loading ? '...' : pendingAssignments.length}</Text>
-                            <Text style={styles.statLabel}>To do</Text>
-                        </View>
-                        <View style={styles.statBox}>
-                            <View style={[styles.statIcon, { backgroundColor: '#F0EDFF' }]}>
-                                <MaterialCommunityIcons name="school-outline" size={22} color="#6A68C9" />
-                            </View>
-                            <Text style={styles.statValue}>{classes.loading ? '...' : activeClasses.length}</Text>
-                            <Text style={styles.statLabel}>Active batches</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.sectionHeading}>
-                        <Text style={styles.sectionTitle}>My classes</Text>
-                        <Pressable accessibilityRole="button" onPress={() => navigation.navigate('ExploreTab')}>
-                            <Text style={styles.seeAll}>Browse</Text>
-                        </Pressable>
-                    </View>
-
-                    <View style={styles.classList}>
-                        {classes.loading ? (
-                            <Text style={styles.classMeta}>Loading your enrolled classes...</Text>
-                        ) : activeClasses.length === 0 ? (
-                            <Text style={styles.classMeta}>No active batches yet. Browse classes to join one.</Text>
-                        ) : activeClasses.slice(0, 4).map((item, index) => (
                             <Pressable
-                                key={item.id}
                                 accessibilityRole="button"
-                                style={styles.classRow}
-                                onPress={() => navigation.navigate('BatchDetails', { batchId: item.id })}
+                                accessibilityLabel="Open profile"
+                                style={styles.profileBadge}
+                                onPress={() => navigation.navigate('ProfileTab')}
                             >
-                                <View style={[styles.classIcon, { backgroundColor: index % 2 ? '#E6F5FB' : '#E8F1FF' }]}>
-                                    <MaterialCommunityIcons name="book-open-variant" size={21} color={index % 2 ? '#2870C7' : '#2866D8'} />
-                                </View>
-                                <View style={styles.classCopy}>
-                                    <Text style={styles.classTitle} numberOfLines={1}>{item.title || item.subject || 'Class batch'}</Text>
-                                    <Text style={styles.classMeta} numberOfLines={1}>{item.subject || 'Class'}  ·  {item.schedule || 'Schedule pending'}</Text>
-                                </View>
-                                <MaterialCommunityIcons name="chevron-right" size={21} color="#A2ACB8" />
+                                {user?.photoURL ? (
+                                    <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
+                                ) : (
+                                    <Text style={styles.profileBadgeText}>{firstName.charAt(0).toUpperCase()}</Text>
+                                )}
                             </Pressable>
-                        ))}
+                        </View>
                     </View>
 
-                    <View style={styles.sectionHeading}>
-                        <Text style={styles.sectionTitle}>Assignments</Text>
-                        <Text style={styles.classMeta}>{averageGrade === null ? 'No grades yet' : `Average ${averageGrade}%`}</Text>
-                    </View>
-                    <View style={styles.classList}>
-                        {assignments.loading ? (
-                            <Text style={styles.classMeta}>Loading assignments...</Text>
-                        ) : pendingAssignments.length === 0 ? (
-                            <Text style={styles.classMeta}>You&apos;re all caught up on assigned work.</Text>
-                        ) : pendingAssignments.slice(0, 3).map((assignment) => {
-                            const dueDate = getAssignmentDueDate(assignment);
-                            return (
-                                <Pressable
-                                    key={assignment.id}
-                                    style={styles.classRow}
-                                    onPress={() => assignment.classId && navigation.navigate('BatchDetails', { batchId: assignment.classId })}
-                                >
-                                    <View style={[styles.classIcon, { backgroundColor: '#FFF3D1' }]}>
-                                        <MaterialCommunityIcons name="file-document-outline" size={21} color="#B77A1A" />
-                                    </View>
-                                    <View style={styles.classCopy}>
-                                        <Text style={styles.classTitle} numberOfLines={1}>{assignment.title}</Text>
-                                        <Text style={styles.classMeta} numberOfLines={1}>
-                                            {dueDate ? `Due ${dueDate.toLocaleDateString()}` : assignment.subject || 'Due date pending'}
-                                        </Text>
-                                    </View>
-                                </Pressable>
-                            );
-                        })}
-                    </View>
-
+                    {/* AI Tutor Hero Card */}
                     <Pressable
                         accessibilityRole="button"
-                        onPress={() => activeClasses[0]
-                            ? navigation.navigate('BatchDetails', { batchId: activeClasses[0].id, initialTab: 'study' })
-                            : navigation.navigate('ExploreTab')}
-                        style={styles.aiCard}
+                        onPress={() => navigation.navigate('AIChat')}
+                        style={styles.heroCard}
                     >
-                        <View style={styles.aiIcon}>
-                            <MaterialCommunityIcons name="creation" size={24} color="#2866D8" />
-                        </View>
-                        <View style={styles.aiCopy}>
-                            <Text style={styles.aiEyebrow}>SMARTCHALK AI</Text>
-                            <Text style={styles.aiTitle}>A little help with a big idea</Text>
-                            <Text style={styles.aiDescription}>Get a clearer explanation of the topics you&apos;re learning.</Text>
+                        <View style={styles.heroGlow} />
+                        <View style={styles.heroContent}>
+                            <View style={styles.heroIconBox}>
+                                <MaterialCommunityIcons name="creation" size={22} color="#FFFFFF" />
+                            </View>
+                            <View style={styles.heroTextGroup}>
+                                <Text style={styles.heroTitle}>SmartChalk AI Tutor</Text>
+                                <Text style={styles.heroSubtitle}>Need help with a concept? Ask questions or generate quizzes.</Text>
+                            </View>
+                            <MaterialCommunityIcons name="chevron-right" size={20} color="#FFFFFF" />
                         </View>
                     </Pressable>
 
-                    <Pressable style={styles.logoutButton} onPress={handleLogout}>
-                        <MaterialCommunityIcons name="logout-variant" size={18} color="#7B8795" />
-                        <Text style={styles.logoutButtonText}>Sign out</Text>
-                    </Pressable>
+                    {/* Stats Dashboard Row */}
+                    <View style={styles.statsRow}>
+                        <View style={styles.statBox}>
+                            <View style={[styles.statIconBox, { backgroundColor: '#EFF6FF' }]}>
+                                <MaterialCommunityIcons name="clipboard-text-clock-outline" size={20} color="#2563EB" />
+                            </View>
+                            <Text style={styles.statValue}>{assignments.loading ? '...' : pendingAssignments.length}</Text>
+                            <Text style={styles.statLabel}>Pending Tasks</Text>
+                        </View>
+                        <View style={styles.statBox}>
+                            <View style={[styles.statIconBox, { backgroundColor: '#F3E8FF' }]}>
+                                <MaterialCommunityIcons name="google-classroom" size={20} color="#9333EA" />
+                            </View>
+                            <Text style={styles.statValue}>{classes.loading ? '...' : activeClasses.length}</Text>
+                            <Text style={styles.statLabel}>Enrolled Batches</Text>
+                        </View>
+                    </View>
+
+                    {/* Classes Section */}
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeaderRow}>
+                            <Text style={styles.sectionTitle}>My Classes</Text>
+                            <Pressable accessibilityRole="button" onPress={() => navigation.navigate('ExploreTab')}>
+                                <Text style={styles.seeAllText}>Browse All</Text>
+                            </Pressable>
+                        </View>
+
+                        <View style={styles.listContainer}>
+                            {classes.loading ? (
+                                <View style={styles.placeholderCard}>
+                                    <MaterialCommunityIcons name="loading" size={22} color="#94A3B8" style={{ marginBottom: 6 }} />
+                                    <Text style={styles.placeholderText}>Loading your enrolled classes...</Text>
+                                </View>
+                            ) : activeClasses.length === 0 ? (
+                                <View style={styles.placeholderCard}>
+                                    <MaterialCommunityIcons name="school-outline" size={26} color="#94A3B8" style={{ marginBottom: 6 }} />
+                                    <Text style={styles.placeholderText}>No active batches yet. Browse classes to join one.</Text>
+                                </View>
+                            ) : activeClasses.slice(0, 4).map((item) => (
+                                <Pressable
+                                    key={item.id}
+                                    accessibilityRole="button"
+                                    style={styles.classCard}
+                                    onPress={() => navigation.navigate('BatchDetails', { batchId: item.id })}
+                                >
+                                    <View style={styles.classCardHeader}>
+                                        <View style={styles.classIcon}>
+                                            <MaterialCommunityIcons name="book-open-variant" size={20} color="#2563EB" />
+                                        </View>
+                                        <View style={styles.classCardCopy}>
+                                            <Text style={styles.subjectLabel}>{item.subject || 'CLASS BATCH'}</Text>
+                                            <Text style={styles.classCardTitle} numberOfLines={1}>{item.title || 'Learning batch'}</Text>
+                                        </View>
+                                        {item.status === 'live' && <Text style={styles.liveBadge}>LIVE</Text>}
+                                    </View>
+
+                                    <View style={styles.classCardFooter}>
+                                        <Text style={styles.classCardMeta} numberOfLines={1}>
+                                            {item.schedule || 'Schedule pending'} {item.notes?.length ? `· ${item.notes.length} update(s)` : ''}
+                                        </Text>
+                                        <View style={styles.openBatchRow}>
+                                            <Text style={styles.openBatchText}>Open workspace</Text>
+                                            <MaterialCommunityIcons name="arrow-right" size={16} color="#2563EB" />
+                                        </View>
+                                    </View>
+                                </Pressable>
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* Assignments Section */}
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeaderRow}>
+                            <Text style={styles.sectionTitle}>Assignments & Tasks</Text>
+                            <View style={styles.countBadge}>
+                                <Text style={styles.countBadgeText}>{averageGrade === null ? 'No grades yet' : `Avg ${averageGrade}%`}</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.listContainer}>
+                            {assignments.loading ? (
+                                <View style={styles.placeholderCard}>
+                                    <Text style={styles.placeholderText}>Loading assignments...</Text>
+                                </View>
+                            ) : pendingAssignments.length === 0 ? (
+                                <View style={styles.placeholderCard}>
+                                    <MaterialCommunityIcons name="check-circle-outline" size={28} color="#16A34A" style={{ marginBottom: 6 }} />
+                                    <Text style={styles.placeholderText}>You&apos;re all caught up on assigned work!</Text>
+                                </View>
+                            ) : pendingAssignments.slice(0, 3).map((assignment) => {
+                                const dueDate = assignment.dueDate ? new Date(assignment.dueDate.toDate?.() || assignment.dueDate) : null;
+                                return (
+                                    <Pressable
+                                        key={assignment.id}
+                                        style={styles.classCard}
+                                        onPress={() => assignment.classId && navigation.navigate('BatchDetails', { batchId: assignment.classId })}
+                                    >
+                                        <View style={styles.classCardHeader}>
+                                            <View style={[styles.classIcon, { backgroundColor: '#FEF3C7' }]}>
+                                                <MaterialCommunityIcons name="file-document-edit-outline" size={20} color="#D97706" />
+                                            </View>
+                                            <View style={styles.classCardCopy}>
+                                                <Text style={[styles.subjectLabel, { color: '#D97706' }]}>ASSIGNMENT</Text>
+                                                <Text style={styles.classCardTitle} numberOfLines={1}>{assignment.title}</Text>
+                                            </View>
+                                        </View>
+
+                                        <View style={styles.classCardFooter}>
+                                            <Text style={styles.classCardMeta} numberOfLines={1}>
+                                                {dueDate ? `Due ${dueDate.toLocaleDateString()}` : assignment.subject || 'Due date pending'}
+                                            </Text>
+                                            <View style={styles.openBatchRow}>
+                                                <Text style={styles.openBatchText}>View task</Text>
+                                                <MaterialCommunityIcons name="arrow-right" size={16} color="#2563EB" />
+                                            </View>
+                                        </View>
+                                    </Pressable>
+                                );
+                            })}
+                        </View>
+                    </View>
+
+
                 </ScrollView>
             </View>
         </View>
@@ -178,32 +291,58 @@ export default function HomeScreen({ navigation }: MainTabScreenProps<'HomeTab'>
 const styles = StyleSheet.create({
     mainContainer: {
         flex: 1,
-        backgroundColor: '#EDF8FD',
+        backgroundColor: '#F8FAFC',
     },
     safeArea: {
         flex: 1,
     },
-    scrollContainer: {
-        padding: 24,
+    container: {
+        paddingHorizontal: 20,
+        paddingTop: 10,
         paddingBottom: 40,
     },
     header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         marginBottom: 20,
-        marginTop: 6,
     },
-    greeting: {
-        fontSize: 16,
-        color: '#6B7280',
-        fontWeight: '500',
+    eyebrowBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#EFF6FF',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 20,
+        alignSelf: 'flex-start',
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: '#DBEAFE',
+        gap: 4,
     },
-    name: {
-        fontSize: 28,
+    eyebrowText: {
+        color: '#2563EB',
+        fontSize: 10,
         fontWeight: '800',
-        color: '#111827',
-        textTransform: 'capitalize',
+        letterSpacing: 0.5,
+    },
+    headerTopRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    headerTextGroup: {
+        flex: 1,
+        marginRight: 12,
+    },
+    title: {
+        fontSize: 26,
+        fontWeight: '800',
+        color: '#0F172A',
+        marginBottom: 4,
+        letterSpacing: -0.5,
+    },
+    subtitle: {
+        fontSize: 13,
+        color: '#64748B',
+        fontWeight: '500',
     },
     profileBadge: {
         width: 50,
@@ -212,167 +351,242 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#DDEBF4',
+        borderWidth: 1.5,
+        borderColor: '#E2E8F0',
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    avatarImage: {
+        width: 46,
+        height: 46,
+        borderRadius: 23,
     },
     profileBadgeText: {
-        color: '#2866D8',
-        fontSize: 22,
-        fontWeight: 'bold',
+        color: '#2563EB',
+        fontSize: 18,
+        fontWeight: '700',
+    },
+    heroCard: {
+        backgroundColor: '#2563EB',
+        borderRadius: 22,
+        padding: 18,
+        marginBottom: 24,
+        overflow: 'hidden',
+        shadowColor: '#2563EB',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+        elevation: 4,
+    },
+    heroGlow: {
+        position: 'absolute',
+        top: -40,
+        right: -40,
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    heroContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    heroIconBox: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 14,
+    },
+    heroTextGroup: {
+        flex: 1,
+        marginRight: 8,
+    },
+    heroTitle: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '800',
+        marginBottom: 2,
+    },
+    heroSubtitle: {
+        color: '#E2E8F0',
+        fontSize: 11,
+        lineHeight: 15,
+        fontWeight: '500',
     },
     statsRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 26,
+        gap: 12,
+        marginBottom: 24,
     },
     statBox: {
         flex: 1,
-        marginRight: 12,
         backgroundColor: '#FFFFFF',
         padding: 16,
-        borderRadius: 14,
-        shadowColor: '#000',
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#0F172A',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
+        shadowOpacity: 0.03,
         shadowRadius: 8,
-        elevation: 3,
+        elevation: 2,
     },
-    statValue: {
-        fontSize: 23,
-        fontWeight: '800',
-        color: '#21364D',
-        marginBottom: 2,
-    },
-    statLabel: {
-        fontSize: 13,
-        color: '#8794A2',
-        fontWeight: '500',
-    },
-    sectionTitle: {
-        fontSize: 17,
-        fontWeight: '700',
-        color: '#25394D',
-        marginBottom: 0,
-        marginTop: 0,
-    },
-    logoutButton: {
-        flexDirection: 'row',
-        alignSelf: 'center',
-        gap: 8,
-        paddingVertical: 14,
-        marginTop: 6,
-        marginBottom: 12,
-    },
-    logoutButtonText: {
-        color: '#7B8795',
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    headerCopy: {
-        flex: 1,
-        marginRight: 12,
-    },
-    avatarImage: {
-        width: '100%',
-        height: '100%',
-        borderRadius: 25,
-    },
-    statIcon: {
-        width: 38,
-        height: 38,
+    statIconBox: {
+        width: 40,
+        height: 40,
         borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 10,
     },
-    sectionHeading: {
+    statValue: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#0F172A',
+        marginBottom: 1,
+    },
+    statLabel: {
+        fontSize: 11,
+        color: '#64748B',
+        fontWeight: '600',
+    },
+    section: {
+        marginBottom: 24,
+    },
+    sectionHeaderRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 12,
+        marginBottom: 10,
     },
-    seeAll: {
-        color: '#3168CC',
+    sectionTitle: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#0F172A',
+        textTransform: 'uppercase',
+        letterSpacing: 0.3,
+    },
+    seeAllText: {
+        color: '#2563EB',
         fontSize: 12,
         fontWeight: '700',
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        backgroundColor: '#FFFFFF',
-        borderColor: '#D9E5EF',
+    },
+    countBadge: {
+        backgroundColor: '#EFF6FF',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 10,
         borderWidth: 1,
-        borderRadius: 14,
+        borderColor: '#DBEAFE',
     },
-    classList: {
-        gap: 9,
-        marginBottom: 18,
+    countBadgeText: {
+        color: '#2563EB',
+        fontSize: 11,
+        fontWeight: '700',
     },
-    classRow: {
-        minHeight: 66,
+    listContainer: {
+        gap: 12,
+    },
+    classCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 18,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    classCardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 9,
+        gap: 12,
+        marginBottom: 12,
     },
     classIcon: {
-        width: 38,
-        height: 38,
-        borderRadius: 11,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 11,
-    },
-    classCopy: {
-        flex: 1,
-        marginRight: 6,
-    },
-    classTitle: {
-        color: '#26384B',
-        fontSize: 13,
-        fontWeight: '700',
-        marginBottom: 4,
-    },
-    classMeta: {
-        color: '#8C99A6',
-        fontSize: 10,
-    },
-    aiCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 15,
-        backgroundColor: '#DFF2FA',
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: '#D5EBF6',
-    },
-    aiIcon: {
         width: 42,
         height: 42,
-        borderRadius: 13,
-        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 12,
+        backgroundColor: '#EFF6FF',
     },
-    aiCopy: {
+    classCardCopy: {
         flex: 1,
+        marginRight: 8,
     },
-    aiEyebrow: {
-        color: '#3971C9',
-        fontSize: 9,
+    subjectLabel: {
+        color: '#2563EB',
+        fontSize: 10,
         fontWeight: '800',
-        marginBottom: 4,
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
+        marginBottom: 2,
     },
-    aiTitle: {
-        color: '#26384B',
-        fontSize: 13,
+    classCardTitle: {
+        color: '#0F172A',
+        fontSize: 15,
         fontWeight: '700',
-        marginBottom: 3,
     },
-    aiDescription: {
-        color: '#6E8193',
+    liveBadge: {
+        overflow: 'hidden',
+        borderRadius: 10,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        color: '#15803D',
+        backgroundColor: '#F0FDF4',
+        fontSize: 10,
+        fontWeight: '800',
+        borderWidth: 1,
+        borderColor: '#DCFCE7',
+    },
+    classCardFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+        paddingTop: 12,
+    },
+    classCardMeta: {
+        color: '#64748B',
         fontSize: 11,
-        lineHeight: 15,
+        fontWeight: '500',
+        flex: 1,
+        marginRight: 8,
+    },
+    openBatchRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    openBatchText: {
+        color: '#2563EB',
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    placeholderCard: {
+        backgroundColor: '#FFFFFF',
+        padding: 24,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    placeholderText: {
+        color: '#64748B',
+        fontSize: 12,
+        textAlign: 'center',
+        lineHeight: 18,
+        fontWeight: '500',
     },
 });

@@ -18,6 +18,9 @@ web/dist/
 web/.env
 web/.env.local
 
+# Firebase Admin SDK service-account credentials
+*firebase-adminsdk*.json
+
 # Editor directories and files
 .vscode/
 .idea/

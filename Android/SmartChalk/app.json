@@ -7,36 +7,51 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourname.smartchalk"
+      "bundleIdentifier": "com.yourname.smartchalk",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow SmartChalk to access your camera so you can take photos of assignments or notes to upload.",
+        "NSPhotoLibraryUsageDescription": "Allow SmartChalk to access your photo library to select images for upload."
+      }
     },
+    "googleServicesFile": "./google-services.json",
     "android": {
       "package": "com.yourname.smartchalk",
       "permissions": [
+        "android.permission.CAMERA",
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.DOWNLOAD_WITHOUT_NOTIFICATION",
-        "android.permission.ACCESS_NETWORK_STATE"
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.INTERNET"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font",
-      "@react-native-google-signin/google-signin",
+      "expo-sharing",
       [
         "expo-notifications",
         {
+          "icon": "./assets/notification-icon.png",
           "color": "#2D66C8",
           "defaultChannel": "smartchalk-updates"
         }
       ],
+      "expo-font",
+      "@react-native-google-signin/google-signin",
       [
         "expo-local-authentication",
         {
           "faceIDPermission": "Allow SmartChalk to verify your identity before opening your account."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow SmartChalk to access your camera to scan or capture homework."
         }
       ],
       "@config-plugins/react-native-blob-util"

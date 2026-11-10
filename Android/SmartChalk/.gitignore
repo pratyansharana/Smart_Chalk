@@ -36,3 +36,6 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# Ignore Firebase service account credentials only
+*firebase-adminsdk*.json

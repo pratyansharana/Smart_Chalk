@@ -11,6 +11,8 @@ import { SplashScreen } from '../screens/SplashScreen';
 import BatchDetailsScreen from '../screens/BatchDetailsScreen';
 import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from './types';
+import SettingsScreen from '../screens/SettingsScreen';
+import AIChatScreen from '../screens/AIChatScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const BIOMETRIC_KEY = 'smartchalk:biometric-lock:';
@@ -72,6 +74,16 @@ export default function AppNavigator() {
             name="MainTabs"
             component={MainTabs}
             options={{ gestureEnabled: false }}
+          />
+          <Stack.Screen
+            name="Settings"
+            component={SettingsScreen}
+            options={{ gestureEnabled: true }}
+          />
+          <Stack.Screen
+            name="AIChat"
+            component={AIChatScreen}
+            options={{ gestureEnabled: true }}
           />
           <Stack.Screen
             name="BatchDetails"

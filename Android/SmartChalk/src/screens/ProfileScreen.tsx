@@ -122,49 +122,106 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
 
     return (
         <View style={styles.mainContainer}>
-            <View style={[styles.safeArea, { paddingTop: Math.max(insets.top, 16) }]}>
+            <View style={[styles.safeArea, { paddingTop: Math.max(insets.top, 8) }]}>
                 <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-                    <View style={styles.header}>
-                        <Text style={styles.eyebrow}>STUDENT ACCOUNT</Text>
-                        <Text style={styles.title}>Your profile</Text>
-                    </View>
-
-                    <View style={styles.profilePanel}>
-                        <Pressable onPress={pickPhoto} style={styles.avatarButton} accessibilityRole="button" accessibilityLabel="Change profile photo">
-                            {profile.photoURL ? <Image source={{ uri: profile.photoURL }} style={styles.avatarImage} /> : (
-                                <Text style={styles.avatarText}>{(profile.displayName || user?.email || 'S').charAt(0).toUpperCase()}</Text>
-                            )}
-                            <View style={styles.photoEditBadge}><MaterialCommunityIcons name="camera-outline" size={15} color="#FFFFFF" /></View>
-                        </Pressable>
-                        <View style={styles.accountCopy}>
-                            <Text style={styles.accountName} numberOfLines={1}>{profile.displayName || 'Student'}</Text>
-                            <Text style={styles.accountEmail} numberOfLines={1}>{user?.email || ''}</Text>
+                    {/* Modern Gradient Hero Card with Avatar */}
+                    <View style={styles.heroCard}>
+                        <View style={styles.heroGlowCircle} />
+                        <View style={styles.heroContent}>
+                            <Pressable onPress={pickPhoto} style={styles.avatarButton} accessibilityRole="button" accessibilityLabel="Change profile photo">
+                                {profile.photoURL ? (
+                                    <Image source={{ uri: profile.photoURL }} style={styles.avatarImage} />
+                                ) : (
+                                    <Text style={styles.avatarText}>{(profile.displayName || user?.email || 'S').charAt(0).toUpperCase()}</Text>
+                                )}
+                                <View style={styles.photoEditBadge}>
+                                    <MaterialCommunityIcons name="camera" size={13} color="#FFFFFF" />
+                                </View>
+                            </Pressable>
+                            <View style={styles.heroTextContainer}>
+                                <View style={styles.rolePill}>
+                                    <MaterialCommunityIcons name="school-outline" size={12} color="#2563EB" />
+                                    <Text style={styles.rolePillText}>Student Account</Text>
+                                </View>
+                                <Text style={styles.accountName} numberOfLines={1}>{profile.displayName || 'Student'}</Text>
+                                <Text style={styles.accountEmail} numberOfLines={1}>{user?.email || ''}</Text>
+                            </View>
                         </View>
                     </View>
 
-                    {loading ? <ActivityIndicator color="#2D66C8" style={styles.loader} /> : (
-                        <View style={styles.form}>
-                            <Field label="Display name" value={profile.displayName} onChangeText={(value) => updateField('displayName', value)} />
-                            <Field label="Grade or level" value={profile.grade} onChangeText={(value) => updateField('grade', value)} placeholder="e.g. Grade 10" />
-                            <Field label="Phone" value={profile.phone} onChangeText={(value) => updateField('phone', value)} keyboardType="phone-pad" />
-                            <Field label="Subjects of interest" value={profile.subjectsOfInterest} onChangeText={(value) => updateField('subjectsOfInterest', value)} placeholder="Maths, Physics, Biology" />
-                            <Field label="About you" value={profile.bio} onChangeText={(value) => updateField('bio', value)} multiline />
+                    {loading ? (
+                        <View style={styles.loaderContainer}>
+                            <ActivityIndicator size="large" color="#2563EB" />
+                        </View>
+                    ) : (
+                        <View style={styles.formContainer}>
+                            <Text style={styles.sectionHeader}>Personal & Academic Details</Text>
+                            
+                            <Field 
+                                label="Display Name" 
+                                icon="account-outline" 
+                                value={profile.displayName} 
+                                onChangeText={(value) => updateField('displayName', value)} 
+                            />
+                            <Field 
+                                label="Grade or Level" 
+                                icon="school" 
+                                value={profile.grade} 
+                                onChangeText={(value) => updateField('grade', value)} 
+                                placeholder="e.g. Grade 10" 
+                            />
+                            <Field 
+                                label="Phone Number" 
+                                icon="phone-outline" 
+                                value={profile.phone} 
+                                onChangeText={(value) => updateField('phone', value)} 
+                                keyboardType="phone-pad" 
+                            />
+                            <Field 
+                                label="Subjects of Interest" 
+                                icon="book-open-variant" 
+                                value={profile.subjectsOfInterest} 
+                                onChangeText={(value) => updateField('subjectsOfInterest', value)} 
+                                placeholder="Maths, Physics, Biology" 
+                            />
+                            <Field 
+                                label="About You" 
+                                icon="text-box-outline" 
+                                value={profile.bio} 
+                                onChangeText={(value) => updateField('bio', value)} 
+                                multiline 
+                                placeholder="Write a short bio..." 
+                            />
 
                             <Pressable disabled={saving} onPress={saveProfile} style={styles.primaryButton}>
-                                {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>Save profile</Text>}
+                                {saving ? (
+                                    <ActivityIndicator color="#FFFFFF" />
+                                ) : (
+                                    <>
+                                        <MaterialCommunityIcons name="check" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                                        <Text style={styles.primaryButtonText}>Save Changes</Text>
+                                    </>
+                                )}
                             </Pressable>
                         </View>
                     )}
 
-                    <View style={styles.actions}>
-                        <Pressable onPress={() => navigation.navigate('SettingsTab')} style={styles.secondaryButton}>
-                            <MaterialCommunityIcons name="cog-outline" size={19} color="#2D66C8" />
-                            <Text style={styles.secondaryButtonText}>Settings</Text>
-                            <MaterialCommunityIcons name="chevron-right" size={19} color="#91A0AE" />
+                    {/* Navigation & Actions Section */}
+                    <View style={styles.actionsContainer}>
+                        <Pressable onPress={() => navigation.navigate('Settings')} style={styles.secondaryButton}>
+                            <View style={styles.secondaryIconBox}>
+                                <MaterialCommunityIcons name="cog-outline" size={20} color="#2563EB" />
+                            </View>
+                            <View style={styles.secondaryTextGroup}>
+                                <Text style={styles.secondaryButtonTitle}>App Settings</Text>
+                                <Text style={styles.secondaryButtonSubtitle}>Notifications, security, preferences</Text>
+                            </View>
+                            <MaterialCommunityIcons name="chevron-right" size={20} color="#94A3B8" />
                         </Pressable>
+
                         <Pressable onPress={handleSignOut} style={styles.signOutButton}>
-                            <MaterialCommunityIcons name="logout-variant" size={18} color="#A4514B" />
-                            <Text style={styles.signOutText}>Sign out</Text>
+                            <MaterialCommunityIcons name="logout-variant" size={18} color="#DC2626" />
+                            <Text style={styles.signOutText}>Sign Out</Text>
                         </Pressable>
                     </View>
                 </ScrollView>
@@ -175,6 +232,7 @@ export default function ProfileScreen({ navigation }: MainTabScreenProps<'Profil
 
 function Field({
     label,
+    icon,
     value,
     onChangeText,
     placeholder,
@@ -182,6 +240,7 @@ function Field({
     multiline,
 }: {
     label: string;
+    icon: keyof typeof MaterialCommunityIcons.glyphMap;
     value: string;
     onChangeText: (value: string) => void;
     placeholder?: string;
@@ -189,18 +248,21 @@ function Field({
     multiline?: boolean;
 }) {
     return (
-        <View style={styles.field}>
+        <View style={styles.fieldWrapper}>
             <Text style={styles.fieldLabel}>{label}</Text>
-            <TextInput
-                value={value}
-                onChangeText={onChangeText}
-                placeholder={placeholder || label}
-                placeholderTextColor="#97A5B2"
-                keyboardType={keyboardType || 'default'}
-                multiline={multiline}
-                textAlignVertical={multiline ? 'top' : 'center'}
-                style={[styles.input, multiline && styles.multilineInput]}
-            />
+            <View style={[styles.inputContainer, multiline && styles.multilineContainer]}>
+                <MaterialCommunityIcons name={icon} size={18} color="#64748B" style={[styles.inputIcon, multiline && styles.multilineIcon]} />
+                <TextInput
+                    value={value}
+                    onChangeText={onChangeText}
+                    placeholder={placeholder || label}
+                    placeholderTextColor="#94A3B8"
+                    keyboardType={keyboardType || 'default'}
+                    multiline={multiline}
+                    textAlignVertical={multiline ? 'top' : 'center'}
+                    style={[styles.input, multiline && styles.multilineInput]}
+                />
+            </View>
         </View>
     );
 }
@@ -208,7 +270,7 @@ function Field({
 const styles = StyleSheet.create({
     mainContainer: {
         flex: 1,
-        backgroundColor: '#EDF8FD',
+        backgroundColor: '#F8FAFC',
     },
     safeArea: {
         flex: 1,
@@ -216,145 +278,239 @@ const styles = StyleSheet.create({
     container: {
         paddingHorizontal: 20,
         paddingTop: 10,
-        paddingBottom: 36,
+        paddingBottom: 40,
     },
-    header: {
-        marginBottom: 17,
+    heroCard: {
+        backgroundColor: '#2563EB',
+        borderRadius: 22,
+        padding: 20,
+        marginBottom: 24,
+        overflow: 'hidden',
+        shadowColor: '#2563EB',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+        elevation: 4,
     },
-    eyebrow: {
-        color: '#3971C9',
-        fontSize: 10,
-        fontWeight: '800',
-        marginBottom: 5,
+    heroGlowCircle: {
+        position: 'absolute',
+        top: -40,
+        right: -40,
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
     },
-    title: {
-        color: '#25394D',
-        fontSize: 25,
-        fontWeight: '800',
-    },
-    profilePanel: {
+    heroContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
-        padding: 15,
-        marginBottom: 16,
     },
     avatarButton: {
-        width: 66,
-        height: 66,
-        borderRadius: 33,
-        backgroundColor: '#DDEFFA',
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 13,
+        marginRight: 16,
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.4)',
     },
     avatarImage: {
-        width: 66,
-        height: 66,
-        borderRadius: 33,
+        width: 68,
+        height: 68,
+        borderRadius: 34,
     },
     photoEditBadge: {
         position: 'absolute',
-        right: -1,
-        bottom: -1,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: '#2D66C8',
+        right: 0,
+        bottom: 0,
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        backgroundColor: '#0F172A',
         borderWidth: 2,
         borderColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
     },
     avatarText: {
-        color: '#2D66C8',
-        fontSize: 26,
+        color: '#FFFFFF',
+        fontSize: 28,
         fontWeight: '800',
     },
-    accountCopy: {
+    heroTextContainer: {
         flex: 1,
     },
+    rolePill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#EFF6FF',
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+        borderRadius: 12,
+        alignSelf: 'flex-start',
+        marginBottom: 6,
+        gap: 4,
+    },
+    rolePillText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#2563EB',
+        textTransform: 'uppercase',
+    },
     accountName: {
-        color: '#26394D',
-        fontSize: 16,
+        color: '#FFFFFF',
+        fontSize: 20,
         fontWeight: '800',
+        letterSpacing: -0.3,
     },
     accountEmail: {
-        color: '#8291A0',
+        color: '#E2E8F0',
         fontSize: 12,
-        marginTop: 4,
+        marginTop: 2,
+        fontWeight: '500',
     },
-    form: {
-        gap: 12,
+    formContainer: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 18,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        gap: 16,
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 8,
+        elevation: 2,
     },
-    field: {
+    sectionHeader: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#0F172A',
+        marginBottom: -4,
+        letterSpacing: -0.2,
+    },
+    fieldWrapper: {
         gap: 6,
     },
     fieldLabel: {
-        color: '#536A80',
+        color: '#475569',
         fontSize: 11,
         fontWeight: '700',
     },
-    input: {
-        minHeight: 44,
-        backgroundColor: '#FFFFFF',
+    inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8FAFC',
         borderWidth: 1,
-        borderColor: '#DDE8F0',
-        borderRadius: 10,
+        borderColor: '#E2E8F0',
+        borderRadius: 14,
         paddingHorizontal: 12,
-        color: '#26394D',
+        minHeight: 48,
+    },
+    multilineContainer: {
+        alignItems: 'flex-start',
+        paddingVertical: 10,
+    },
+    inputIcon: {
+        marginRight: 10,
+    },
+    multilineIcon: {
+        marginTop: 2,
+    },
+    input: {
+        flex: 1,
+        color: '#0F172A',
         fontSize: 13,
+        fontWeight: '600',
+        paddingVertical: 0,
     },
     multilineInput: {
-        minHeight: 94,
-        paddingTop: 10,
+        minHeight: 80,
+        textAlignVertical: 'top',
     },
     primaryButton: {
-        minHeight: 44,
+        minHeight: 48,
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 10,
-        backgroundColor: '#2D66C8',
-        marginTop: 4,
+        borderRadius: 14,
+        backgroundColor: '#2563EB',
+        marginTop: 6,
+        shadowColor: '#2563EB',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 2,
     },
     primaryButtonText: {
         color: '#FFFFFF',
         fontSize: 13,
         fontWeight: '700',
     },
-    actions: {
-        marginTop: 22,
-        gap: 8,
+    actionsContainer: {
+        marginTop: 20,
+        gap: 12,
     },
     secondaryButton: {
-        minHeight: 48,
+        minHeight: 64,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
         backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        paddingHorizontal: 13,
+        borderRadius: 18,
+        paddingHorizontal: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 6,
+        elevation: 1,
     },
-    secondaryButtonText: {
+    secondaryIconBox: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: '#EFF6FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 14,
+    },
+    secondaryTextGroup: {
         flex: 1,
-        color: '#344B62',
-        fontSize: 13,
+    },
+    secondaryButtonTitle: {
+        color: '#0F172A',
+        fontSize: 14,
         fontWeight: '700',
+        marginBottom: 2,
+    },
+    secondaryButtonSubtitle: {
+        color: '#64748B',
+        fontSize: 11,
+        fontWeight: '500',
     },
     signOutButton: {
-        minHeight: 46,
+        minHeight: 50,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
+        backgroundColor: '#FEF2F2',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#FEE2E2',
+        marginTop: 4,
     },
     signOutText: {
-        color: '#A4514B',
-        fontSize: 12,
+        color: '#DC2626',
+        fontSize: 13,
         fontWeight: '700',
     },
-    loader: {
-        marginVertical: 28,
+    loaderContainer: {
+        paddingVertical: 50,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 });

@@ -5,7 +5,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import ExploreScreen from '../screens/ExploreScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
-import SettingsScreen from '../screens/SettingsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import type { MainTabParamList } from './types';
 
@@ -68,11 +67,7 @@ export default function MainTabs() {
         component={NotificationsScreen} 
         options={{ tabBarLabel: 'Updates' }} 
       />
-      <Tab.Screen 
-        name="SettingsTab" 
-        component={SettingsScreen} 
-        options={{ tabBarLabel: 'Settings' }} 
-      />
+
       <Tab.Screen 
         name="ProfileTab" 
         component={ProfileScreen} 

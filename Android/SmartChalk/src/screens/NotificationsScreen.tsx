@@ -61,8 +61,8 @@ export default function NotificationsScreen({ navigation }: MainTabScreenProps<'
       message: note.text,
       date: toDate(note.createdAt),
       icon: 'bullhorn-outline' as const,
-      tint: '#E8F1FF',
-      color: '#3168CC',
+      tint: '#EFF6FF',
+      color: '#2563EB',
     }))),
     ...assignments.data.filter((assignment) => !submissions.data.some((item) => item.assignmentId === assignment.id)).map((assignment) => ({
       id: `assignment-${assignment.id}`,
@@ -73,8 +73,8 @@ export default function NotificationsScreen({ navigation }: MainTabScreenProps<'
       message: `Due ${getAssignmentDueDate(assignment)?.toLocaleDateString() || 'date pending'}`,
       date: getAssignmentDueDate(assignment),
       icon: 'file-document-outline' as const,
-      tint: '#FFF3D1',
-      color: '#B77A1A',
+      tint: '#FEF3C7',
+      color: '#D97706',
     })),
     ...submissions.data.filter((submission) => typeof submission.grade === 'number').map((submission) => ({
       id: `grade-${submission.id}`,
@@ -85,8 +85,8 @@ export default function NotificationsScreen({ navigation }: MainTabScreenProps<'
       message: `Your work was graded ${submission.grade}${submission.maxScore ? ` / ${submission.maxScore}` : ''}${submission.feedback ? ` · ${submission.feedback}` : ''}`,
       date: toDate(submission.submittedAt),
       icon: 'check-decagram-outline' as const,
-      tint: '#E4F6EA',
-      color: '#287E52',
+      tint: '#F0FDF4',
+      color: '#16A34A',
     })),
   ];
   const updates = [
@@ -126,36 +126,67 @@ export default function NotificationsScreen({ navigation }: MainTabScreenProps<'
 
   return (
     <View style={styles.mainContainer}>
-        <View style={[styles.safeArea, { paddingTop: Math.max(insets.top, 16) }]}>
+      <View style={[styles.safeArea, { paddingTop: Math.max(insets.top, 8) }]}>
         <View style={styles.header}>
-          <View>
-              <Text style={styles.eyebrow}>STUDENT FEED</Text>
-              <Text style={styles.title}>Your updates</Text>
-              <Text style={styles.subtitle}>Announcements, deadlines, and feedback</Text>
+          <View style={styles.eyebrowBadge}>
+            <MaterialCommunityIcons name="bell-ring-outline" size={12} color="#2563EB" />
+            <Text style={styles.eyebrowText}>STUDENT FEED</Text>
           </View>
+          <Text style={styles.title}>Your Updates</Text>
+          <Text style={styles.subtitle}>Announcements, deadlines, and feedback</Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-          {loading ? <Text style={styles.emptyText}>Loading your updates...</Text> : updates.map((item) => (
-            <Pressable key={item.id} onPress={() => openUpdate(item)} style={[styles.card, !item.read && styles.cardUnread]}>
-              <View style={[styles.iconCircle, { backgroundColor: item.type === 'grade' ? '#E4F6EA' : item.type === 'assignment' || item.type === 'test' ? '#FFF3D1' : '#E8F1FF' }]}>
-                <MaterialCommunityIcons
-                  name={item.type === 'grade' ? 'check-decagram-outline' : item.type === 'assignment' ? 'file-document-outline' : item.type === 'test' ? 'clipboard-text-outline' : item.type === 'quiz' ? 'trophy-outline' : item.type === 'vault' ? 'folder-outline' : 'bullhorn-outline'}
-                  size={21}
-                  color={item.type === 'grade' ? '#287E52' : item.type === 'assignment' || item.type === 'test' ? '#B77A1A' : '#3168CC'}
-                />
-              </View>
-              <View style={styles.cardContent}>
-                <View style={styles.cardTitleRow}>
-                  <Text style={styles.cardTitle}>{item.title}</Text>
-                  {!item.read ? <View style={styles.unreadDot} /> : null}
+          {loading ? (
+            <View style={styles.placeholderCard}>
+              <MaterialCommunityIcons name="loading" size={24} color="#94A3B8" style={{ marginBottom: 6 }} />
+              <Text style={styles.placeholderText}>Loading your updates...</Text>
+            </View>
+          ) : updates.map((item) => {
+            const isGrade = item.type === 'grade';
+            const isAssignment = item.type === 'assignment' || item.type === 'test';
+            const iconBg = isGrade ? '#F0FDF4' : isAssignment ? '#FEF3C7' : '#EFF6FF';
+            const iconColor = isGrade ? '#16A34A' : isAssignment ? '#D97706' : '#2563EB';
+            const iconName = isGrade
+              ? 'check-decagram-outline'
+              : item.type === 'assignment'
+              ? 'file-document-outline'
+              : item.type === 'test'
+              ? 'clipboard-text-outline'
+              : item.type === 'quiz'
+              ? 'trophy-outline'
+              : item.type === 'vault'
+              ? 'folder-outline'
+              : 'bullhorn-outline';
+
+            return (
+              <Pressable
+                key={item.id}
+                onPress={() => openUpdate(item)}
+                style={[styles.card, !item.read && styles.cardUnread]}
+              >
+                <View style={[styles.iconCircle, { backgroundColor: iconBg }]}>
+                  <MaterialCommunityIcons name={iconName} size={20} color={iconColor} />
                 </View>
-                <Text style={styles.cardMessage}>{item.message}</Text>
-                {item.date ? <Text style={styles.cardTime}>{item.date.toLocaleDateString()}</Text> : null}
-              </View>
-            </Pressable>
-          ))}
-          {!loading && updates.length === 0 ? <Text style={styles.emptyText}>You&apos;re all caught up. New class announcements and feedback will appear here.</Text> : null}
+                <View style={styles.cardContent}>
+                  <View style={styles.cardTitleRow}>
+                    <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+                    {!item.read && <View style={styles.unreadDot} />}
+                  </View>
+                  <Text style={styles.cardMessage} numberOfLines={2}>{item.message}</Text>
+                  {item.date ? (
+                    <Text style={styles.cardTime}>{item.date.toLocaleDateString()}</Text>
+                  ) : null}
+                </View>
+              </Pressable>
+            );
+          })}
+          {!loading && updates.length === 0 ? (
+            <View style={styles.placeholderCard}>
+              <MaterialCommunityIcons name="checkbox-marked-circle-outline" size={28} color="#16A34A" style={{ marginBottom: 6 }} />
+              <Text style={styles.placeholderText}>You&apos;re all caught up! New class announcements and feedback will appear here.</Text>
+            </View>
+          ) : null}
         </ScrollView>
       </View>
     </View>
@@ -165,61 +196,75 @@ export default function NotificationsScreen({ navigation }: MainTabScreenProps<'
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#EDF8FD',
+    backgroundColor: '#F8FAFC',
   },
   safeArea: {
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 16,
   },
-  title: {
-    fontSize: 25,
-    fontWeight: '800',
-    color: '#25394D',
-    marginBottom: 4,
+  eyebrowBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+    gap: 4,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#8291A0',
-  },
-  eyebrow: {
-    color: '#3971C9',
+  eyebrowText: {
+    color: '#2563EB',
     fontSize: 10,
     fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#0F172A',
     marginBottom: 4,
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
   },
   container: {
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 4,
     paddingBottom: 40,
     gap: 12,
   },
   card: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    padding: 14,
-    borderRadius: 12,
+    padding: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#E4EDF3',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    borderColor: '#E2E8F0',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    shadowRadius: 8,
+    elevation: 2,
+    alignItems: 'center',
   },
   cardUnread: {
-    borderColor: '#BFD6EF',
+    borderColor: '#93C5FD',
+    backgroundColor: '#F8FAFC',
   },
   iconCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -231,37 +276,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#26394D',
+    color: '#0F172A',
+    flex: 1,
+    marginRight: 8,
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#2D66C8',
+    backgroundColor: '#2563EB',
   },
   cardMessage: {
-    fontSize: 13,
-    color: '#4B5563',
-    lineHeight: 18,
-    marginBottom: 8,
+    fontSize: 12,
+    color: '#475569',
+    lineHeight: 17,
+    fontWeight: '500',
+    marginBottom: 6,
   },
   cardTime: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    fontWeight: '500',
+    fontSize: 10,
+    color: '#94A3B8',
+    fontWeight: '600',
   },
-  emptyText: {
+  placeholderCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 18,
-    color: '#8291A0',
-    fontSize: 13,
-    lineHeight: 19,
+    padding: 24,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  placeholderText: {
+    color: '#64748B',
+    fontSize: 12,
     textAlign: 'center',
+    lineHeight: 18,
+    fontWeight: '500',
   },
 });

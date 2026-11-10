@@ -4,6 +4,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   onSnapshot,
   query,
@@ -31,6 +32,7 @@ type Batch = FirestoreItem & {
   status?: string;
   meetingLink?: string;
   studentIds?: string[];
+  teacherId?: string;
   notes?: { id: string; text: string; createdAt?: string }[];
 };
 type QuizQuestion = { questionText: string; options: string[]; correctOptionIndex: number };
@@ -45,6 +47,14 @@ type SelfStudyWorksheet = FirestoreItem & {
   feedback?: string;
   studentAnswersText?: string;
   createdAt?: unknown;
+};
+type SyllabusItem = FirestoreItem & {
+  title?: string;
+  description?: string;
+  deadline?: string;
+  completed?: boolean;
+  targetGoal?: string;
+  createdByName?: string;
 };
 
 const TABS: { key: TabKey; label: string; description: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }[] = [
@@ -91,6 +101,7 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [quizScores, setQuizScores] = useState<FirestoreItem[]>([]);
   const [vaultItems, setVaultItems] = useState<FirestoreItem[]>([]);
+  const [syllabusItems, setSyllabusItems] = useState<SyllabusItem[]>([]);
   const [activeAttachment, setActiveAttachment] = useState<{ uri: string; name: string } | null>(null);
   const [worksheets, setWorksheets] = useState<SelfStudyWorksheet[]>([]);
   const [activeTab, setActiveTab] = useState<TabKey | null>(route.params.initialTab || null);
@@ -114,6 +125,13 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
   const [timeLeft, setTimeLeft] = useState(30);
   const [quizFinished, setQuizFinished] = useState(false);
   const [quizSubmitting, setQuizSubmitting] = useState(false);
+
+  // Syllabus Tracker local form state
+  const [newSyllabusTitle, setNewSyllabusTitle] = useState('');
+  const [newSyllabusDescription, setNewSyllabusDescription] = useState('');
+  const [newSyllabusDeadline, setNewSyllabusDeadline] = useState('');
+  const [newSyllabusGoal, setNewSyllabusGoal] = useState('');
+  const [addingSyllabus, setAddingSyllabus] = useState(false);
 
   useEffect(() => {
     if (!studentId) return undefined;
@@ -139,13 +157,14 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
     const unsubscribeQuizzes = watchList<Quiz>('quizzes', 'classId', batchId, setQuizzes, handleError);
     const unsubscribeQuizScores = watchList('quiz_submissions', 'classId', batchId, setQuizScores, handleError);
     const unsubscribeVault = watchList('vault_items', 'classId', batchId, setVaultItems, handleError);
+    const unsubscribeSyllabus = watchList<SyllabusItem>('syllabus_items', 'classId', batchId, setSyllabusItems, handleError);
     const unsubscribeWorksheets = onSnapshot(
       query(
         collection(db, 'self_study_worksheets'),
         where('studentId', '==', studentId),
         where('classId', '==', batchId),
       ),
-      (snapshot) => setWorksheets(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as SelfStudyWorksheet)),
+      (snapshot) => setWorksheets(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })) as SelfStudyWorksheet[]),
       handleError,
     );
 
@@ -158,6 +177,7 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
       unsubscribeQuizzes();
       unsubscribeQuizScores();
       unsubscribeVault();
+      unsubscribeSyllabus();
       unsubscribeWorksheets();
     };
   }, [batchId, studentId]);
@@ -175,6 +195,11 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
   const activeWorksheet = worksheets.find((item) => item.id === activeWorksheetId);
   const questions = quiz?.questions || [];
   const currentQuestion = questions[questionIndex];
+
+  // SaaS Syllabus Progress Calculation
+  const totalSyllabusCount = syllabusItems.length;
+  const completedSyllabusCount = syllabusItems.filter((i) => i.completed).length;
+  const syllabusProgressPercent = totalSyllabusCount > 0 ? Math.round((completedSyllabusCount / totalSyllabusCount) * 100) : 0;
 
   useEffect(() => {
     if (!activeQuizId || quizFinished || questionAnswered) return undefined;
@@ -364,6 +389,62 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
     }
   }
 
+  async function addSyllabusItem() {
+    if (!newSyllabusTitle.trim()) {
+      Alert.alert('Title required', 'Please enter a topic or chapter title for the syllabus.');
+      return;
+    }
+    setAddingSyllabus(true);
+    try {
+      await addDoc(collection(db, 'syllabus_items'), {
+        classId: batchId,
+        title: newSyllabusTitle.trim(),
+        description: newSyllabusDescription.trim(),
+        deadline: newSyllabusDeadline.trim() || 'No deadline',
+        targetGoal: newSyllabusGoal.trim() || 'General Milestone',
+        completed: false,
+        createdBy: studentId,
+        createdByName: studentName,
+        createdAt: serverTimestamp(),
+      });
+      setNewSyllabusTitle('');
+      setNewSyllabusDescription('');
+      setNewSyllabusDeadline('');
+      setNewSyllabusGoal('');
+    } catch (error) {
+      Alert.alert('Error', error instanceof Error ? error.message : 'Could not add syllabus item.');
+    } finally {
+      setAddingSyllabus(false);
+    }
+  }
+
+  async function toggleSyllabusItem(itemId: string, currentStatus: boolean) {
+    try {
+      await updateDoc(doc(db, 'syllabus_items', itemId), {
+        completed: !currentStatus,
+      });
+    } catch (error) {
+      Alert.alert('Error', error instanceof Error ? error.message : 'Could not update status.');
+    }
+  }
+
+  async function deleteSyllabusItem(itemId: string) {
+    Alert.alert('Delete Item', 'Are you sure you want to remove this syllabus topic?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteDoc(doc(db, 'syllabus_items', itemId));
+          } catch (error) {
+            Alert.alert('Error', error instanceof Error ? error.message : 'Could not delete item.');
+          }
+        },
+      },
+    ]);
+  }
+
   function startQuiz(quizId: string) {
     setActiveQuizId(quizId);
     setQuestionIndex(0);
@@ -444,27 +525,195 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
   return (
     <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={19} color="#4E6478" />
-          <Text style={styles.backText}>Classes</Text>
-        </Pressable>
-
-        <View style={styles.batchHeader}>
-          <View style={styles.headerTop}>
-            <Text style={styles.subject}>{batch.subject || 'CLASS BATCH'}</Text>
-            {batch.status === 'live' && <Text style={styles.liveBadge}>LIVE NOW</Text>}
-          </View>
-          <Text style={styles.batchTitle}>{batch.title || 'Class workspace'}</Text>
-          <Text style={styles.batchSchedule}>{batch.schedule || 'Schedule pending'}</Text>
-          {!!batch.meetingLink && (
-            <Pressable onPress={() => openLink(batch.meetingLink || '')} style={styles.meetingButton}>
-              <MaterialCommunityIcons name="video-outline" size={18} color="#FFFFFF" />
-              <Text style={styles.primaryButtonText}>{batch.status === 'live' ? 'Join live session' : 'Open class link'}</Text>
+        
+        {/* Top Navbar Bar */}
+        <View style={styles.topBar}>
+          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+            <MaterialCommunityIcons name="arrow-left" size={16} color="#475569" />
+            <Text style={styles.backText}>Classes</Text>
+          </Pressable>
+          {activeTab !== null && (
+            <Pressable onPress={() => {
+              setSelectedAssignmentId('');
+              setSelectedTestId('');
+              setActiveWorksheetId('');
+              setActiveQuizId('');
+              setActiveTab(null);
+            }} style={styles.backButton}>
+              <MaterialCommunityIcons name="home-outline" size={16} color="#2563EB" />
+              <Text style={[styles.backText, { color: '#2563EB' }]}>Overview Hub</Text>
             </Pressable>
+          )}
+          {activeTab === null && (
+            <View style={styles.workspacePill}>
+              <View style={styles.workspaceDot} />
+              <Text style={styles.workspacePillText}>Production Workspace</Text>
+            </View>
           )}
         </View>
 
-        {activeTab === null ? (
+        {/* Hero SaaS Header Card & Syllabus Module (Visible ONLY when activeTab is null) */}
+        {activeTab === null && (
+          <>
+            <View style={styles.batchHeader}>
+              <View style={styles.headerTop}>
+                <View style={styles.subjectBadge}>
+                  <MaterialCommunityIcons name="school-outline" size={12} color="#2563EB" />
+                  <Text style={styles.subject}>{batch.subject || 'ACADEMIC BATCH'}</Text>
+                </View>
+                {batch.status === 'live' && (
+                  <View style={styles.liveBadgeWrapper}>
+                    <View style={styles.liveDotPulse} />
+                    <Text style={styles.liveBadge}>LIVE SESSION</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.batchTitle}>{batch.title || 'Class workspace'}</Text>
+              <Text style={styles.batchSchedule}>{batch.schedule || 'Flexible schedule'}</Text>
+              
+              {!!batch.meetingLink && (
+                <Pressable onPress={() => openLink(batch.meetingLink || '')} style={styles.meetingButton}>
+                  <MaterialCommunityIcons name="video-wireless" size={18} color="#FFFFFF" />
+                  <Text style={styles.meetingButtonText}>{batch.status === 'live' ? 'Join Live Room' : 'Open Class Portal'}</Text>
+                </Pressable>
+              )}
+            </View>
+
+            {/* Syllabus & Milestone Goals Manager Section (Placed immediately below Class Schedule / Open Class Portal) */}
+            <View style={styles.saasSyllabusContainer}>
+              <View style={styles.saasSectionHeader}>
+                <View style={styles.saasTitleGroup}>
+                  <View style={styles.saasHeaderIconBox}>
+                    <MaterialCommunityIcons name="format-list-checks" size={18} color="#2563EB" />
+                  </View>
+                  <View>
+                    <Text style={styles.saasSectionTitle}>Syllabus & Milestone Goals</Text>
+                    <Text style={styles.saasSectionSubtitle}>Enterprise course tracking & student objectives</Text>
+                  </View>
+                </View>
+                <View style={styles.saasMetricBadge}>
+                  <Text style={styles.saasMetricBadgeText}>{completedSyllabusCount}/{totalSyllabusCount} Done</Text>
+                </View>
+              </View>
+
+              {totalSyllabusCount > 0 && (
+                <View style={styles.saasProgressCard}>
+                  <View style={styles.saasProgressTopRow}>
+                    <Text style={styles.saasProgressLabel}>Curriculum Completion</Text>
+                    <Text style={styles.saasProgressPercentText}>{syllabusProgressPercent}%</Text>
+                  </View>
+                  <View style={styles.saasProgressBarTrack}>
+                    <View style={[styles.saasProgressBarFill, { width: `${syllabusProgressPercent}%` }]} />
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.saasItemsList}>
+                {syllabusItems.map((item) => {
+                  const isCompleted = item.completed === true;
+                  return (
+                    <View key={item.id} style={[styles.saasCard, isCompleted && styles.saasCardCompleted]}>
+                      <Pressable onPress={() => toggleSyllabusItem(item.id, isCompleted)} style={styles.saasCheckButton}>
+                        <MaterialCommunityIcons 
+                          name={isCompleted ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'} 
+                          size={22} 
+                          color={isCompleted ? '#16A34A' : '#2563EB'} 
+                        />
+                      </Pressable>
+                      <View style={styles.saasCardContent}>
+                        <Text style={[styles.saasItemTitle, isCompleted && styles.saasItemTitleCompleted]}>
+                          {item.title}
+                        </Text>
+                        {!!item.description && (
+                          <Text style={styles.saasItemDesc} numberOfLines={2}>{item.description}</Text>
+                        )}
+                        <View style={styles.saasMetaPillsRow}>
+                          <View style={styles.saasPill}>
+                            <MaterialCommunityIcons name="calendar-clock" size={11} color="#D97706" />
+                            <Text style={styles.saasPillText}>Due: {item.deadline || 'None'}</Text>
+                          </View>
+                          <View style={[styles.saasPill, styles.saasGoalPill]}>
+                            <MaterialCommunityIcons name="flag-outline" size={11} color="#16A34A" />
+                            <Text style={[styles.saasPillText, styles.saasGoalPillText]}>Goal: {item.targetGoal || 'Milestone'}</Text>
+                          </View>
+                          {!!item.createdByName && (
+                            <View style={styles.saasAuthorPill}>
+                              <Text style={styles.saasAuthorText}>By {item.createdByName}</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                      <Pressable onPress={() => deleteSyllabusItem(item.id)} style={styles.saasDeleteBtn}>
+                        <MaterialCommunityIcons name="trash-can-outline" size={16} color="#94A3B8" />
+                      </Pressable>
+                    </View>
+                  );
+                })}
+
+                {!syllabusItems.length && (
+                  <View style={styles.saasEmptyBox}>
+                    <MaterialCommunityIcons name="notebook-outline" size={32} color="#CBD5E1" />
+                    <Text style={styles.saasEmptyText}>No curriculum milestones tracked yet.</Text>
+                    <Text style={styles.saasEmptySubtext}>Add the first chapter objective below to keep everyone aligned.</Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.saasFormContainer}>
+                <View style={styles.saasFormHeader}>
+                  <MaterialCommunityIcons name="plus-circle-outline" size={16} color="#2563EB" />
+                  <Text style={styles.saasFormHeaderTitle}>Add Curriculum Objective / Milestone</Text>
+                </View>
+                
+                <TextInput 
+                  value={newSyllabusTitle} 
+                  onChangeText={setNewSyllabusTitle} 
+                  placeholder="Topic or Chapter Title (e.g. Module 4: Neural Networks)" 
+                  placeholderTextColor="#94A3B8" 
+                  style={styles.saasInput} 
+                />
+                <TextInput 
+                  value={newSyllabusDescription} 
+                  onChangeText={setNewSyllabusDescription} 
+                  placeholder="Description or study notes (optional)" 
+                  placeholderTextColor="#94A3B8" 
+                  style={styles.saasInput} 
+                />
+                
+                <View style={styles.saasRowInputs}>
+                  <TextInput 
+                    value={newSyllabusDeadline} 
+                    onChangeText={setNewSyllabusDeadline} 
+                    placeholder="Deadline (e.g. Nov 30)" 
+                    placeholderTextColor="#94A3B8" 
+                    style={[styles.saasInput, { flex: 1 }]} 
+                  />
+                  <TextInput 
+                    value={newSyllabusGoal} 
+                    onChangeText={setNewSyllabusGoal} 
+                    placeholder="Target Goal (e.g. 10 problems)" 
+                    placeholderTextColor="#94A3B8" 
+                    style={[styles.saasInput, { flex: 1 }]} 
+                  />
+                </View>
+
+                <Pressable 
+                  disabled={addingSyllabus} 
+                  onPress={addSyllabusItem} 
+                  style={styles.saasSubmitButton}
+                >
+                  <MaterialCommunityIcons name="check" size={16} color="#FFFFFF" />
+                  <Text style={styles.saasSubmitButtonText}>
+                    {addingSyllabus ? 'Syncing Objective...' : 'Publish Objective & Milestone'}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </>
+        )}
+
+        {/* Hub Navigation Tiles */}
+        {activeTab === null && (
           <View style={styles.tileGrid}>
             {TABS.map((tab) => {
               const count = tab.key === 'announcements' ? batch.notes?.length || 0
@@ -485,32 +734,27 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
                   }}
                   style={styles.hubTile}
                 >
-                  <View style={styles.tileIcon}>
-                    <MaterialCommunityIcons name={tab.icon} size={22} color="#2D66C8" />
+                  <View style={styles.tileIconContainer}>
+                    <View style={styles.tileIcon}>
+                      <MaterialCommunityIcons name={tab.icon} size={20} color="#2563EB" />
+                    </View>
+                    <View style={styles.tileBadgeCount}>
+                      <Text style={styles.tileBadgeCountText}>{count}</Text>
+                    </View>
                   </View>
                   <Text style={styles.tileTitle}>{tab.label}</Text>
-                  <Text style={styles.tileDescription}>{tab.description}</Text>
-                  <Text style={styles.tileCount}>{count} {count === 1 ? 'item' : 'items'}</Text>
+                  <Text style={styles.tileDescription} numberOfLines={2}>{tab.description}</Text>
+                  <View style={styles.tileFooterRow}>
+                    <Text style={styles.tileActionLink}>Explore module</Text>
+                    <MaterialCommunityIcons name="arrow-right" size={12} color="#2563EB" />
+                  </View>
                 </Pressable>
               );
             })}
           </View>
-        ) : (
-          <View style={styles.sectionBackRow}>
-            <Pressable onPress={() => {
-              setSelectedAssignmentId('');
-              setSelectedTestId('');
-              setActiveWorksheetId('');
-              setActiveQuizId('');
-              setActiveTab(null);
-            }} style={styles.sectionBackButton}>
-              <MaterialCommunityIcons name="arrow-left" size={18} color="#2D66C8" />
-              <Text style={styles.sectionBackText}>Batch overview</Text>
-            </Pressable>
-            <Text style={styles.sectionName}>{TABS.find((tab) => tab.key === activeTab)?.label}</Text>
-          </View>
         )}
 
+        {/* Tab Content Display (When a tab like assignments, tests, or quizzes is opened, ONLY that module is shown along with the back button) */}
         {activeTab === 'announcements' && (
           <View style={styles.section}>
             <SectionHeading icon="bullhorn-outline" title="Teacher updates" />
@@ -533,7 +777,7 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
                 <Text style={styles.metaText}>{item.isStudentUpload ? `Shared by ${String(item.uploadedByName || 'student')}` : 'Shared by teacher'}</Text>
                 {typeof item.fileURL === 'string' && item.fileURL ? (
                   <Pressable onPress={() => openAttachment(item.fileURL as string, String(item.fileName || ''))} style={styles.inlineAction}>
-                    <MaterialCommunityIcons name="download-outline" size={17} color="#2D66C8" />
+                    <MaterialCommunityIcons name="download-outline" size={17} color="#2563EB" />
                     <Text style={styles.inlineActionText}>{String(item.fileName || 'Open attachment')}</Text>
                   </Pressable>
                 ) : null}
@@ -542,8 +786,8 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
             {!vaultItems.length && <EmptyState text="Your teacher has not shared any resources yet." />}
             <View style={styles.formSection}>
               <Text style={styles.formTitle}>Share a resource with the class</Text>
-              <TextInput value={resourceTitle} onChangeText={setResourceTitle} placeholder="Resource title" placeholderTextColor="#91A0AE" style={styles.input} />
-              <TextInput value={resourceDescription} onChangeText={setResourceDescription} placeholder="Description (optional)" placeholderTextColor="#91A0AE" style={styles.input} />
+              <TextInput value={resourceTitle} onChangeText={setResourceTitle} placeholder="Resource title" placeholderTextColor="#94A3B8" style={styles.input} />
+              <TextInput value={resourceDescription} onChangeText={setResourceDescription} placeholder="Description (optional)" placeholderTextColor="#94A3B8" style={styles.input} />
               <View style={styles.actionRow}>
                 <Pressable onPress={selectResourceFile} style={styles.secondaryButton}>
                   <Text style={styles.secondaryButtonText}>{resourceFile?.name || 'Attach file'}</Text>
@@ -564,22 +808,16 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
               if (!assignment) return <EmptyState text="This assignment is no longer available." />;
               const submission = assignmentSubmissionById.get(assignment.id);
               const key = `assignment-${assignment.id}`;
-              console.log('[BatchDetailsScreen] assignment opened', {
-                assignmentId: assignment.id,
-                title: assignment.title,
-                descriptionLength: String(assignment.description || assignment.subject || '').length,
-                hasWorksheet: Boolean(assignment.worksheetFileURL),
-              });
               return (
                 <View style={styles.assignmentDetailCard}>
                     <Pressable onPress={() => setSelectedAssignmentId('')} style={styles.inlineAction}>
-                      <MaterialCommunityIcons name="arrow-left" size={17} color="#2D66C8" />
+                      <MaterialCommunityIcons name="arrow-left" size={17} color="#2563EB" />
                       <Text style={styles.inlineActionText}>All assignments</Text>
                     </Pressable>
 
                     <View style={styles.assignmentDetailHeader}>
                       <View style={styles.assignmentBadge}>
-                        <MaterialCommunityIcons name="file-document-outline" size={14} color="#2D66C8" />
+                        <MaterialCommunityIcons name="file-document-outline" size={14} color="#2563EB" />
                         <Text style={styles.assignmentBadgeText}>Assignment</Text>
                       </View>
                       <Text style={styles.assignmentDueText}>Due {formatDate(assignment.dueDate)}</Text>
@@ -607,7 +845,7 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
 
                     {typeof assignment.worksheetFileURL === 'string' && assignment.worksheetFileURL ? (
                       <Pressable onPress={() => openAttachment(assignment.worksheetFileURL as string, `${String(assignment.title || 'Worksheet')}.pdf`)} style={styles.assignmentActionButton}>
-                        <MaterialCommunityIcons name="download-outline" size={17} color="#2D66C8" />
+                        <MaterialCommunityIcons name="download-outline" size={17} color="#2563EB" />
                         <Text style={styles.assignmentActionText}>Download worksheet</Text>
                       </Pressable>
                     ) : null}
@@ -618,7 +856,7 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
                         {typeof submission.feedback === 'string' && submission.feedback ? <RichContent content={submission.feedback} /> : null}
                         {typeof submission.submittedFileURL === 'string' && submission.submittedFileURL ? (
                           <Pressable onPress={() => openAttachment(submission.submittedFileURL as string, String(submission.submittedFileName || 'Solution'))} style={styles.assignmentActionButton}>
-                            <MaterialCommunityIcons name="file-eye-outline" size={17} color="#2D66C8" />
+                            <MaterialCommunityIcons name="file-eye-outline" size={17} color="#2563EB" />
                             <Text style={styles.assignmentActionText}>{String(submission.submittedFileName || 'View submitted solution')}</Text>
                           </Pressable>
                         ) : null}
@@ -639,7 +877,7 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
               <>
                 {assignments.some((item) => assignmentSubmissionById.has(item.id)) ? (
                   <Pressable onPress={() => setIncludeCompletedAssignments((value) => !value)} style={styles.filterToggle}>
-                    <MaterialCommunityIcons name={includeCompletedAssignments ? 'checkbox-marked-outline' : 'checkbox-blank-outline'} size={19} color="#2D66C8" />
+                    <MaterialCommunityIcons name={includeCompletedAssignments ? 'checkbox-marked-outline' : 'checkbox-blank-outline'} size={19} color="#2563EB" />
                     <Text style={styles.filterToggleText}>{includeCompletedAssignments ? 'Hide completed' : `Show completed (${assignments.filter((item) => assignmentSubmissionById.has(item.id)).length})`}</Text>
                   </Pressable>
                 ) : null}
@@ -647,8 +885,8 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
                   const complete = assignmentSubmissionById.has(assignment.id);
                   return (
                     <Pressable key={assignment.id} onPress={() => setSelectedAssignmentId(assignment.id)} style={styles.assignmentListItem}>
-                      <View style={styles.assignmentListIconWrap}>
-                        <MaterialCommunityIcons name={complete ? 'check-circle-outline' : 'file-document-outline'} size={19} color={complete ? '#287E52' : '#2D66C8'} />
+                      <View style={[styles.assignmentListIconWrap, complete ? styles.iconWrapComplete : styles.iconWrapPending]}>
+                        <MaterialCommunityIcons name={complete ? 'check-circle-outline' : 'file-document-outline'} size={19} color={complete ? '#16A34A' : '#2563EB'} />
                       </View>
                       <View style={styles.assignmentListBody}>
                         <Text style={styles.assignmentListTitle} numberOfLines={2}>{String(assignment.title || 'Assignment')}</Text>
@@ -658,7 +896,7 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
                           <Text style={styles.assignmentListScore}>{String(assignment.maxScore || 100)} pts</Text>
                         </View>
                       </View>
-                      <MaterialCommunityIcons name="chevron-right" size={19} color="#98A5B2" />
+                      <MaterialCommunityIcons name="chevron-right" size={19} color="#94A3B8" />
                     </Pressable>
                   );
                 })}
@@ -677,16 +915,10 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
               if (!test) return <EmptyState text="This test is no longer available." />;
               const submission = testSubmissions.find((item) => item.testId === test.id && item.classId === batchId);
               const key = `test-${test.id}`;
-              console.log('[BatchDetailsScreen] test opened', {
-                testId: test.id,
-                title: test.title,
-                descriptionLength: String(test.description || '').length,
-                hasTestFile: Boolean(test.testFileURL),
-              });
               return (
                 <View style={styles.contentRow}>
                     <Pressable onPress={() => setSelectedTestId('')} style={styles.inlineAction}>
-                      <MaterialCommunityIcons name="arrow-left" size={17} color="#2D66C8" />
+                      <MaterialCommunityIcons name="arrow-left" size={17} color="#2563EB" />
                       <Text style={styles.inlineActionText}>All tests</Text>
                     </Pressable>
                     <Text style={styles.itemTitle}>{String(test.title || 'Class test')}</Text>
@@ -695,7 +927,7 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
                     {typeof test.testContent === 'string' && test.testContent ? <QuestionPaperContent content={test.testContent} /> : null}
                     {typeof test.testFileURL === 'string' && test.testFileURL ? (
                       <Pressable onPress={() => openAttachment(test.testFileURL as string, `${String(test.title || 'Test')}.pdf`)} style={styles.inlineAction}>
-                        <MaterialCommunityIcons name="download-outline" size={17} color="#2D66C8" />
+                        <MaterialCommunityIcons name="download-outline" size={17} color="#2563EB" />
                         <Text style={styles.inlineActionText}>Open test paper</Text>
                       </Pressable>
                     ) : null}
@@ -705,7 +937,7 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
                         {typeof submission.feedback === 'string' && submission.feedback ? <RichContent content={submission.feedback} /> : null}
                         {typeof submission.submittedFileURL === 'string' && submission.submittedFileURL ? (
                           <Pressable onPress={() => openAttachment(submission.submittedFileURL as string, String(submission.submittedFileName || 'Solution'))} style={styles.inlineAction}>
-                            <MaterialCommunityIcons name="file-eye-outline" size={17} color="#2D66C8" />
+                            <MaterialCommunityIcons name="file-eye-outline" size={17} color="#2563EB" />
                             <Text style={styles.inlineActionText}>{String(submission.submittedFileName || 'View submitted solution')}</Text>
                           </Pressable>
                         ) : null}
@@ -723,7 +955,7 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
                           value={testAnswers[test.id] || ''}
                           onChangeText={(value) => setTestAnswers((current) => ({ ...current, [test.id]: value }))}
                           placeholder="Write your answers here (optional if attaching files)"
-                          placeholderTextColor="#91A0AE"
+                          placeholderTextColor="#94A3B8"
                           style={[styles.input, styles.answerInput]}
                         />
                         <View style={styles.actionRow}>
@@ -745,7 +977,7 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
                   return Boolean(submission && submission.status !== 'resubmit_requested');
                 }) ? (
                   <Pressable onPress={() => setIncludeCompletedTests((value) => !value)} style={styles.filterToggle}>
-                    <MaterialCommunityIcons name={includeCompletedTests ? 'checkbox-marked-outline' : 'checkbox-blank-outline'} size={19} color="#2D66C8" />
+                    <MaterialCommunityIcons name={includeCompletedTests ? 'checkbox-marked-outline' : 'checkbox-blank-outline'} size={19} color="#2563EB" />
                     <Text style={styles.filterToggleText}>{includeCompletedTests ? 'Hide completed' : `Show completed (${tests.filter((test) => {
                       const submission = testSubmissions.find((item) => item.testId === test.id && item.classId === batchId);
                       return Boolean(submission && submission.status !== 'resubmit_requested');
@@ -761,9 +993,9 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
                   const complete = Boolean(submission && submission.status !== 'resubmit_requested');
                   return (
                     <Pressable key={test.id} onPress={() => setSelectedTestId(test.id)} style={styles.titleRow}>
-                      <MaterialCommunityIcons name={complete ? 'check-circle-outline' : 'circle-outline'} size={19} color={complete ? '#287E52' : '#2D66C8'} />
+                      <MaterialCommunityIcons name={complete ? 'check-circle-outline' : 'circle-outline'} size={19} color={complete ? '#16A34A' : '#2563EB'} />
                       <Text style={styles.titleRowText} numberOfLines={2}>{String(test.title || 'Class test')}</Text>
-                      <MaterialCommunityIcons name="chevron-right" size={19} color="#98A5B2" />
+                      <MaterialCommunityIcons name="chevron-right" size={19} color="#94A3B8" />
                     </Pressable>
                   );
                 })}
@@ -835,7 +1067,7 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
             {activeWorksheet ? (
               <View style={styles.contentRow}>
                 <Pressable onPress={() => setActiveWorksheetId('')} style={styles.inlineAction}>
-                  <MaterialCommunityIcons name="arrow-left" size={17} color="#2D66C8" />
+                  <MaterialCommunityIcons name="arrow-left" size={17} color="#2563EB" />
                   <Text style={styles.inlineActionText}>All worksheets</Text>
                 </Pressable>
                 <Text style={styles.itemTitle}>{activeWorksheet.title || 'Practice worksheet'}</Text>
@@ -863,6 +1095,7 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
             {!worksheets.length ? <EmptyState text="Worksheets generated for this class will appear here. New AI generation and grading require a secure server endpoint that is not configured for mobile." /> : null}
           </View>
         )}
+
       </ScrollView>
       <AttachmentViewer
         uri={activeAttachment?.uri || null}
@@ -876,7 +1109,7 @@ export default function BatchDetailsScreen({ route, navigation }: ScreenProps) {
 function SectionHeading({ icon, title }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; title: string }) {
   return (
     <View style={styles.sectionHeading}>
-      <MaterialCommunityIcons name={icon} size={20} color="#2D66C8" />
+      <MaterialCommunityIcons name={icon} size={20} color="#2563EB" />
       <Text style={styles.sectionTitle}>{title}</Text>
     </View>
   );
@@ -919,7 +1152,7 @@ function QuizPanel({
   if (finished) {
     return (
       <View style={styles.quizResult}>
-        <MaterialCommunityIcons name="trophy-outline" size={36} color="#2D66C8" />
+        <MaterialCommunityIcons name="trophy-outline" size={36} color="#2563EB" />
         <Text style={styles.sectionTitle}>Quiz complete</Text>
         <Text style={styles.scoreText}>{score} / {questionCount}</Text>
         <Pressable onPress={onClose} style={styles.primaryButton}><Text style={styles.primaryButtonText}>View leaderboard</Text></Pressable>
@@ -954,118 +1187,365 @@ function QuizPanel({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#EDF8FD' },
-  container: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 36 },
-  center: { flex: 1, backgroundColor: '#EDF8FD', alignItems: 'center', justifyContent: 'center', padding: 28 },
-  backButton: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 14 },
-  backText: { color: '#526579', fontSize: 13, fontWeight: '600' },
-  batchHeader: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 18, marginBottom: 16 },
-  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  subject: { color: '#3168CC', fontSize: 10, fontWeight: '800' },
-  liveBadge: { color: '#287E52', backgroundColor: '#E4F6EA', overflow: 'hidden', borderRadius: 10, paddingHorizontal: 9, paddingVertical: 4, fontSize: 9, fontWeight: '800' },
-  batchTitle: { color: '#25394D', fontSize: 21, fontWeight: '800', marginTop: 8 },
-  batchSchedule: { color: '#8291A0', fontSize: 12, marginTop: 5 },
-  meetingButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: '#2D66C8', borderRadius: 10, paddingHorizontal: 13, paddingVertical: 10, marginTop: 14 },
-  tabs: { gap: 8, paddingRight: 20, marginBottom: 14 },
-  tab: { minHeight: 39, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDEBF4' },
-  tabActive: { backgroundColor: '#2D66C8', borderColor: '#2D66C8' },
-  tabText: { color: '#718397', fontSize: 11, fontWeight: '700' },
-  tabTextActive: { color: '#FFFFFF' },
-  section: { gap: 11 },
-  sectionHeading: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 3 },
-  sectionTitle: { color: '#25394D', fontSize: 17, fontWeight: '800' },
-  contentRow: { backgroundColor: '#FFFFFF', borderRadius: 13, padding: 15, gap: 9 },
-  detailScrollContent: { paddingBottom: 8 },
-  itemTitle: { color: '#26394D', fontSize: 15, fontWeight: '700' },
-  assignmentDetailCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2EDF6',
-    shadowColor: '#1F2A44',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
-    gap: 12,
-  },
+  screen: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 48 },
+  center: { flex: 1, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', padding: 28 },
+  
+  // Top Navbar Styles
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  backButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F1F5F9', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0' },
+  backText: { color: '#475569', fontSize: 12, fontWeight: '700' },
+  workspacePill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: '#DCFCE7', gap: 6 },
+  workspaceDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#16A34A' },
+  workspacePillText: { fontSize: 11, fontWeight: '800', color: '#15803D', letterSpacing: 0.2 },
+
+  // SaaS Header Card
+  batchHeader: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 22, marginBottom: 20, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 16, elevation: 3 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  subjectBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, gap: 5, borderWidth: 1, borderColor: '#DBEAFE' },
+  subject: { color: '#2563EB', fontSize: 10, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase' },
+  liveBadgeWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, gap: 6, borderWidth: 1, borderColor: '#DCFCE7' },
+  liveDotPulse: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#16A34A' },
+  liveBadge: { color: '#15803D', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  batchTitle: { color: '#0F172A', fontSize: 24, fontWeight: '900', letterSpacing: -0.5, marginBottom: 4 },
+  batchSchedule: { color: '#64748B', fontSize: 13, fontWeight: '600' },
+  meetingButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#2563EB', borderRadius: 12, paddingVertical: 12, marginTop: 16, shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 2 },
+  meetingButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800', letterSpacing: 0.2 },
+
+  // Hub Tiles Grid
+  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12, marginBottom: 24 },
+  hubTile: { width: '48%', backgroundColor: '#FFFFFF', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2 },
+  tileIconContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  tileIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EFF6FF' },
+  tileBadgeCount: { backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: '#E2E8F0' },
+  tileBadgeCountText: { color: '#475569', fontSize: 11, fontWeight: '800' },
+  tileTitle: { color: '#0F172A', fontSize: 14, fontWeight: '800', marginBottom: 2, letterSpacing: -0.2 },
+  tileDescription: { color: '#64748B', fontSize: 11, lineHeight: 15, fontWeight: '500', marginBottom: 12 },
+  tileFooterRow: { flexDirection: 'row', alignItems: 'center', gap: 4, borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 8 },
+  tileActionLink: { color: '#2563EB', fontSize: 11, fontWeight: '700' },
+
+  // Standard Section styling
+  section: { gap: 12, marginBottom: 24 },
+  sectionHeading: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
+  sectionTitle: { color: '#0F172A', fontSize: 16, fontWeight: '900', letterSpacing: -0.3 },
+  contentRow: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, gap: 10, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 6, elevation: 1 },
+  itemTitle: { color: '#0F172A', fontSize: 15, fontWeight: '700' },
+  
+  // Assignment & Test lists
+  assignmentDetailCard: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2, gap: 14 },
   assignmentDetailHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  assignmentBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EDF5FF', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
-  assignmentBadgeText: { color: '#2D66C8', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
-  assignmentDueText: { color: '#617385', fontSize: 11, fontWeight: '700' },
-  assignmentDetailTitle: { color: '#24374F', fontSize: 24, fontWeight: '800', lineHeight: 30 },
+  assignmentBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EFF6FF', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: '#DBEAFE' },
+  assignmentBadgeText: { color: '#2563EB', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
+  assignmentDueText: { color: '#64748B', fontSize: 12, fontWeight: '700' },
+  assignmentDetailTitle: { color: '#0F172A', fontSize: 22, fontWeight: '800', lineHeight: 28, letterSpacing: -0.3 },
   assignmentMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  assignmentMetaPill: { backgroundColor: '#F2F8FF', borderRadius: 999, borderWidth: 1, borderColor: '#DDEBFF', paddingHorizontal: 10, paddingVertical: 6, color: '#2D66C8', fontSize: 11, fontWeight: '700' },
-  assignmentBodyWrap: { backgroundColor: '#F8FBFF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#EAF0F6' },
-  assignmentContentHeading: { color: '#24374F', fontSize: 13, fontWeight: '800', marginBottom: 8 },
-  assignmentActionButton: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: '#EEF5FF', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
-  assignmentActionText: { color: '#2D66C8', fontSize: 12, fontWeight: '700' },
-  assignmentListItem: {
+  assignmentMetaPill: { backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 12, paddingVertical: 6, color: '#2563EB', fontSize: 11, fontWeight: '700' },
+  assignmentBodyWrap: { backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#E2E8F0' },
+  assignmentContentHeading: { color: '#0F172A', fontSize: 13, fontWeight: '800', marginBottom: 8 },
+  assignmentActionButton: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', backgroundColor: '#EFF6FF', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: '#DBEAFE' },
+  assignmentActionText: { color: '#2563EB', fontSize: 12, fontWeight: '700' },
+  assignmentListItem: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#FFFFFF', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 6, elevation: 1 },
+  assignmentListIconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  iconWrapPending: { backgroundColor: '#EFF6FF' },
+  iconWrapComplete: { backgroundColor: '#F0FDF4' },
+  assignmentListBody: { flex: 1 },
+  assignmentListTitle: { color: '#0F172A', fontSize: 14, fontWeight: '700', marginBottom: 3 },
+  assignmentListMeta: { color: '#64748B', fontSize: 11, lineHeight: 16, fontWeight: '500' },
+  assignmentListFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
+  assignmentListDue: { color: '#2563EB', fontSize: 11, fontWeight: '700' },
+  assignmentListScore: { color: '#64748B', fontSize: 11, fontWeight: '700' },
+  metaText: { color: '#64748B', fontSize: 11, lineHeight: 16, fontWeight: '500' },
+  inlineAction: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 4 },
+  inlineActionText: { color: '#2563EB', fontSize: 12, fontWeight: '700' },
+  emptyText: { color: '#64748B', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 22, fontSize: 13, lineHeight: 19, textAlign: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+  formSection: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, gap: 12, marginTop: 4, borderWidth: 1, borderColor: '#E2E8F0' },
+  formTitle: { color: '#0F172A', fontSize: 13, fontWeight: '800' },
+  input: { minHeight: 46, borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 14, paddingVertical: 10, color: '#0F172A', fontSize: 13 },
+  answerInput: { minHeight: 100, textAlignVertical: 'top' },
+  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  primaryButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, borderRadius: 12, backgroundColor: '#2563EB' },
+  primaryButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
+  secondaryButton: { minHeight: 44, flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
+  secondaryButtonText: { color: '#475569', fontSize: 12, fontWeight: '700' },
+  uploadArea: { gap: 10, marginTop: 8 },
+  submissionState: { gap: 6, marginTop: 8, padding: 12, borderRadius: 12, backgroundColor: '#F0FDF4', borderWidth: 1, borderColor: '#DCFCE7' },
+  statusText: { color: '#15803D', fontSize: 12, fontWeight: '700' },
+  warningBox: { gap: 6, backgroundColor: '#FEFCE8', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#FEF08A' },
+  warningTitle: { color: '#A16207', fontSize: 12, fontWeight: '700' },
+  leaderboard: { borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 12, gap: 6, marginTop: 6 },
+  quizResult: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, gap: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+  scoreText: { color: '#2563EB', fontSize: 32, fontWeight: '800' },
+  quizTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  timer: { color: '#DC2626', fontSize: 12, fontWeight: '800' },
+  option: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, backgroundColor: '#F8FAFC' },
+  optionSelected: { borderColor: '#2563EB', backgroundColor: '#EFF6FF' },
+  optionCorrect: { borderColor: '#16A34A', backgroundColor: '#F0FDF4' },
+  quitButton: { alignItems: 'center', padding: 8 },
+  errorTitle: { color: '#0F172A', fontSize: 18, fontWeight: '800', marginBottom: 8 },
+  mutedText: { color: '#64748B', textAlign: 'center', fontSize: 13, lineHeight: 20 },
+  filterToggle: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 8, paddingVertical: 6, marginBottom: 4 },
+  filterToggleText: { color: '#2563EB', fontSize: 12, fontWeight: '700' },
+  titleRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#FFFFFF', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 },
+  titleRowText: { flex: 1, color: '#0F172A', fontSize: 14, fontWeight: '700' },
+
+  // --- SaaS Production-Grade Syllabus & Milestone Component Styles ---
+  saasSyllabusContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 20,
+    elevation: 3,
+    gap: 16,
+  },
+  saasSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  saasTitleGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#E3EDF5',
-    shadowColor: '#1F2A44',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 1,
   },
-  assignmentListIconWrap: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#EDF5FF', alignItems: 'center', justifyContent: 'center' },
-  assignmentListBody: { flex: 1 },
-  assignmentListTitle: { color: '#24374F', fontSize: 14, fontWeight: '800', marginBottom: 3 },
-  assignmentListMeta: { color: '#64798B', fontSize: 11, lineHeight: 16 },
-  assignmentListFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
-  assignmentListDue: { color: '#2D66C8', fontSize: 10, fontWeight: '700' },
-  assignmentListScore: { color: '#5E7082', fontSize: 10, fontWeight: '700' },
-  bodyText: { color: '#5E7082', fontSize: 13, lineHeight: 19 },
-  metaText: { color: '#8B99A7', fontSize: 11, lineHeight: 16 },
-  inlineAction: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 5 },
-  inlineActionText: { color: '#2D66C8', fontSize: 12, fontWeight: '700' },
-  emptyText: { color: '#8291A0', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 18, fontSize: 13, lineHeight: 19, textAlign: 'center' },
-  formSection: { backgroundColor: '#FFFFFF', borderRadius: 13, padding: 15, gap: 10, marginTop: 4 },
-  formTitle: { color: '#34495E', fontSize: 12, fontWeight: '800' },
-  input: { minHeight: 42, borderRadius: 10, backgroundColor: '#F3F8FB', borderWidth: 1, borderColor: '#E0EAF1', paddingHorizontal: 12, paddingVertical: 10, color: '#27394B', fontSize: 13 },
-  answerInput: { minHeight: 90, textAlignVertical: 'top' },
-  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  primaryButton: { minHeight: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, borderRadius: 10, backgroundColor: '#2D66C8' },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
-  secondaryButton: { minHeight: 40, flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, borderRadius: 10, backgroundColor: '#F3F8FB', borderWidth: 1, borderColor: '#DDE8F0' },
-  secondaryButtonText: { color: '#526579', fontSize: 11, fontWeight: '700' },
-  uploadArea: { gap: 9, marginTop: 8 },
-  submissionState: { gap: 5, marginTop: 7, padding: 11, borderRadius: 10, backgroundColor: '#EFF8F1' },
-  statusText: { color: '#287E52', fontSize: 12, fontWeight: '700' },
-  warningBox: { gap: 5, backgroundColor: '#FFF7E4', borderRadius: 9, padding: 10 },
-  warningTitle: { color: '#9B6B1C', fontSize: 12, fontWeight: '700' },
-  leaderboard: { borderTopWidth: 1, borderTopColor: '#EAF0F4', paddingTop: 10, gap: 5, marginTop: 4 },
-  quizResult: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 13, padding: 22, gap: 10 },
-  scoreText: { color: '#2D66C8', fontSize: 28, fontWeight: '800' },
-  quizTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  timer: { color: '#B26352', fontSize: 12, fontWeight: '800' },
-  option: { borderWidth: 1, borderColor: '#E0EAF1', borderRadius: 10, padding: 12 },
-  optionSelected: { borderColor: '#2D66C8', backgroundColor: '#EDF5FF' },
-  optionCorrect: { borderColor: '#59A878', backgroundColor: '#EFF8F1' },
-  quitButton: { alignItems: 'center', padding: 8 },
-  errorTitle: { color: '#34495E', fontSize: 18, fontWeight: '800', marginBottom: 8 },
-  mutedText: { color: '#8291A0', textAlign: 'center', fontSize: 13, lineHeight: 20 },
-  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 11, marginTop: 2, marginBottom: 22 },
-  hubTile: { width: '48%', minHeight: 154, backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#E4EDF3' },
-  tileIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E8F1FF', marginBottom: 12 },
-  tileTitle: { color: '#26394D', fontSize: 14, fontWeight: '800' },
-  tileDescription: { color: '#8291A0', fontSize: 11, lineHeight: 15, marginTop: 4 },
-  tileCount: { color: '#3971C9', fontSize: 10, fontWeight: '700', marginTop: 'auto', paddingTop: 10 },
-  sectionBackRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  sectionBackButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 5 },
-  sectionBackText: { color: '#2D66C8', fontSize: 12, fontWeight: '700' },
-  sectionName: { color: '#536A80', fontSize: 12, fontWeight: '700' },
-  filterToggle: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 7, paddingVertical: 5, marginBottom: 2 },
-  filterToggleText: { color: '#2D66C8', fontSize: 12, fontWeight: '700' },
-  titleRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 13, paddingVertical: 9, backgroundColor: '#FFFFFF', borderRadius: 11 },
-  titleRowText: { flex: 1, color: '#26394D', fontSize: 13, fontWeight: '700' },
+  saasHeaderIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saasSectionTitle: {
+    color: '#0F172A',
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: -0.3,
+  },
+  saasSectionSubtitle: {
+    color: '#64748B',
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  saasMetricBadge: {
+    backgroundColor: '#F0FDF4',
+    paddingHorizontal: 5,
+    paddingVertical: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+  },
+  saasMetricBadgeText: {
+    color: '#15803D',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  saasProgressCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 8,
+  },
+  saasProgressTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  saasProgressLabel: {
+    color: '#475569',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  saasProgressPercentText: {
+    color: '#2563EB',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  saasProgressBarTrack: {
+    height: 8,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  saasProgressBarFill: {
+    height: '100%',
+    backgroundColor: '#2563EB',
+    borderRadius: 4,
+  },
+  saasItemsList: {
+    gap: 10,
+  },
+  saasCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  saasCardCompleted: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#DCFCE7',
+  },
+  saasCheckButton: {
+    paddingTop: 1,
+  },
+  saasCardContent: {
+    flex: 1,
+    gap: 4,
+  },
+  saasItemTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.2,
+  },
+  saasItemTitleCompleted: {
+    textDecorationLine: 'line-through',
+    color: '#94A3B8',
+  },
+  saasItemDesc: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 16,
+    fontWeight: '500',
+  },
+  saasMetaPillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6,
+  },
+  saasPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  saasPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#B45309',
+  },
+  saasGoalPill: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#DCFCE7',
+  },
+  saasGoalPillText: {
+    color: '#15803D',
+  },
+  saasAuthorPill: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  saasAuthorText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  saasDeleteBtn: {
+    padding: 4,
+  },
+  saasEmptyBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 6,
+  },
+  saasEmptyText: {
+    color: '#334155',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  saasEmptySubtext: {
+    color: '#64748B',
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  saasFormContainer: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 10,
+    marginTop: 4,
+  },
+  saasFormHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  saasFormHeaderTitle: {
+    color: '#0F172A',
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  saasInput: {
+    minHeight: 44,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: '#0F172A',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  saasRowInputs: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  saasSubmitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#2563EB',
+    borderRadius: 10,
+    minHeight: 44,
+    marginTop: 2,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  saasSubmitButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
 });
